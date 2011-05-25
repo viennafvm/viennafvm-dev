@@ -1,0 +1,3 @@
+Build here:
+ $> cmake ..
+ $> make
