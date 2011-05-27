@@ -125,7 +125,7 @@ int main()
   try
   {
     viennagrid::io::sgf_reader my_sgf_reader;
-    my_sgf_reader(my_domain, "../examples/data/cube3072.sgf");
+    my_sgf_reader(my_domain, "../../examples/data/cube3072.sgf");
   }
   catch (...)
   {

@@ -30,8 +30,8 @@ ENDIF(BUILD_TESTING)
 
 #-----------------------------------------------------------------------------
 # add the source files which should be tested without the trailing *.cpp
-#SET(PROGS poisson_2d poisson_3d)
-SET(PROGS poisson_2d)
+SET(PROGS poisson_2d poisson_3d)
+#SET(PROGS poisson_2d)
 #-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
