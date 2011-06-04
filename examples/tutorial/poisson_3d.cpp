@@ -22,7 +22,7 @@
 // ViennaGrid includes:
 #include "viennagrid/domain.hpp"
 #include <viennagrid/config/simplex.hpp>
-#include "viennagrid/io/sgf_reader.hpp"
+#include "viennagrid/io/netgen_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
 #include "viennagrid/algorithm/voronoi.hpp"
 
@@ -98,6 +98,37 @@ VectorType solve(MatrixType const & system_matrix,
 }
 
 
+template <typename DomainType>
+void voronoi_volume_test(DomainType const & d)
+{
+  typedef typename DomainType::config_type           Config;
+  typedef typename Config::cell_tag                  CellTag;
+  typedef typename viennagrid::result_of::point_type<Config>::type                            PointType;
+  typedef typename viennagrid::result_of::ncell_type<Config, 0>::type                         VertexType;
+  typedef typename viennagrid::result_of::ncell_type<Config, 1>::type                         EdgeType;
+  typedef typename viennagrid::result_of::ncell_type<Config, 2>::type                         FacetType;
+  typedef typename viennagrid::result_of::ncell_type<Config, CellTag::topology_level>::type   CellType;
+  
+  typedef typename viennagrid::result_of::const_ncell_container<DomainType, CellTag::topology_level>::type    CellContainer;
+  typedef typename viennagrid::result_of::iterator<CellContainer>::type                                       CellIterator;
+  
+  typedef typename viennagrid::result_of::const_ncell_container<DomainType, 0>::type                          VertexContainer;
+  typedef typename viennagrid::result_of::iterator<VertexContainer>::type                                     VertexIterator;
+  
+  
+  double boxed_volume = 0;
+  VertexContainer vertices = viennagrid::ncells<0>(d);
+  for (VertexIterator vit  = vertices.begin();
+                      vit != vertices.end();
+                    ++vit)
+  {
+    boxed_volume += viennadata::access<viennafvm::box_volume_key, double>()(*vit);
+  }
+
+  std::cout << "Voronoi: Volume due to boxes: " << boxed_volume << std::endl;
+}
+
+
 int main()
 {
   typedef double   numeric_type;
@@ -124,8 +155,8 @@ int main()
   
   try
   {
-    viennagrid::io::sgf_reader my_sgf_reader;
-    my_sgf_reader(my_domain, "../examples/data/cube3072.sgf");
+    viennagrid::io::netgen_reader my_netgen_reader;
+    my_netgen_reader(my_domain, "../examples/data/cube3072.mesh");
   }
   catch (...)
   {
@@ -139,6 +170,8 @@ int main()
   viennagrid::write_voronoi_info<viennafvm::edge_len_key,
                                  viennafvm::edge_interface_area_key,
                                  viennafvm::box_volume_key>(my_domain);
+                                 
+  voronoi_volume_test(my_domain);                               
 
   MatrixType system_matrix;
   VectorType load_vector;
@@ -154,7 +187,7 @@ int main()
   {
     //boundary for first equation: Homogeneous Dirichlet everywhere
     if (vit->getPoint()[0] == 0.0 || vit->getPoint()[0] == 1.0 
-      || vit->getPoint()[1] == 0.0 || vit->getPoint()[1] == 1.0 )
+      || vit->getPoint()[2] == 0.0 || vit->getPoint()[2] == 1.0 )
       viennadata::access<BoundaryKey, bool>(BoundaryKey(0))(*vit) = true;
     else
       viennadata::access<BoundaryKey, bool>(BoundaryKey(0))(*vit) = false;
