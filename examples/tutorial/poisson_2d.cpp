@@ -22,7 +22,7 @@
 // ViennaGrid includes:
 #include "viennagrid/domain.hpp"
 #include <viennagrid/config/simplex.hpp>
-#include "viennagrid/io/sgf_reader.hpp"
+#include "viennagrid/io/netgen_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
 #include "viennagrid/algorithm/voronoi.hpp"
 
@@ -153,8 +153,8 @@ int main()
   
   try
   {
-    viennagrid::io::sgf_reader my_sgf_reader;
-    my_sgf_reader(my_domain, "../examples/data/square128.sgf");
+    viennagrid::io::netgen_reader my_reader;
+    my_reader(my_domain, "../examples/data/square128.mesh");
   }
   catch (...)
   {

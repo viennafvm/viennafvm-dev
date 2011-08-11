@@ -22,7 +22,6 @@
 
 // ViennaGrid includes:
 #include "viennagrid/domain.hpp"
-#include "viennagrid/io/sgf_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
 
 // ViennaData includes:
