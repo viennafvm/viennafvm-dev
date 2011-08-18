@@ -41,7 +41,7 @@ namespace viennafvm
     {
       typedef typename DomainType::config_type                                              ConfigType;
       typedef typename viennagrid::result_of::ncell_type<ConfigType, 0>::type               VertexType;
-      typedef typename viennagrid::result_of::const_ncell_container<DomainType, 0>::type    VertexContainer;
+      typedef typename viennagrid::result_of::const_ncell_range<DomainType, 0>::type    VertexContainer;
       typedef typename viennagrid::result_of::iterator<VertexContainer>::type               VertexIterator;
       
       typedef viennafvm::mapping_key          MappingKeyType;

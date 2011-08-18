@@ -109,10 +109,10 @@ void voronoi_volume_test(DomainType const & d)
   typedef typename viennagrid::result_of::ncell_type<Config, 2>::type                         FacetType;
   typedef typename viennagrid::result_of::ncell_type<Config, CellTag::topology_level>::type   CellType;
   
-  typedef typename viennagrid::result_of::const_ncell_container<DomainType, CellTag::topology_level>::type    CellContainer;
+  typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::topology_level>::type    CellContainer;
   typedef typename viennagrid::result_of::iterator<CellContainer>::type                                       CellIterator;
   
-  typedef typename viennagrid::result_of::const_ncell_container<DomainType, 0>::type                          VertexContainer;
+  typedef typename viennagrid::result_of::const_ncell_range<DomainType, 0>::type                          VertexContainer;
   typedef typename viennagrid::result_of::iterator<VertexContainer>::type                                     VertexIterator;
   
   
@@ -136,7 +136,7 @@ int main()
   typedef viennagrid::config::tetrahedral_3d     ConfigType;
   typedef viennagrid::domain<ConfigType>         DomainType;
 
-  typedef viennagrid::result_of::ncell_container<DomainType, 0>::type    VertexContainer;
+  typedef viennagrid::result_of::ncell_range<DomainType, 0>::type    VertexContainer;
   typedef viennagrid::result_of::iterator<VertexContainer>::type         VertexIterator;
   typedef viennagrid::result_of::ncell_type<ConfigType, 2>::type              CellType;
   

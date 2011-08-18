@@ -49,13 +49,13 @@ namespace viennafvm
         typedef typename viennagrid::result_of::ncell_type<Config, 1>::type                         EdgeType;
         typedef typename viennagrid::result_of::ncell_type<Config, CellTag::topology_level>::type   CellType;
         
-        typedef typename viennagrid::result_of::ncell_container<DeviceType, 0>::type     VertexContainer;
+        typedef typename viennagrid::result_of::ncell_range<DeviceType, 0>::type     VertexContainer;
         typedef typename viennagrid::result_of::iterator<VertexContainer>::type          VertexIterator;
 
-        typedef typename viennagrid::result_of::ncell_container<VertexType, 1>::type     EdgeOnVertexContainer;
+        typedef typename viennagrid::result_of::ncell_range<VertexType, 1>::type     EdgeOnVertexContainer;
         typedef typename viennagrid::result_of::iterator<EdgeOnVertexContainer>::type    EdgeOnVertexIterator;
         
-        typedef typename viennagrid::result_of::ncell_container<EdgeType, 0>::type       VertexOnEdgeContainer;
+        typedef typename viennagrid::result_of::ncell_range<EdgeType, 0>::type       VertexOnEdgeContainer;
         typedef typename viennagrid::result_of::iterator<VertexOnEdgeContainer>::type    VertexOnEdgeIterator;
         
         typedef viennafvm::boundary_key                             BoundaryKeyType;
