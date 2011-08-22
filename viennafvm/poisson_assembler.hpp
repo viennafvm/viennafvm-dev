@@ -45,9 +45,9 @@ namespace viennafvm
       {
         typedef typename DeviceType::config_type           Config;
         typedef typename Config::cell_tag                  CellTag;
-        typedef typename viennagrid::result_of::ncell_type<Config, 0>::type                         VertexType;
-        typedef typename viennagrid::result_of::ncell_type<Config, 1>::type                         EdgeType;
-        typedef typename viennagrid::result_of::ncell_type<Config, CellTag::topology_level>::type   CellType;
+        typedef typename viennagrid::result_of::ncell<Config, 0>::type                         VertexType;
+        typedef typename viennagrid::result_of::ncell<Config, 1>::type                         EdgeType;
+        typedef typename viennagrid::result_of::ncell<Config, CellTag::topology_level>::type   CellType;
         
         typedef typename viennagrid::result_of::ncell_range<DeviceType, 0>::type     VertexContainer;
         typedef typename viennagrid::result_of::iterator<VertexContainer>::type          VertexIterator;
