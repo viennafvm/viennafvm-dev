@@ -125,7 +125,7 @@ int main()
   try
   {
     viennagrid::io::netgen_reader my_reader;
-    my_reader(my_domain, "../../examples/data/cube3072.mesh");
+    my_reader(my_domain, "../data/cube3072.mesh");
   }
   catch (...)
   {
