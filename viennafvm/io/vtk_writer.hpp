@@ -22,6 +22,7 @@
 
 // ViennaGrid includes:
 #include "viennagrid/domain.hpp"
+#include "viennagrid/iterators.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
 
 // ViennaData includes:
@@ -70,8 +71,7 @@ namespace viennafvm
                 << "' (can be viewed with e.g. Paraview)" << std::endl;
 
       viennagrid::io::vtk_writer<DomainType> my_vtk_writer;
-      my_vtk_writer.add_point_data_scalar(viennagrid::io::io_data_accessor_global<VertexType, std::string, double>("vtk_data"),
-                                          "fem_result");
+      viennagrid::io::add_scalar_data_on_vertices<std::string, double>(my_vtk_writer, "vtk_data", "fvm_result");
       my_vtk_writer.writeDomain(domain, filename);  
     }
 
