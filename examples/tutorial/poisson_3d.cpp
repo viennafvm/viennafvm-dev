@@ -134,7 +134,7 @@ int main()
   typedef double   numeric_type;
   
   typedef viennagrid::config::tetrahedral_3d     ConfigType;
-  typedef viennagrid::domain<ConfigType>         DomainType;
+  typedef viennagrid::result_of::domain<ConfigType>::type         DomainType;
 
   typedef viennagrid::result_of::ncell_range<DomainType, 0>::type    VertexContainer;
   typedef viennagrid::result_of::iterator<VertexContainer>::type         VertexIterator;
@@ -186,8 +186,8 @@ int main()
       ++vit)
   {
     //boundary for first equation: Homogeneous Dirichlet everywhere
-    if (vit->getPoint()[0] == 0.0 || vit->getPoint()[0] == 1.0 
-      || vit->getPoint()[2] == 0.0 || vit->getPoint()[2] == 1.0 )
+    if (vit->point()[0] == 0.0 || vit->point()[0] == 1.0 
+      || vit->point()[2] == 0.0 || vit->point()[2] == 1.0 )
       viennadata::access<BoundaryKey, bool>(BoundaryKey(0))(*vit) = true;
     else
       viennadata::access<BoundaryKey, bool>(BoundaryKey(0))(*vit) = false;

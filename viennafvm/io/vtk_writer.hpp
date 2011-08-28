@@ -72,7 +72,7 @@ namespace viennafvm
 
       viennagrid::io::vtk_writer<DomainType> my_vtk_writer;
       viennagrid::io::add_scalar_data_on_vertices<std::string, double>(my_vtk_writer, "vtk_data", "fvm_result");
-      my_vtk_writer.writeDomain(domain, filename);  
+      my_vtk_writer(domain, filename);  
     }
 
 
