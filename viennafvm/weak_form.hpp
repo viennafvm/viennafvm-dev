@@ -67,6 +67,8 @@ struct weak_form_creator : public viennamath::manipulation_interface<InterfaceTy
       //
       if (dynamic_cast<const DivergenceOperatorType *>(expr.op()) != NULL) 
       {
+         // replace by a dOmega integral (Gauss theorem ..)
+         //
          viennamath::expr<InterfaceType>  lhs(expr.lhs()->clone());
          integrated_expr = viennafvm::integral<viennafvm::PartialOmega>(lhs, viennafvm::symbolic_tag());
       }
