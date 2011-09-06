@@ -105,12 +105,15 @@ namespace viennafvm
          
 
 
+         long row_index, col_index;
+         double matrix_entry;
+
          // common part
          //
          VertexContainer vertices = viennagrid::ncells<0>(segment);
          for (VertexIterator vit = vertices.begin(); vit != vertices.end(); ++vit)
          {
-            long row_index = viennadata::access<mapping_key, long>(mapping_key(0))(*vit);
+            row_index = viennadata::access<mapping_key, long>(mapping_key(0))(*vit);
 
             // if vertex is an interior vertex ..
             //   note: we don't assemble the boundary vertices ..
@@ -128,12 +131,12 @@ namespace viennafvm
                   if ( &(*voeit) == &(*vit))  //one of the two vertices of the edge is different from *vit
                      ++voeit;                  
                   
-                  long col_index        = viennadata::access<mapping_key, long>(mapping_key(0))(*voeit);                  
+                  col_index        = viennadata::access<mapping_key, long>(mapping_key(0))(*voeit);                  
                   
-                  //std::cout << "row: " << row_index << " - col: " << col_index << std::endl;
+                  //std::cout << "row: " << row_index << " - col: " << col_index << std::endl; 
                   
                   
-                  double matrix_entry =  
+                  matrix_entry =  
                      viennadata::access<viennafvm::edge_interface_area_key, double>()(*eovit) 
                      / 
                      viennadata::access<viennafvm::edge_len_key, double>()(*eovit);
@@ -143,7 +146,7 @@ namespace viennafvm
                   //
                   if(col_index >= 0)
                   {
-                     matrix(row_index, col_index) = -matrix_entry;
+                     matrix(row_index, col_index) += matrix_entry;
                   }
                   // if neighbour vertex is a boundary vertex ... 
                   //
@@ -154,9 +157,11 @@ namespace viennafvm
                      rhs(row_index) -= matrix_entry * viennadata::access<viennamos::tag::potential, double>()(*voeit);
                   }
 
+                  //std::cout << "row: " << row_index << " - col: " << col_index << std::endl;
+
                   // accumulate main diagonal entries
                   //
-                  matrix(row_index, row_index) += matrix_entry;
+                  matrix(row_index, row_index) -= matrix_entry;
                   
                } // end edge-on-vertex traversal
                

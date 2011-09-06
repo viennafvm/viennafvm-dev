@@ -45,7 +45,7 @@ namespace viennafvm
    * 
    */
   template <typename SystemType, typename DomainType>
-  long create_mapping(SystemType pde_system,
+  long create_mapping(SystemType &pde_system,
                       DomainType & domain)
   {
     typedef typename DomainType::config_type              Config;
@@ -66,6 +66,9 @@ namespace viennafvm
     // the index starts from this index ...
     long map_index = viennadata::access<MappingKeyType, long>(map_key)(extract_domain<DomainType>::apply(domain));
     bool init_done = viennadata::access<MappingKeyType, bool>(map_key)(extract_domain<DomainType>::apply(domain));
+
+//    std::cout << "map-index: " << map_index << std::endl;
+//    std::cout << "init-done: " << init_done << std::endl;
 
     //eventually, map indices need to be set to invalid first:
     if (!init_done)
@@ -102,6 +105,10 @@ namespace viennafvm
           viennadata::access<MappingKeyType, long>(map_key)(*vit) = map_index;
           map_index += pde_system.unknown(0).size();
         }
+//        else
+//        {
+//         std::cout << "ALREADY MAPPED VERTEX: " << viennadata::access<MappingKeyType, long>(map_key)(*vit) << std::endl;
+//        }
         //else
         //  std::cout << "Found vertex with DOF!" << std::endl;
       }
