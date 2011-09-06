@@ -29,9 +29,14 @@
 
 namespace viennafvm
 {
-  template <typename InterfaceType = viennamath::expression_interface<viennamath::default_numeric_type> >
+  template <typename InterfaceType = viennamath::expression_interface<viennamath::default_numeric_type>, 
+            typename MappingKeyType  = viennafvm::mapping_key, 
+            typename BoundaryKeyType = viennafvm::boundary_key >
   struct linear_pde_system
   {
+      typedef InterfaceType                                 interface_type;
+      typedef MappingKeyType                                mapping_key_type;
+      typedef BoundaryKeyType                               boundary_key_type;
       typedef viennamath::equation<InterfaceType>           equation_type;
       typedef viennamath::function_symbol<InterfaceType>    unknown_type;
       typedef std::vector< unknown_type >                   unknown_cont_type;

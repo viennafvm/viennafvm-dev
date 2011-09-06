@@ -33,12 +33,14 @@ namespace viennafvm
 
    struct pde_assembler
    {
-      template <typename InterfaceType, typename SegmentT, typename MatrixT, typename VectorT>  
-      void operator()(viennafvm::linear_pde_system<InterfaceType>  & pde_system,
-                      SegmentT & segment,
-                      MatrixT  & matrix,
-                      VectorT  & rhs
-                     ) 
+      template <typename LinPdeSysT, 
+                typename SegmentT, 
+                typename MatrixT, 
+                typename VectorT>  
+      void operator()(LinPdeSysT & pde_system,
+                      SegmentT   & segment,
+                      MatrixT    & matrix,
+                      VectorT    & rhs) 
       {
          typedef typename SegmentT::config_type                config_type;      
          typedef viennamath::equation<>                        equ_type;
@@ -62,8 +64,8 @@ namespace viennafvm
          typedef typename viennagrid::result_of::ncell_range<EdgeType, 0>::type        VertexOnEdgeContainer;
          typedef typename viennagrid::result_of::iterator<VertexOnEdgeContainer>::type VertexOnEdgeIterator;      
       
-         typedef viennafvm::boundary_key                             BoundaryKeyType;
-         typedef viennafvm::mapping_key                              MappingKeyType;      
+         typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;      
+         MappingKeyType  map_key(pde_system.option(0).data_id());      
       
          //static const int DIM = config_type::dimension_tag::value;
       
@@ -74,11 +76,9 @@ namespace viennafvm
                                         viennafvm::edge_interface_area_key,
                                         viennafvm::box_volume_key>(segment);
                                         
-
          size_t map_index = viennafvm::create_mapping(pde_system, segment);
 
          std::cout << "map index: " << map_index << std::endl;
-
      
       #ifdef VIENNAFVMDEBUG
          std::cout << "strong form: " << std::endl;
@@ -113,7 +113,7 @@ namespace viennafvm
          VertexContainer vertices = viennagrid::ncells<0>(segment);
          for (VertexIterator vit = vertices.begin(); vit != vertices.end(); ++vit)
          {
-            row_index = viennadata::access<mapping_key, long>(mapping_key(0))(*vit);
+            row_index = viennadata::access<MappingKeyType, long>(map_key)(*vit);
 
             // if vertex is an interior vertex ..
             //   note: we don't assemble the boundary vertices ..
@@ -131,7 +131,7 @@ namespace viennafvm
                   if ( &(*voeit) == &(*vit))  //one of the two vertices of the edge is different from *vit
                      ++voeit;                  
                   
-                  col_index        = viennadata::access<mapping_key, long>(mapping_key(0))(*voeit);                  
+                  col_index        = viennadata::access<MappingKeyType, long>(map_key)(*voeit);                  
                   
                   //std::cout << "row: " << row_index << " - col: " << col_index << std::endl; 
                   
