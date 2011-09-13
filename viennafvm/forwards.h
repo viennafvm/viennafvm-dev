@@ -46,7 +46,6 @@ namespace viennafvm
 
   
   //box-integration related:
-  struct edge_len_key {};              //edge lengths
   struct box_volume_key {};            //box volume associated with an edge or vertex
   struct edge_interface_area_key {};   //box volume associated with an edge
   
@@ -59,12 +58,6 @@ namespace viennadata
   namespace config
   {
     //box-integration related:
-    template <>
-    struct key_dispatch<viennafvm::edge_len_key>
-    {
-      typedef type_key_dispatch_tag    tag;
-    };
-
     template <>
     struct key_dispatch<viennafvm::box_volume_key>
     {

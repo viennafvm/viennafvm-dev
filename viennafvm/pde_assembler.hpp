@@ -71,8 +71,8 @@ namespace viennafvm
          // compute the voronoi information and store it on the segment with 
          // the provided keys
          //
-         viennagrid::apply_voronoi(segment,  viennagrid::voronoi_interface_area_key(), 
-                                             viennagrid::voronoi_box_volume_key());
+         viennagrid::apply_voronoi(segment,  viennafvm::edge_interface_area_key(), 
+                                             viennafvm::box_volume_key());
                                         
          size_t map_index = viennafvm::create_mapping(pde_system, segment);
 
@@ -137,7 +137,7 @@ namespace viennafvm
                   matrix_entry =  
                      viennadata::access<viennafvm::edge_interface_area_key, double>()(*eovit) 
                      / 
-                     viennadata::access<viennafvm::edge_len_key, double>()(*eovit);
+                     viennagrid::volume(*eovit);  // a volume of an edge corresponds to the length
                   
                   // if the neighbour vertex is an interior vertex ...
                   // this part works on the off-diagonal part of the matrix
