@@ -50,7 +50,6 @@ namespace viennafvm
          typedef viennamath::op_symbolic_integration<numeric_type, viennafvm::PartialOmega>     partial_omega_tag;
          typedef viennamath::op_symbolic_integration<numeric_type, viennafvm::Omega>            omega_tag;         
       
-      
          typedef typename SegmentT::config_type              Config;
          typedef typename viennagrid::result_of::ncell<Config, 0>::type                         VertexType;
          typedef typename viennagrid::result_of::ncell<Config, 1>::type                         EdgeType;      
@@ -72,9 +71,8 @@ namespace viennafvm
          // compute the voronoi information and store it on the segment with 
          // the provided keys
          //
-         viennagrid::write_voronoi_info<viennafvm::edge_len_key,
-                                        viennafvm::edge_interface_area_key,
-                                        viennafvm::box_volume_key>(segment);
+         viennagrid::apply_voronoi(segment,  viennagrid::voronoi_interface_area_key(), 
+                                             viennagrid::voronoi_box_volume_key());
                                         
          size_t map_index = viennafvm::create_mapping(pde_system, segment);
 
