@@ -106,9 +106,9 @@ void voronoi_volume_test(DomainType const & d)
   typedef typename viennagrid::result_of::ncell<Config, 0>::type                         VertexType;
   typedef typename viennagrid::result_of::ncell<Config, 1>::type                         EdgeType;
   typedef typename viennagrid::result_of::ncell<Config, 2>::type                         FacetType;
-  typedef typename viennagrid::result_of::ncell<Config, CellTag::topology_level>::type   CellType;
+  typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type   CellType;
   
-  typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::topology_level>::type    CellContainer;
+  typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type    CellContainer;
   typedef typename viennagrid::result_of::iterator<CellContainer>::type                                       CellIterator;
   
   typedef typename viennagrid::result_of::const_ncell_range<DomainType, 0>::type                          VertexContainer;
@@ -165,9 +165,7 @@ int main()
   //
   // Writing Voronoi information:
   //
-  viennagrid::write_voronoi_info<viennafvm::edge_len_key,
-                                 viennafvm::edge_interface_area_key,
-                                 viennafvm::box_volume_key>(my_domain);
+  viennagrid::apply_voronoi(my_domain, viennafvm::edge_interface_area_key(), viennafvm::box_volume_key());
                                  
   voronoi_volume_test(my_domain);                               
 

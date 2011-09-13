@@ -136,9 +136,7 @@ int main()
   //
   // Writing Voronoi information:
   //
-  viennagrid::write_voronoi_info<viennafvm::edge_len_key,
-                                 viennafvm::edge_interface_area_key,
-                                 viennafvm::box_volume_key>(my_domain);
+  viennagrid::apply_voronoi(my_domain, viennafvm::edge_interface_area_key(), viennafvm::box_volume_key());
 
   
   MatrixType system_matrix;
