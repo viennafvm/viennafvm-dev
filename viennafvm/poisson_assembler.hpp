@@ -23,6 +23,7 @@
 
 #include "viennagrid/domain.hpp"
 #include "viennagrid/iterators.hpp"
+#include "viennagrid/algorithm/volume.hpp"
 
 
 //
@@ -142,7 +143,7 @@ namespace viennafvm
             
             //std::cout << "* poisson_solver::assemble(): Getting data... " <<std::endl;
             long col_index        = viennadata::access<mapping_key, long>(mapping_key(0))(*voeit);
-            double edge_len       = viennadata::access<edge_len_key, double>()(*eovit);
+            double edge_len       = viennagrid::volume(*eovit);
             double interface_area = viennadata::access<edge_interface_area_key, double>()(*eovit);
             
             //std::cout << "edge_len: " << edge_len << std::endl;
