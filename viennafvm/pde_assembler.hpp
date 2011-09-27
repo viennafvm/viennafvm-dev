@@ -26,6 +26,10 @@
 #include "viennafvm/linear_pde_system.hpp"
 #include "viennafvm/mapping.hpp"
 
+#include "viennagrid/forwards.h"
+#include "viennagrid/algorithm/voronoi.hpp"
+#include "viennagrid/algorithm/volume.hpp"
+
 #define VIENNAFVMDEBUG
 
 namespace viennafvm
