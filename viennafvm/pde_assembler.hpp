@@ -149,6 +149,7 @@ namespace viennafvm
                   if(col_index >= 0)
                   {
                      matrix(row_index, col_index) += matrix_entry;
+                     //std::cout << "matrix: " << matrix(row_index, col_index) << std::endl;
                   }
                   // if neighbour vertex is a boundary vertex ... 
                   //
@@ -157,6 +158,7 @@ namespace viennafvm
                      // multiply with dirichlet value and subtract from rhs
                      //
                      rhs(row_index) -= matrix_entry * viennadata::access<viennamos::tag::potential, double>()(*voeit);
+                     //std::cout << "rhs: " << rhs(row_index) << std::endl;
                   }
 
                   //std::cout << "row: " << row_index << " - col: " << col_index << std::endl;
