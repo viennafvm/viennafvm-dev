@@ -30,7 +30,7 @@
 #include "viennagrid/algorithm/voronoi.hpp"
 #include "viennagrid/algorithm/volume.hpp"
 
-#define VIENNAFVMDEBUG
+//#define VIENNAFVMDEBUG
 
 namespace viennafvm
 {
@@ -39,12 +39,10 @@ namespace viennafvm
    {
       template <typename LinPdeSysT, 
                 typename SegmentT, 
-                typename MatrixT, 
-                typename VectorT>  
+                typename LinSolverT>  
       void operator()(LinPdeSysT & pde_system,
                       SegmentT   & segment,
-                      MatrixT    & matrix,
-                      VectorT    & rhs) 
+                      LinSolverT & linsolver) 
       {
          typedef typename SegmentT::config_type                config_type;      
          typedef viennamath::equation<>                        equ_type;
@@ -148,7 +146,9 @@ namespace viennafvm
                   //
                   if(col_index >= 0)
                   {
-                     matrix(row_index, col_index) += matrix_entry;
+                     //matrix(row_index, col_index) += matrix_entry;
+                     //linsolver(row_index, col_index) += matrix_entry;
+                     linsolver.add(row_index, col_index, matrix_entry);
                      //std::cout << "matrix: " << matrix(row_index, col_index) << std::endl;
                   }
                   // if neighbour vertex is a boundary vertex ... 
@@ -157,7 +157,8 @@ namespace viennafvm
                   {
                      // multiply with dirichlet value and subtract from rhs
                      //
-                     rhs(row_index) -= matrix_entry * viennadata::access<viennamos::tag::potential, double>()(*voeit);
+                     //rhs(row_index) -= matrix_entry * viennadata::access<viennamos::tag::potential, double>()(*voeit);
+                     linsolver(row_index) -= matrix_entry * viennadata::access<viennamos::tag::potential, double>()(*voeit);
                      //std::cout << "rhs: " << rhs(row_index) << std::endl;
                   }
 
@@ -165,7 +166,9 @@ namespace viennafvm
 
                   // accumulate main diagonal entries
                   //
-                  matrix(row_index, row_index) -= matrix_entry;
+                  //matrix(row_index, row_index) -= matrix_entry;
+                  linsolver.add(row_index, row_index, -matrix_entry);
+                  //linsolver(row_index, row_index) -= matrix_entry;
                   
                } // end edge-on-vertex traversal
                
