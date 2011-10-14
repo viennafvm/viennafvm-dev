@@ -158,7 +158,10 @@ namespace viennafvm
                      // multiply with dirichlet value and subtract from rhs
                      //
                      //rhs(row_index) -= matrix_entry * viennadata::access<viennamos::tag::potential, double>()(*voeit);
-                     linsolver(row_index) -= matrix_entry * viennadata::access<viennamos::tag::potential, double>()(*voeit);
+                     
+                     // TODO get rid of chimera dependency
+                     // pass the accessors to the assembler ...
+                     linsolver(row_index) -= matrix_entry * viennadata::access<chimera::tag::potential, double>()(*voeit);  
                      //std::cout << "rhs: " << rhs(row_index) << std::endl;
                   }
 
