@@ -29,7 +29,7 @@
 
 namespace viennafvm
 {
-  template <typename InterfaceType = viennamath::expression_interface<viennamath::default_numeric_type>, 
+  template <typename InterfaceType = viennamath::default_interface_type, 
             typename MappingKeyType  = viennafvm::mapping_key, 
             typename BoundaryKeyType = viennafvm::boundary_key >
   struct linear_pde_system
@@ -37,8 +37,8 @@ namespace viennafvm
       typedef InterfaceType                                 interface_type;
       typedef MappingKeyType                                mapping_key_type;
       typedef BoundaryKeyType                               boundary_key_type;
-      typedef viennamath::equation<InterfaceType>           equation_type;
-      typedef viennamath::function_symbol<InterfaceType>    unknown_type;
+      typedef viennamath::equation                          equation_type;
+      typedef viennamath::function_symbol                   unknown_type;
       typedef std::vector< unknown_type >                   unknown_cont_type;
       typedef std::vector< std::string >                    key_cont_type;
       typedef viennafvm::linear_pde_options                 option_type;      
@@ -70,10 +70,10 @@ namespace viennafvm
   
   
    template <typename InterfaceType>
-   linear_pde_system<InterfaceType> make_linear_pde_system(viennamath::equation<InterfaceType>            equ_1,
-                                                           viennamath::function_symbol<InterfaceType>     unknown_1, 
-                                                           std::string                                    key_1, 
-                                                           viennafvm::linear_pde_options                  option_1)
+   linear_pde_system<InterfaceType> make_linear_pde_system(viennamath::equation             equ_1,
+                                                           viennamath::function_symbol      unknown_1, 
+                                                           std::string                      key_1, 
+                                                           viennafvm::linear_pde_options    option_1)
    {
       typedef viennafvm::linear_pde_system<InterfaceType>   linear_pde_sys_type;
 
@@ -88,7 +88,47 @@ namespace viennafvm
       ret.add_pde(equ_1, unknown_vec_1, key_vec_1, option_1);
       return ret;
    }
-  
+
+   template <typename InterfaceType>
+   linear_pde_system<InterfaceType> make_linear_pde_system(viennamath::rt_equation<InterfaceType>         equ_1,
+                                                           viennamath::rt_function_symbol<InterfaceType>  unknown_1)
+   {
+      typedef viennafvm::linear_pde_system<InterfaceType>   linear_pde_sys_type;
+
+      linear_pde_sys_type ret;
+      
+      linear_pde_options option_1;
+      
+      typename linear_pde_sys_type::unknown_cont_type unknown_vec_1(1);
+      unknown_vec_1[0] = unknown_1;
+   
+      typename linear_pde_sys_type::key_cont_type     key_vec_1(1);
+      key_vec_1[0] = "dummy";
+
+      ret.add_pde(equ_1, unknown_vec_1, key_vec_1, option_1);
+      return ret;
+   }
+   
+   template <typename InterfaceType>
+   linear_pde_system<InterfaceType> make_linear_pde_system(viennamath::rt_equation<InterfaceType>         equ_1,
+                                                           viennamath::rt_function_symbol<InterfaceType>  unknown_1,
+                                                           viennafvm::linear_pde_options    option_1
+                                                          )
+   {
+      typedef viennafvm::linear_pde_system<InterfaceType>   linear_pde_sys_type;
+
+      linear_pde_sys_type ret;
+      
+      typename linear_pde_sys_type::unknown_cont_type unknown_vec_1(1);
+      unknown_vec_1[0] = unknown_1;
+   
+      typename linear_pde_sys_type::key_cont_type     key_vec_1(1);
+      key_vec_1[0] = "dummy";
+
+      ret.add_pde(equ_1, unknown_vec_1, key_vec_1, option_1);
+      return ret;
+   }   
+
 ////  template <typename InterfaceType>
 ////  linear_pde_system<InterfaceType> make_linear_pde_system(viennamath::equation<InterfaceType> equ_1,
 ////                                                          std::vector<viennamath::function_symbol<InterfaceType> > unknowns_1)

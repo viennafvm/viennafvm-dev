@@ -18,7 +18,7 @@
 
 // *** local includes
 //
-#include "viennafvm/weak_form.hpp"
+#include "viennafvm/integral_form.hpp"
 // #include "viennafvm/pde_stack.hpp" obsolete
 // #include "viennafvm/acc.hpp" obsolete
 #include "viennafvm/extract_integrals.hpp" 
@@ -39,19 +39,18 @@ namespace viennafvm
    {
       template <typename LinPdeSysT, 
                 typename SegmentT, 
-                typename LinSolverT>  
-      void operator()(LinPdeSysT & pde_system,
+                typename MatrixT,
+                typename VectorT>  
+      void operator()(LinPdeSysT pde_system,
                       SegmentT   & segment,
-                      LinSolverT & linsolver) 
+                      MatrixT    & system_matrix, 
+                      VectorT    & load_vector)
       {
          typedef typename SegmentT::config_type                config_type;      
-         typedef viennamath::equation<>                        equ_type;
-         typedef viennamath::expr<>                            expr_type;
+         typedef viennamath::equation                          equ_type;
+         typedef viennamath::expr                              expr_type;
          typedef typename expr_type::numeric_type              numeric_type;
          
-         typedef viennamath::op_symbolic_integration<numeric_type, viennafvm::PartialOmega>     partial_omega_tag;
-         typedef viennamath::op_symbolic_integration<numeric_type, viennafvm::Omega>            omega_tag;         
-      
          typedef typename SegmentT::config_type              Config;
          typedef typename viennagrid::result_of::ncell<Config, 0>::type                         VertexType;
          typedef typename viennagrid::result_of::ncell<Config, 1>::type                         EdgeType;      
@@ -68,6 +67,9 @@ namespace viennafvm
          typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;      
          MappingKeyType  map_key(pde_system.option(0).data_id());      
       
+         typedef typename LinPdeSysT::boundary_key_type  BoundaryKeyType;
+         BoundaryKeyType bnd_key(pde_system.option(0).data_id());
+         
          //static const int DIM = config_type::dimension_tag::value;
       
          // compute the voronoi information and store it on the segment with 
@@ -76,18 +78,22 @@ namespace viennafvm
          viennagrid::apply_voronoi(segment,  viennafvm::edge_interface_area_key(), 
                                              viennafvm::box_volume_key());
                                         
-         size_t map_index = viennafvm::create_mapping(pde_system, segment);
+         std::size_t map_index = viennafvm::create_mapping(pde_system, segment);
 
          std::cout << "map index: " << map_index << std::endl;
+         system_matrix.clear();
+         system_matrix.resize(map_index, map_index, false);
+         load_vector.clear();
+         load_vector.resize(map_index);
      
-      #ifdef VIENNAFVMDEBUG
+      #ifdef VIENNAFVM_DEBUG
          std::cout << "strong form: " << std::endl;
          std::cout << pde_system.pde(0) << std::endl;
       #endif
 
-         equ_type weak_form = viennafvm::make_weak_form( pde_system.pde(0) );
+         equ_type weak_form = viennafvm::make_integral_form( pde_system.pde(0) );
          
-      #ifdef VIENNAFVMDEBUG
+      #ifdef VIENNAFVM_DEBUG
          std::cout << "weak form: " << std::endl;
          std::cout << weak_form << std::endl;
       #endif 
@@ -148,7 +154,8 @@ namespace viennafvm
                   {
                      //matrix(row_index, col_index) += matrix_entry;
                      //linsolver(row_index, col_index) += matrix_entry;
-                     linsolver.add(row_index, col_index, matrix_entry);
+                     //std::cout << "Writing " << matrix_entry << " at (" << row_index << ", " << col_index << ")" << std::endl;
+                     system_matrix(row_index, col_index) -= matrix_entry;
                      //std::cout << "matrix: " << matrix(row_index, col_index) << std::endl;
                   }
                   // if neighbour vertex is a boundary vertex ... 
@@ -161,21 +168,19 @@ namespace viennafvm
                      
                      // TODO get rid of chimera dependency
                      // pass the accessors to the assembler ...
-                     linsolver(row_index) -= matrix_entry * viennadata::access<chimera::tag::potential, double>()(*voeit);  
+                     load_vector(row_index) += matrix_entry * viennadata::access<BoundaryKeyType, double>(bnd_key)(*voeit);  
                      //std::cout << "rhs: " << rhs(row_index) << std::endl;
                   }
 
                   //std::cout << "row: " << row_index << " - col: " << col_index << std::endl;
 
                   // accumulate main diagonal entries
-                  //
-                  //matrix(row_index, row_index) -= matrix_entry;
-                  linsolver.add(row_index, row_index, -matrix_entry);
-                  //linsolver(row_index, row_index) -= matrix_entry;
+                  system_matrix(row_index, row_index) += matrix_entry;
                   
                } // end edge-on-vertex traversal
                
                //rhs(row_index) += viennadata::access<box_volume_key, double>()(*vit);
+               load_vector(row_index) += viennadata::access<viennafvm::box_volume_key, double>()(*vit);
 
             } // end interior vertex
 

@@ -23,13 +23,6 @@
 namespace viennafvm {
 
 
-template <typename InterfaceType>
-viennamath::equation<InterfaceType> 
-make_rhs_zero(viennamath::equation<InterfaceType> const & equ)
-{
-   return viennamath::equation<InterfaceType>( equ.lhs()-equ.rhs(), 0); 
-}
-
 
 } // end namespace viennafvm
 

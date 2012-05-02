@@ -21,6 +21,20 @@
 
 namespace viennafvm
 {
+  
+  /** @brief The default floating point type to be used in ViennaFVM.
+   * 
+   *  Feel free to change this typedef to a high-precision type if required. 
+   *  Keep in mind that only float and double types can be used for GPU acceleration.
+   */
+  typedef double             numeric_type;
+  
+  enum
+  {
+    cell_boundary = 1
+  };
+  
+  
   // define a key and configure viennadata to use a type-based dispatch:
   class boundary_key 
   {
