@@ -38,3 +38,7 @@ ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 ADD_EXECUTABLE(poisson_2d examples/tutorial/poisson_2d.cpp)
 ADD_EXECUTABLE(poisson_3d examples/tutorial/poisson_3d.cpp)
 
+##Compatibility with Qt-Creator
+file( GLOB_RECURSE QtCreatorCompatibility_SRC
+    viennafvm/*.hpp viennafvm/*.h)
+add_custom_target( QtCreatorCompatibility SOURCES ${QtCreatorCompatibility_SRC} )
