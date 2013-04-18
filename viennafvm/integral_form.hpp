@@ -31,7 +31,7 @@ namespace viennafvm
   // Compile time transformation
   //
   
-  //TODO: Not finished in time for the 1.0.0 release. Scheduled for ViennaFEM 1.1.0.
+  //TODO
 
 
 
@@ -103,10 +103,7 @@ namespace viennafvm
           if (   !viennamath::callback_if_castable< viennamath::rt_unary_expr<InterfaceType> >::apply(e, *this)
               && !viennamath::callback_if_castable< viennamath::rt_binary_expr<InterfaceType> >::apply(e, *this))
           {
-            //this if-body is only executed for trivial expressions such as 'u' (L^2-projection)
-            
-            viennamath::rt_expr<InterfaceType> temp(e->clone());
-            integrated_expr = viennamath::integral(viennamath::symbolic_interval(), temp);
+              throw "Cannot derive weak form!";
           }
           
           return integrated_expr.get()->clone();

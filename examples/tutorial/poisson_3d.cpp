@@ -14,9 +14,12 @@
 // include necessary system headers
 #include <iostream>
 
+#define VIENNAFVM_DEBUG
+
 // ViennaFVM includes:
 #include "viennafvm/forwards.h"
-#include "viennafvm/poisson_assembler.hpp"
+//#include "viennafvm/poisson_assembler.hpp"
+#include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/io/vtk_writer.hpp"
 
 // ViennaGrid includes:
@@ -98,53 +101,26 @@ VectorType solve(MatrixType const & system_matrix,
 }
 
 
-template <typename DomainType>
-void voronoi_volume_test(DomainType const & d)
-{
-  typedef typename DomainType::config_type           Config;
-  typedef typename Config::cell_tag                  CellTag;
-  typedef typename viennagrid::result_of::point<Config>::type                            PointType;
-  typedef typename viennagrid::result_of::ncell<Config, 0>::type                         VertexType;
-  typedef typename viennagrid::result_of::ncell<Config, 1>::type                         EdgeType;
-  typedef typename viennagrid::result_of::ncell<Config, 2>::type                         FacetType;
-  typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type   CellType;
-  
-  typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type    CellContainer;
-  typedef typename viennagrid::result_of::iterator<CellContainer>::type                                       CellIterator;
-  
-  typedef typename viennagrid::result_of::const_ncell_range<DomainType, 0>::type                          VertexContainer;
-  typedef typename viennagrid::result_of::iterator<VertexContainer>::type                                     VertexIterator;
-  
-  
-  double boxed_volume = 0;
-  VertexContainer vertices = viennagrid::ncells<0>(d);
-  for (VertexIterator vit  = vertices.begin();
-                      vit != vertices.end();
-                    ++vit)
-  {
-    boxed_volume += viennadata::access<viennafvm::box_volume_key, double>()(*vit);
-  }
-
-  std::cout << "Voronoi: Volume due to boxes: " << boxed_volume << std::endl;
-}
-
 
 int main()
 {
   typedef double   numeric_type;
   
-  typedef viennagrid::config::tetrahedral_3d     ConfigType;
-  typedef viennagrid::result_of::domain<ConfigType>::type         DomainType;
+  typedef viennagrid::config::tetrahedral_3d                ConfigType;
+  typedef viennagrid::result_of::domain<ConfigType>::type   DomainType;
+  typedef typename ConfigType::cell_tag                     CellTag;
 
-  typedef viennagrid::result_of::ncell_range<DomainType, 0>::type    VertexContainer;
-  typedef viennagrid::result_of::iterator<VertexContainer>::type         VertexIterator;
-  typedef viennagrid::result_of::ncell<ConfigType, 2>::type              CellType;
-  
+  typedef viennagrid::result_of::ncell<ConfigType, CellTag::dim>::type        CellType;
+  typedef viennagrid::result_of::ncell_range<DomainType, CellTag::dim>::type  CellContainer;
+  typedef viennagrid::result_of::iterator<CellContainer>::type                CellIterator;
+  typedef viennagrid::result_of::ncell_range<CellType, 0>::type               VertexOnCellContainer;
+  typedef viennagrid::result_of::iterator<VertexOnCellContainer>::type        VertexOnCellIterator;
+
   typedef boost::numeric::ublas::compressed_matrix<numeric_type>  MatrixType;
   typedef boost::numeric::ublas::vector<numeric_type>             VectorType;
 
-  //typedef viennamath::function_symbol<>   FunctionSymbol;
-  //typedef viennamath::equation<>          Equation;
+  typedef viennamath::function_symbol   FunctionSymbol;
+  typedef viennamath::equation          Equation;
   
   typedef viennafvm::boundary_key      BoundaryKey;
   
@@ -164,12 +140,9 @@ int main()
     return EXIT_FAILURE;
   }
   
-  //
-  // Writing Voronoi information:
-  //
-  viennagrid::apply_voronoi(my_domain, viennafvm::edge_interface_area_key(), viennafvm::box_volume_key());
-                                 
-  voronoi_volume_test(my_domain);                               
+  // Specify Poisson equation:
+  FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
+  Equation poisson_eq = viennamath::make_equation( viennamath::laplace(u), -1);  // \Delta u = -1
 
   MatrixType system_matrix;
   VectorType load_vector;
@@ -178,31 +151,45 @@ int main()
   // Setting boundary information on domain (this should come from device specification)
   //
   //setting some boundary flags:
-  VertexContainer vertices = viennagrid::ncells<0>(my_domain);
-  for (VertexIterator vit = vertices.begin();
-      vit != vertices.end();
-      ++vit)
+  CellContainer cells = viennagrid::ncells(my_domain);
+  for (CellIterator cit  = cells.begin();
+                    cit != cells.end();
+                  ++cit)
   {
-    //boundary for first equation: Homogeneous Dirichlet everywhere
-    if (vit->point()[0] == 0.0 || vit->point()[0] == 1.0 
-      || vit->point()[2] == 0.0 || vit->point()[2] == 1.0 )
-      viennadata::access<BoundaryKey, bool>(BoundaryKey(0))(*vit) = true;
-    else
-      viennadata::access<BoundaryKey, bool>(BoundaryKey(0))(*vit) = false;
+    bool cell_on_boundary = false;
+
+    VertexOnCellContainer vertices = viennagrid::ncells<0>(*cit);
+    for (VertexOnCellIterator vit  = vertices.begin();
+                              vit != vertices.end();
+                            ++vit)
+    {
+      //boundary for first equation: Homogeneous Dirichlet everywhere
+      if (vit->point()[0] == 0.0 || vit->point()[0] == 1.0
+        || vit->point()[2] == 0.0 || vit->point()[2] == 1.0 )
+      {
+        cell_on_boundary = true;
+        break;
+      }
+    }
+    viennadata::access<BoundaryKey, bool>(BoundaryKey(0))(*cit) = cell_on_boundary;
   }
   
   
   //
-  // Create PDE solver functors: (discussion about proper interface required)
+  // Create PDE assembler functor
   //
-  viennafvm::poisson_assembler assembler;
+  viennafvm::linear_assembler fvm_assembler;
 
   
   //
-  // Solve system and write solution vector to pde_result:
-  // (discussion about proper interface required. Introduce a pde_result class?)
+  // Assemble system
   //
-  assembler(my_domain, system_matrix, load_vector);
+  fvm_assembler(viennafvm::make_linear_pde_system(poisson_eq, u),  // PDE with associated unknown
+                my_domain,
+                system_matrix,
+                load_vector
+               );
+
   
   //std::cout << system_matrix << std::endl;
   //std::cout << load_vector << std::endl;

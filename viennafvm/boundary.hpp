@@ -28,32 +28,32 @@
 
 namespace viennafvm
 {
-  template <typename VertexType>
-  void set_dirichlet_boundary(VertexType const & v,
+  template <typename CellType>
+  void set_dirichlet_boundary(CellType const & c,
                               numeric_type const & value,
                               std::size_t id = 0)
   {
     typedef viennafvm::boundary_key      BoundaryKey;
     
     //set flag:
-    viennadata::access<BoundaryKey, bool >(BoundaryKey(id))(v) = true; 
+    viennadata::access<BoundaryKey, bool >(BoundaryKey(id))(c) = true;
     
     //set data:
-    viennadata::access<BoundaryKey, numeric_type >(BoundaryKey(id))(v) = value; 
+    viennadata::access<BoundaryKey, numeric_type >(BoundaryKey(id))(c) = value;
   }
 
-  template <typename VertexType, typename NumericT>
-  void set_dirichlet_boundary(VertexType const & v,
+  template <typename CellType, typename NumericT>
+  void set_dirichlet_boundary(CellType const & c,
                               std::vector<NumericT> const & value,
                               std::size_t id = 0)
   {
     typedef viennafvm::boundary_key      BoundaryKey;;
     
     //set flag:
-    viennadata::access<BoundaryKey, bool >(BoundaryKey(id))(v) = true; 
+    viennadata::access<BoundaryKey, bool >(BoundaryKey(id))(c) = true;
     
     //set data:
-    viennadata::access<BoundaryKey, std::vector<NumericT> >(BoundaryKey(id))(v) = value; 
+    viennadata::access<BoundaryKey, std::vector<NumericT> >(BoundaryKey(id))(c) = value;
   }
 
 }
