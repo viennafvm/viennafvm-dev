@@ -31,11 +31,12 @@ namespace viennafvm
   
   enum
   {
+    cell_volume = 0,
     cell_boundary = 1
   };
   
   
-  // define a key and configure viennadata to use a type-based dispatch:
+  // define keys and configure ViennaData to use a type-based dispatch:
   class boundary_key 
   {
     public:
@@ -60,9 +61,9 @@ namespace viennafvm
 
   
   //box-integration related:
-  struct box_volume_key {};            //box volume associated with an edge or vertex
-  struct edge_interface_area_key {};   //box volume associated with an edge
-  
+  class facet_distance_key {};
+  class facet_area_key {};
+
 }
 
 
@@ -73,13 +74,13 @@ namespace viennadata
   {
     //box-integration related:
     template <>
-    struct key_dispatch<viennafvm::box_volume_key>
+    struct key_dispatch<viennafvm::facet_distance_key>
     {
       typedef type_key_dispatch_tag    tag;
     };
     
     template <>
-    struct key_dispatch<viennafvm::edge_interface_area_key>
+    struct key_dispatch<viennafvm::facet_area_key>
     {
       typedef type_key_dispatch_tag    tag;
     };

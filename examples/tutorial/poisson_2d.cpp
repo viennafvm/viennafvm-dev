@@ -18,7 +18,6 @@
 
 // ViennaFVM includes:
 #include "viennafvm/forwards.h"
-#include "viennafvm/poisson_assembler.hpp"
 #include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/io/vtk_writer.hpp"
 #include "viennafvm/boundary.hpp"
@@ -137,11 +136,6 @@ int main()
     std::cerr << "File-Reader failed. Aborting program..." << std::endl;
     return EXIT_FAILURE;
   }
-  
-  //
-  // Writing Voronoi information:
-  //
-  viennagrid::apply_voronoi(my_domain, viennafvm::edge_interface_area_key(), viennafvm::box_volume_key());
                                  
   //
   // Specify two PDEs:

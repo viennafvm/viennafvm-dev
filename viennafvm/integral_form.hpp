@@ -101,9 +101,11 @@ namespace viennafvm
         InterfaceType * operator()(InterfaceType const * e) const 
         {
           if (   !viennamath::callback_if_castable< viennamath::rt_unary_expr<InterfaceType> >::apply(e, *this)
-              && !viennamath::callback_if_castable< viennamath::rt_binary_expr<InterfaceType> >::apply(e, *this))
+              && !viennamath::callback_if_castable< viennamath::rt_binary_expr<InterfaceType> >::apply(e, *this)
+              && !viennamath::callback_if_castable< viennamath::rt_function_symbol<InterfaceType> >::apply(e, *this))
           {
-              throw "Cannot derive weak form!";
+            std::cout << "Weak form derivation stalled at e=" << e->deep_str() << std::endl;
+            throw "Cannot derive weak form!";
           }
           
           return integrated_expr.get()->clone();
@@ -147,7 +149,7 @@ namespace viennafvm
           else if (dynamic_cast<const ProductOperatorType *>(bin.op()) != NULL
                     || dynamic_cast<const DivisionOperatorType *>(bin.op()) != NULL)
           {
-            //handle the cases const * div(...) and div(...) * const
+            //handle the cases const * div(...) and div(...) * const as well as const * u and u * const
             
             if (bin.lhs()->is_constant())
             {
@@ -173,8 +175,13 @@ namespace viennafvm
           else //TODO: Add checks!
           {
             //just integrate expression
-            integrated_expr = viennamath::integral(viennamath::symbolic_interval(), bin);
+            integrated_expr = viennamath::integral(viennamath::symbolic_interval(viennafvm::cell_volume), bin);
           }
+        }
+
+        void operator()(viennamath::rt_function_symbol<InterfaceType> const & bin) const
+        {
+          integrated_expr = viennamath::integral(viennamath::symbolic_interval(viennafvm::cell_volume), bin);
         }
 
         bool modifies(InterfaceType const * e) const { return true; }

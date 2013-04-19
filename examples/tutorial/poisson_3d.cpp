@@ -21,6 +21,7 @@
 //#include "viennafvm/poisson_assembler.hpp"
 #include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/io/vtk_writer.hpp"
+#include "viennafvm/cell_quan.hpp"
 
 // ViennaGrid includes:
 #include "viennagrid/domain.hpp"
@@ -142,7 +143,7 @@ int main()
   
   // Specify Poisson equation:
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
-  Equation poisson_eq = viennamath::make_equation( viennamath::laplace(u), -1);  // \Delta u = -1
+  Equation poisson_eq = viennamath::make_equation( viennamath::laplace(u) + u, -1);  // \Delta u = -1
 
   MatrixType system_matrix;
   VectorType load_vector;

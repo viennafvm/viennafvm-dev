@@ -19,12 +19,12 @@
 // *** local includes
 //
 #include "viennafvm/integral_form.hpp"
-// #include "viennafvm/pde_stack.hpp" obsolete
-// #include "viennafvm/acc.hpp" obsolete
 #include "viennafvm/extract_integrals.hpp" 
 #include "viennafvm/rhs_zero.hpp"
 #include "viennafvm/linear_pde_system.hpp"
 #include "viennafvm/mapping.hpp"
+#include "viennafvm/util.hpp"
+#include "viennafvm/flux.hpp"
 
 #include "viennagrid/forwards.h"
 #include "viennagrid/algorithm/voronoi.hpp"
@@ -60,8 +60,9 @@ namespace viennafvm
     }
   }
 
-   struct linear_assembler
-   {
+  class linear_assembler
+  {
+    public:
       template <typename LinPdeSysT, 
                 typename SegmentT, 
                 typename MatrixT,
@@ -115,23 +116,31 @@ namespace viennafvm
          std::cout << integral_form << std::endl;
       #endif 
 
-         /*
-        equ_type weak_form_rhs_zero = viennafvm::make_rhs_zero( weak_form );
-
-      #ifdef VIENNAFVMDEBUG
-        std::cout << "rhs zero: " << std::endl;
-        std::cout << weak_form_rhs_zero << std::endl;
-      #endif
-      */
 
         //
         // Preprocess symbolic representation:
         //
 
-        expr_type  partial_omega_integrand(dynamic_cast<viennamath::unary_expr const * >(integral_form.lhs().get())->lhs()->clone()); //TODO: Unhack!
-        expr_type          omega_integrand(dynamic_cast<viennamath::unary_expr const * >(integral_form.rhs().get())->lhs()->clone()); //TODO: Unhack!
+        //Note: Assuming that LHS holds all matrix terms, while RHS holds all load vector terms
+        expr_type  partial_omega_integrand = extract_surface_integrand(integral_form.lhs());
+        expr_type   matrix_omega_integrand = extract_volume_integrand(integral_form.lhs());
+        expr_type      rhs_omega_integrand = extract_volume_integrand(integral_form.rhs());
 
-\
+        std::cout << "Surface integrand for matrix: " << partial_omega_integrand << std::endl;
+        std::cout << " Volume integrand for matrix: " <<  matrix_omega_integrand << std::endl;
+        std::cout << " Volume integrand for rhs:    " <<     rhs_omega_integrand << std::endl;
+
+        viennafvm::flux_handler<CellType, FacetType>  flux(partial_omega_integrand, pde_system.unknown(0)[0]);
+
+        expr_type substituted_matrix_omega_integrand  = viennamath::substitute(pde_system.unknown(0)[0], numeric_type(1), matrix_omega_integrand);
+
+        std::vector<double> p(3); //dummy vector for evaluation
+
+        //
+        // Preprocess domain
+        //
+        setup(segment);
+
         //
         // Actual assembly:
         //
@@ -142,6 +151,8 @@ namespace viennafvm
 
           if (row_index < 0)
             continue;
+
+          //flux.set_inner_cell(*cit);
 
           //
           // Boundary integral terms:
@@ -156,20 +167,19 @@ namespace viennafvm
             if (other_cell)
             {
               long col_index = viennadata::access<MappingKeyType, long>(map_key)(*other_cell);
-
-              double flux = 1.0 / viennagrid::norm(viennagrid::centroid(*cit) - viennagrid::centroid(*other_cell));
-              double area = viennagrid::volume(*focit);
-
-              system_matrix(row_index, row_index) -= flux * area;
+              double effective_facet_area = viennadata::access<viennafvm::facet_area_key, double>()(*focit);
+              std::cout << "facet area: " << effective_facet_area << std::endl;
 
               if (col_index < 0)
               {
                 double boundary_value = viennadata::access<BoundaryKeyType, double>(bnd_key)(*other_cell);
 
-                load_vector(row_index) -= flux * area * boundary_value;
+                load_vector(row_index) -= flux.out(*cit, *focit, *other_cell) * effective_facet_area * boundary_value;
               }
-              system_matrix(row_index, col_index) += flux * area;
+              else
+                system_matrix(row_index, col_index) += flux.out(*cit, *focit, *other_cell) * effective_facet_area;
 
+              system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell) * effective_facet_area;
             }
           }
 
@@ -177,24 +187,77 @@ namespace viennafvm
           // Volume terms
           //
           double cell_volume      = viennagrid::volume(*cit);
-          std::vector<double> p(3);
-          load_vector(row_index) += viennamath::eval(omega_integrand, p) * cell_volume;
+
+          // Matrix:
+          system_matrix(row_index, row_index) += viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume;
+
+          // RHS:
+          load_vector(row_index) += viennamath::eval(rhs_omega_integrand, p) * cell_volume;
           //std::cout << "Writing " << viennamath::eval(omega_integrand, p) << " * " << cell_volume << " to rhs at " << row_index << std::endl;
         }
 
          
       } // functor
-   };
+
+    private:
+
+      template <typename SegmentT>
+      void setup(SegmentT & segment)
+      {
+        typedef typename SegmentT::config_type                config_type;
+        typedef viennamath::equation                          equ_type;
+        typedef viennamath::expr                              expr_type;
+        typedef typename expr_type::numeric_type              numeric_type;
+
+        typedef typename SegmentT::config_type              Config;
+        typedef typename Config::cell_tag                   CellTag;
+        typedef typename viennagrid::result_of::point<Config>::type                  PointType;
+        typedef typename viennagrid::result_of::ncell<Config, CellTag::dim-1>::type  FacetType;
+        typedef typename viennagrid::result_of::ncell<Config, CellTag::dim  >::type  CellType;
+
+        typedef typename viennagrid::result_of::const_ncell_range<SegmentT, CellTag::dim-1>::type  FacetContainer;
+        typedef typename viennagrid::result_of::iterator<FacetContainer>::type                     FacetIterator;
+
+        typedef typename viennagrid::result_of::const_ncell_range<FacetType, CellTag::dim>::type  CellOnFacetRange;
+        typedef typename viennagrid::result_of::iterator<CellOnFacetRange>::type                  CellOnFacetIterator;
+
+        FacetContainer facets = viennagrid::ncells(segment);
+        for (FacetIterator fit  = facets.begin();
+                          fit != facets.end();
+                        ++fit)
+        {
+
+          CellOnFacetRange    cells = viennagrid::ncells<CellTag::dim>(*fit, segment);
+
+          if (cells.size() == 2)
+          {
+            CellOnFacetIterator cofit    = cells.begin();
+
+            PointType centroid_1         = viennagrid::centroid(*cofit); ++cofit;
+            PointType centroid_2         = viennagrid::centroid(*cofit);
+            PointType center_connection  = centroid_1 - centroid_2;
+            PointType outer_normal       = util::unit_outer_normal(*fit, *cofit); //note: consistent orientation of center_connection and outer_normal is important here!
+
+            double center_connection_len = viennagrid::norm(center_connection);
+            double effective_facet_ratio = viennagrid::inner_prod(center_connection, outer_normal) / center_connection_len;  // inner product of unit vectors
+            double effective_facet_area  = viennagrid::volume(*fit) * effective_facet_ratio;
+
+            viennadata::access<viennafvm::facet_area_key,     double>()(*fit) = effective_facet_area;
+            viennadata::access<viennafvm::facet_distance_key, double>()(*fit) = center_connection_len;
+          }
+        }
+    }
+  };
    
-   template <typename InterfaceType, typename SegmentT, typename MatrixT, typename VectorT>  
-   void assemble_pde( viennafvm::linear_pde_system<InterfaceType>  & pde_system,
-                      SegmentT & segment,
-                      MatrixT  & matrix,
-                      VectorT  & rhs
-                     ) 
-   {
-      viennafvm::linear_assembler()(pde_system, segment, matrix, rhs);
-   }
+  template <typename InterfaceType, typename SegmentT, typename MatrixT, typename VectorT>
+  void assemble_pde( viennafvm::linear_pde_system<InterfaceType>  & pde_system,
+                     SegmentT & segment,
+                     MatrixT  & matrix,
+                     VectorT  & rhs
+                    )
+  {
+     viennafvm::linear_assembler()(pde_system, segment, matrix, rhs);
+  }
 }
 
 #endif 
