@@ -25,6 +25,7 @@
 #include "viennafvm/mapping.hpp"
 #include "viennafvm/util.hpp"
 #include "viennafvm/flux.hpp"
+#include "viennafvm/cell_quan.hpp"
 
 #include "viennagrid/forwards.h"
 #include "viennagrid/algorithm/voronoi.hpp"
@@ -32,6 +33,7 @@
 #include "viennagrid/algorithm/centroid.hpp"
 
 #include "viennamath/manipulation/eval.hpp"
+#include "viennamath/manipulation/diff.hpp"
 
 //#define VIENNAFVMDEBUG
 
@@ -75,6 +77,7 @@ namespace viennafvm
         typedef typename SegmentT::config_type                config_type;
         typedef viennamath::equation                          equ_type;
         typedef viennamath::expr                              expr_type;
+        typedef typename expr_type::interface_type            interface_type;
         typedef typename expr_type::numeric_type              numeric_type;
          
         typedef typename SegmentT::config_type              Config;
@@ -130,9 +133,9 @@ namespace viennafvm
         std::cout << " Volume integrand for matrix: " <<  matrix_omega_integrand << std::endl;
         std::cout << " Volume integrand for rhs:    " <<     rhs_omega_integrand << std::endl;
 
-        viennafvm::flux_handler<CellType, FacetType>  flux(partial_omega_integrand, pde_system.unknown(0)[0]);
+        viennafvm::flux_handler<CellType, FacetType, interface_type>  flux(partial_omega_integrand, pde_system.unknown(0)[0]);
 
-        expr_type substituted_matrix_omega_integrand  = viennamath::substitute(pde_system.unknown(0)[0], numeric_type(1), matrix_omega_integrand);
+        expr_type substituted_matrix_omega_integrand  = viennamath::diff(matrix_omega_integrand, pde_system.unknown(0)[0]);
 
         std::vector<double> p(3); //dummy vector for evaluation
 
@@ -168,7 +171,7 @@ namespace viennafvm
             {
               long col_index = viennadata::access<MappingKeyType, long>(map_key)(*other_cell);
               double effective_facet_area = viennadata::access<viennafvm::facet_area_key, double>()(*focit);
-              std::cout << "facet area: " << effective_facet_area << std::endl;
+              //std::cout << "facet area: " << effective_facet_area << std::endl;
 
               if (col_index < 0)
               {
@@ -189,9 +192,11 @@ namespace viennafvm
           double cell_volume      = viennagrid::volume(*cit);
 
           // Matrix:
+          // TODO: Integrand may depend on other solution variable. Need to wrap this appropriately here before handing this over to ViennaMath
           system_matrix(row_index, row_index) += viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume;
 
           // RHS:
+          // TODO: Integrand may depend on other solution variable. Need to wrap this appropriately here before handing this over to ViennaMath
           load_vector(row_index) += viennamath::eval(rhs_omega_integrand, p) * cell_volume;
           //std::cout << "Writing " << viennamath::eval(omega_integrand, p) << " * " << cell_volume << " to rhs at " << row_index << std::endl;
         }

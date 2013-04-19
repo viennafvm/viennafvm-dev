@@ -263,5 +263,15 @@ namespace viennafvm
                                                             rhs.clone())); 
   }
 
+  /** @brief Operator overload for the multiplication of a cell quantity with a ViennaMath expression wrapper */
+  template <typename CellType, typename InterfaceType>
+  viennamath::rt_expr<InterfaceType> operator/(viennamath::rt_expr<InterfaceType> const & lhs,
+                                               ncell_quan<CellType, InterfaceType> const & rhs)
+  {
+    return viennamath::rt_expr<InterfaceType>(new viennamath::rt_binary_expr<InterfaceType>(lhs.get()->clone(),
+                                                            new viennamath::op_binary<viennamath::op_div<viennamath::default_numeric_type>, InterfaceType >(),
+                                                            rhs.clone()));
+  }
+
 }
 #endif

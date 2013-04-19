@@ -59,6 +59,16 @@ namespace viennafvm
       long id_;
   };
 
+  class current_iterate_key
+  {
+    public:
+      current_iterate_key(long id) : id_(id) {}
+
+      bool operator<(current_iterate_key const & other) const { return id_ < other.id_; }
+
+    private:
+      long id_;
+  };
   
   //box-integration related:
   class facet_distance_key {};
