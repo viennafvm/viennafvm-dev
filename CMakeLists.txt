@@ -35,10 +35,11 @@ IF(CMAKE_COMPILER_IS_GNUCXX)
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 #list all source files here
+ADD_EXECUTABLE(poisson_1d examples/tutorial/poisson_1d.cpp)
 ADD_EXECUTABLE(poisson_2d examples/tutorial/poisson_2d.cpp)
+ADD_EXECUTABLE(poisson_3d examples/tutorial/poisson_3d.cpp)
 ADD_EXECUTABLE(mosfet     examples/tutorial/mosfet.cpp)
 
-ADD_EXECUTABLE(poisson_3d examples/tutorial/poisson_3d.cpp)
 
 ##Compatibility with Qt-Creator
 file( GLOB_RECURSE QtCreatorCompatibility_SRC
