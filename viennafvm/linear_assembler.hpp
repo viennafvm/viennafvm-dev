@@ -70,9 +70,9 @@ namespace viennafvm
                 typename MatrixT,
                 typename VectorT>
       void operator()(LinPdeSysT pde_system,
-                      SegmentT   & segment,
-                      MatrixT    & system_matrix,
-                      VectorT    & load_vector)
+                      SegmentT   const & segment,
+                      MatrixT          & system_matrix,
+                      VectorT          & load_vector)
       {
         typedef typename SegmentT::config_type                config_type;
         typedef viennamath::equation                          equ_type;
@@ -82,14 +82,14 @@ namespace viennafvm
 
         typedef typename SegmentT::config_type              Config;
         typedef typename Config::cell_tag                   CellTag;
-        typedef typename viennagrid::result_of::ncell<Config, CellTag::dim-1>::type             FacetType;
-        typedef typename viennagrid::result_of::ncell<Config, CellTag::dim  >::type             CellType;
+        typedef typename viennagrid::result_of::ncell<Config, CellTag::dim-1>::type                FacetType;
+        typedef typename viennagrid::result_of::ncell<Config, CellTag::dim  >::type                CellType;
 
-        typedef typename viennagrid::result_of::ncell_range<SegmentT, CellTag::dim>::type        CellContainer;
-        typedef typename viennagrid::result_of::iterator<CellContainer>::type                    CellIterator;
+        typedef typename viennagrid::result_of::const_ncell_range<SegmentT, CellTag::dim>::type    CellContainer;
+        typedef typename viennagrid::result_of::iterator<CellContainer>::type                      CellIterator;
 
-        typedef typename viennagrid::result_of::ncell_range<CellType, CellTag::dim-1>::type      FacetOnCellContainer;
-        typedef typename viennagrid::result_of::iterator<FacetOnCellContainer>::type             FacetOnCellIterator;
+        typedef typename viennagrid::result_of::const_ncell_range<CellType, CellTag::dim-1>::type  FacetOnCellContainer;
+        typedef typename viennagrid::result_of::iterator<FacetOnCellContainer>::type               FacetOnCellIterator;
 
 
          typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
@@ -207,7 +207,7 @@ namespace viennafvm
     private:
 
       template <typename SegmentT>
-      void setup(SegmentT & segment)
+      void setup(SegmentT const & segment)
       {
         typedef typename SegmentT::config_type                config_type;
         typedef viennamath::equation                          equ_type;
@@ -223,8 +223,8 @@ namespace viennafvm
         typedef typename viennagrid::result_of::const_ncell_range<SegmentT, CellTag::dim-1>::type  FacetContainer;
         typedef typename viennagrid::result_of::iterator<FacetContainer>::type                     FacetIterator;
 
-        typedef typename viennagrid::result_of::const_ncell_range<FacetType, CellTag::dim>::type  CellOnFacetRange;
-        typedef typename viennagrid::result_of::iterator<CellOnFacetRange>::type                  CellOnFacetIterator;
+        typedef typename viennagrid::result_of::const_ncell_range<FacetType, CellTag::dim>::type   CellOnFacetRange;
+        typedef typename viennagrid::result_of::iterator<CellOnFacetRange>::type                   CellOnFacetIterator;
 
         FacetContainer facets = viennagrid::ncells(segment);
         for (FacetIterator fit  = facets.begin();

@@ -20,6 +20,8 @@
 #include <vector>
 #include "viennafvm/forwards.h"
 
+#include "viennagrid/forwards.h"
+#include "viennagrid/iterators.hpp"
 
 namespace viennafvm
 {
@@ -30,14 +32,16 @@ template <typename EntityType>
 struct extract_domain
 {
    typedef EntityType  type;
-   static EntityType & apply(EntityType & domain) { return domain; }
+   static EntityType       & apply(EntityType       & domain) { return domain; }
+   static EntityType const & apply(EntityType const & domain) { return domain; }
 };
 
 template <typename ConfigType>
 struct extract_domain<viennagrid::segment_t<ConfigType> >
 {
    typedef typename viennagrid::result_of::domain<ConfigType>::type    type;
-   static type & apply(viennagrid::segment_t<ConfigType> & seg) { return seg.domain(); }
+   static type       & apply(viennagrid::segment_t<ConfigType>       & seg) { return seg.domain(); }
+   static type const & apply(viennagrid::segment_t<ConfigType> const & seg) { return seg.domain(); }
 };
 
 
@@ -46,7 +50,7 @@ struct extract_domain<viennagrid::segment_t<ConfigType> >
 */
 template <typename LinPdeSysT, typename DomainType>
 long create_mapping(LinPdeSysT & pde_system,
-                    DomainType & domain)
+                    DomainType const & domain)
 {
    typedef typename DomainType::config_type              Config;
    typedef typename Config::cell_tag                     CellTag;
@@ -54,7 +58,7 @@ long create_mapping(LinPdeSysT & pde_system,
    typedef typename viennagrid::result_of::point<Config>::type                  PointType;
    typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type    CellType;
 
-   typedef typename viennagrid::result_of::ncell_range<DomainType, CellTag::dim>::type         CellContainer;
+   typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
    typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
@@ -74,8 +78,8 @@ long create_mapping(LinPdeSysT & pde_system,
    if (!init_done)
    {
       typedef typename extract_domain<DomainType>::type   TrueDomainType;
-      typedef typename viennagrid::result_of::ncell_range<TrueDomainType, CellTag::dim>::type  DomainCellContainer;
-      typedef typename viennagrid::result_of::iterator<DomainCellContainer>::type              DomainCellIterator;
+      typedef typename viennagrid::result_of::const_ncell_range<TrueDomainType, CellTag::dim>::type  DomainCellContainer;
+      typedef typename viennagrid::result_of::iterator<DomainCellContainer>::type                    DomainCellIterator;
 
       DomainCellContainer cells = viennagrid::ncells<CellTag::dim>(extract_domain<DomainType>::apply(domain));
       for (DomainCellIterator cit  = cells.begin();

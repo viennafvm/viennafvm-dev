@@ -23,6 +23,7 @@
 #include "viennafvm/io/vtk_writer.hpp"
 #include "viennafvm/cell_quan.hpp"
 #include "viennafvm/linear_solve.hpp"
+#include "viennafvm/pde_solver.hpp"
 
 // ViennaGrid includes:
 #include "viennagrid/domain.hpp"
@@ -64,9 +65,6 @@ int main()
   typedef viennagrid::result_of::ncell_range<CellType, 0>::type               VertexOnCellContainer;
   typedef viennagrid::result_of::iterator<VertexOnCellContainer>::type        VertexOnCellIterator;
 
-  typedef boost::numeric::ublas::compressed_matrix<numeric_type>  MatrixType;
-  typedef boost::numeric::ublas::vector<numeric_type>             VectorType;
-
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
 
@@ -93,9 +91,6 @@ int main()
 
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
   Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(u)), -1);  // \Delta u = -1
-
-  MatrixType system_matrix;
-  VectorType load_vector;
 
   //
   // Setting boundary information on domain (this should come from device specification)
@@ -129,32 +124,20 @@ int main()
 
 
   //
-  // Create PDE assembler functor
+  // Create PDE solver instance
   //
-  viennafvm::linear_assembler fvm_assembler;
-
+  viennafvm::pde_solver<> pde_solver;
 
   //
-  // Assemble system
+  // Pass system to solver:
   //
-  fvm_assembler(viennafvm::make_linear_pde_system(poisson_eq, u),  // PDE with associated unknown
-                my_domain,
-                system_matrix,
-                load_vector
-               );
-
-
-  //std::cout << system_matrix << std::endl;
-  //std::cout << load_vector << std::endl;
-
-  //std::cout << poisson_config_1.load_vector() << std::endl;
-
-  VectorType pde_result = viennafvm::solve(system_matrix, load_vector);
+  pde_solver(viennafvm::make_linear_pde_system(poisson_eq, u),  // PDE with associated unknown
+             my_domain);
 
   //
   // Writing solution back to domain (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_result, "poisson_3d", my_domain, 0);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_3d", my_domain, 0);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;
