@@ -43,6 +43,13 @@
 #include <boost/numeric/ublas/operation_sparse.hpp>
 
 
+struct permittivity_key
+{
+  // Operator< is required for compatibility with std::map
+  bool operator<(permittivity_key const & other) const { return false; }
+};
+
+
 int main()
 {
   typedef double   numeric_type;
@@ -82,8 +89,10 @@ int main()
   }
 
   // Specify Poisson equation:
+  viennafvm::ncell_quan<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( permittivity_key() );
+
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
-  Equation poisson_eq = viennamath::make_equation( viennamath::laplace(u), -1);  // \Delta u = -1
+  Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(u)), -1);  // \Delta u = -1
 
   MatrixType system_matrix;
   VectorType load_vector;
@@ -98,6 +107,9 @@ int main()
                   ++cit)
   {
     bool cell_on_boundary = false;
+
+    // write dummy permittivity to cells:
+    viennadata::access<permittivity_key, viennafvm::numeric_type>(permittivity_key())(*cit) = 1.0;
 
     VertexOnCellContainer vertices = viennagrid::ncells<0>(*cit);
     for (VertexOnCellIterator vit  = vertices.begin();

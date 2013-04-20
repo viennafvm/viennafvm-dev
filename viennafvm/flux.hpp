@@ -266,9 +266,10 @@ namespace viennafvm
             bin.lhs()->recursive_traversal(wrapped_scanner);
             if (scanner->found())
             {
-              gradient_argument_extractor<InterfaceType> extractor(u_);
+              gradient_prefactor_extractor<InterfaceType> extractor(u_);
               extractor(bin.lhs());
               arg_ = viennamath::rt_expr<InterfaceType>(extractor.get().get()->clone());
+              viennamath::inplace_simplify(arg_);
             }
             else
             {
@@ -277,17 +278,19 @@ namespace viennafvm
               bin.rhs()->recursive_traversal(wrapped_scanner);
               if (scanner->found())
               {
-                gradient_argument_extractor<InterfaceType> extractor(u_);
+                gradient_prefactor_extractor<InterfaceType> extractor(u_);
                 extractor(bin.rhs());
                 if (dynamic_cast<const MinusOperatorType *>(bin.op()) != NULL)
                 {
                   arg_ = viennamath::rt_binary_expr<InterfaceType>(new viennamath::rt_constant<NumericType, InterfaceType>(-1),
                                                                    new viennamath::op_binary<viennamath::op_mult<NumericType>, InterfaceType>(),
                                                                    extractor.get().get()->clone());
+                  viennamath::inplace_simplify(arg_);
                 }
                 else
                 {
                   arg_ = viennamath::rt_expr<InterfaceType>(extractor.get().get()->clone());
+                  viennamath::inplace_simplify(arg_);
                 }
               }
             }
@@ -302,11 +305,12 @@ namespace viennafvm
             bin.lhs()->recursive_traversal(wrapped_scanner);
             if (scanner->found())
             {
-              gradient_argument_extractor<InterfaceType> extractor(u_);
+              gradient_prefactor_extractor<InterfaceType> extractor(u_);
               extractor(bin.lhs());
               arg_ = viennamath::rt_binary_expr<InterfaceType>(extractor.get().get()->clone(),
                                                                bin.op()->clone(),
                                                                bin.rhs()->clone());
+              viennamath::inplace_simplify(arg_);
             }
             else
             {
@@ -315,11 +319,12 @@ namespace viennafvm
               bin.rhs()->recursive_traversal(wrapped_scanner);
               if (scanner->found())
               {
-                gradient_argument_extractor<InterfaceType> extractor(u_);
+                gradient_prefactor_extractor<InterfaceType> extractor(u_);
                 extractor(bin.rhs());
                 arg_ = viennamath::rt_binary_expr<InterfaceType>(bin.lhs()->clone(),
                                                                  bin.op()->clone(),
                                                                  extractor.get().get()->clone());
+                viennamath::inplace_simplify(arg_);
               }
             }
           }
