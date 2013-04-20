@@ -50,7 +50,7 @@
 #ifndef VIENNACL_HAVE_UBLAS
  #define VIENNACL_HAVE_UBLAS
 #endif
-    
+
 #ifdef USE_OPENCL
   #include "viennacl/matrix.hpp"
   #include "viennacl/vector.hpp"
@@ -60,7 +60,7 @@
 #include "viennacl/linalg/prod.hpp"
 
 
-//      
+//
 // Solve system of linear equations:
 //
 template <typename MatrixType, typename VectorType>
@@ -69,27 +69,27 @@ VectorType solve(MatrixType const & system_matrix,
 {
   typedef typename VectorType::value_type        numeric_type;
   VectorType result(load_vector.size());
-  
+
   std::cout << "* solve(): Solving linear system" << std::endl;
 
 #ifdef USE_OPENCL
   viennacl::matrix<viennafem::numeric_type> vcl_matrix(load_vector.size(), load_vector.size());
   viennacl::vector<viennafem::numeric_type> vcl_rhs(load_vector.size());
   viennacl::vector<viennafem::numeric_type> vcl_result(load_vector.size());
-  
+
   viennacl::copy(system_matrix, vcl_matrix);
   viennacl::copy(load_vector, vcl_rhs);
-  
+
   vcl_result = viennacl::linalg::solve(vcl_matrix, vcl_rhs, viennacl::linalg::cg_tag());
-  
+
   viennacl::copy(vcl_result, result);
 #else
   result = viennacl::linalg::solve(system_matrix, load_vector, viennacl::linalg::cg_tag());
   std::cout << "* solve(): Residual: " << norm_2(prod(system_matrix, result) - load_vector) << std::endl;
 #endif
-    
+
   //std::cout << load_vector << std::endl;
-  
+
   //print solution:
   //std::cout << "Solution: ";
   //for (size_t i=0; i<ublas_result.size(); ++i)
@@ -104,7 +104,7 @@ VectorType solve(MatrixType const & system_matrix,
 int main()
 {
   typedef double   numeric_type;
-  
+
   typedef viennagrid::config::triangular_2d                           ConfigType;
   typedef viennagrid::result_of::domain<ConfigType>::type             DomainType;
   typedef typename ConfigType::cell_tag                     CellTag;
@@ -120,12 +120,12 @@ int main()
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
-  
+
   //
   // Create a domain from file
   //
   DomainType my_domain;
-  
+
   try
   {
     viennagrid::io::netgen_reader my_reader;
@@ -136,7 +136,7 @@ int main()
     std::cerr << "File-Reader failed. Aborting program..." << std::endl;
     return EXIT_FAILURE;
   }
-                                 
+
   //
   // Specify two PDEs:
   //
@@ -146,7 +146,7 @@ int main()
 
   MatrixType system_matrix_1, system_matrix_2;
   VectorType load_vector_1, load_vector_2;
-  
+
   //
   // Setting boundary information on domain (this should come from device specification)
   //
@@ -173,14 +173,14 @@ int main()
         viennafvm::set_dirichlet_boundary(*cit, 1.0, 1);
     }
   }
-  
-  
+
+
   //
   // Create PDE solver functors: (discussion about proper interface required)
   //
   viennafvm::linear_assembler fvm_assembler;
 
-  
+
   //
   // Solve system and write solution vector to pde_result:
   // (discussion about proper interface required. Introduce a pde_result class?)
@@ -190,31 +190,32 @@ int main()
                 system_matrix_1,
                 load_vector_1
               );
-    
+
   fvm_assembler(viennafvm::make_linear_pde_system(poisson_equ_2, u, viennafvm::make_linear_pde_options(1, 1)),
                 my_domain,
                 system_matrix_2,
                 load_vector_2
               );
-  
+
   //std::cout << system_matrix_1 << std::endl;
   //std::cout << load_vector_1 << std::endl;
-  
+
   VectorType pde_result_1 = viennacl::linalg::solve(system_matrix_1, load_vector_1, viennacl::linalg::cg_tag());
   std::cout << "* solve(): Residual: " << norm_2(prod(system_matrix_1, pde_result_1) - load_vector_1) / norm_2(load_vector_1) << std::endl;
 
   VectorType pde_result_2 = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::cg_tag());
   std::cout << "* solve(): Residual: " << norm_2(prod(system_matrix_2, pde_result_2) - load_vector_2) / norm_2(load_vector_2) << std::endl;
-  
-  
+
+
   //
   // Writing solution back to domain (discussion about proper way of returning a solution required...)
   //
   viennafvm::io::write_solution_to_VTK_file(pde_result_1, "poisson_2d_1", my_domain, 0);
   viennafvm::io::write_solution_to_VTK_file(pde_result_2, "poisson_2d_2", my_domain, 1);
-  
+
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;
   std::cout << "*****************************************" << std::endl;
   return EXIT_SUCCESS;
 }
+

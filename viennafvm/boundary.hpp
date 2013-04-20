@@ -34,10 +34,10 @@ namespace viennafvm
                               std::size_t id = 0)
   {
     typedef viennafvm::boundary_key      BoundaryKey;
-    
+
     //set flag:
     viennadata::access<BoundaryKey, bool >(BoundaryKey(id))(c) = true;
-    
+
     //set data:
     viennadata::access<BoundaryKey, numeric_type >(BoundaryKey(id))(c) = value;
   }
@@ -48,10 +48,10 @@ namespace viennafvm
                               std::size_t id = 0)
   {
     typedef viennafvm::boundary_key      BoundaryKey;;
-    
+
     //set flag:
     viennadata::access<BoundaryKey, bool >(BoundaryKey(id))(c) = true;
-    
+
     //set data:
     viennadata::access<BoundaryKey, std::vector<NumericT> >(BoundaryKey(id))(c) = value;
   }

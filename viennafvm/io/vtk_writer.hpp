@@ -1,3 +1,6 @@
+#ifndef VIENNAFVM_IO_VTKWRITER_HPP
+#define VIENNAFVM_IO_VTKWRITER_HPP
+
 /* =======================================================================
    Copyright (c) 2011, Institute for Microelectronics, TU Wien
    http://www.iue.tuwien.ac.at
@@ -11,9 +14,6 @@
    license:    To be discussed, see file LICENSE in the ViennaFVM base directory
 ======================================================================= */
 
-
-#ifndef VIENNAFVM_IO_VTKWRITER_HPP
-#define VIENNAFVM_IO_VTKWRITER_HPP
 
 // include necessary system headers
 #include <iostream>
@@ -47,14 +47,14 @@ namespace viennafvm
 
       typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
       typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
-      
+
       typedef viennafvm::mapping_key          MappingKeyType;
       typedef viennafvm::boundary_key         BoundaryKeyType;
-      
+
       MappingKeyType map_key(id);
       BoundaryKeyType bnd_key(id);
-      
-      
+
+
       std::cout << "* write_solution_to_VTK_file(): Writing result on mesh for later export" << std::endl;
       CellContainer cells = viennagrid::ncells<CellTag::dim>(domain);
       for (CellIterator cit = cells.begin();
@@ -74,7 +74,7 @@ namespace viennafvm
 
       viennagrid::io::vtk_writer<DomainType> my_vtk_writer;
       viennagrid::io::add_scalar_data_on_cells<std::string, double>(my_vtk_writer, "vtk_data", "fvm_result");
-      my_vtk_writer(domain, filename);  
+      my_vtk_writer(domain, filename);
     }
 
 

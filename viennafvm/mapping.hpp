@@ -1,3 +1,6 @@
+#ifndef VIENNAFVM_MAPPING_HPP
+#define VIENNAFVM_MAPPING_HPP
+
 /* =======================================================================
    Copyright (c) 2011, Institute for Microelectronics, TU Wien
    http://www.iue.tuwien.ac.at
@@ -6,16 +9,13 @@
                              -----------------
 
    authors:    Karl Rupp                             rupp@iue.tuwien.ac.at
-               Josef Weinbub                      weinbub@iue.tuwien.ac.at               
-               
+               Josef Weinbub                      weinbub@iue.tuwien.ac.at
+
                (add your name here)
 
    license:    To be discussed, see file LICENSE in the ViennaFVM base directory
 ======================================================================= */
 
-
-#ifndef VIENNAFVM_MAPPING_HPP
-#define VIENNAFVM_MAPPING_HPP
 
 #include <vector>
 #include "viennafvm/forwards.h"
@@ -23,9 +23,9 @@
 
 namespace viennafvm
 {
-  
+
 /** @brief If EntityType is a ViennaGrid segment, returns the domain. If EntityType is already the domain, no changes.
-*/  
+*/
 template <typename EntityType>
 struct extract_domain
 {
@@ -38,14 +38,14 @@ struct extract_domain<viennagrid::segment_t<ConfigType> >
 {
    typedef typename viennagrid::result_of::domain<ConfigType>::type    type;
    static type & apply(viennagrid::segment_t<ConfigType> & seg) { return seg.domain(); }
-};  
-  
-  
+};
+
+
 /** @brief Distributes mapping indices over domain or segment
-* 
+*
 */
 template <typename LinPdeSysT, typename DomainType>
-long create_mapping(LinPdeSysT & pde_system, 
+long create_mapping(LinPdeSysT & pde_system,
                     DomainType & domain)
 {
    typedef typename DomainType::config_type              Config;
@@ -81,7 +81,7 @@ long create_mapping(LinPdeSysT & pde_system,
       for (DomainCellIterator cit  = cells.begin();
                               cit != cells.end();
                             ++cit)
-      {  
+      {
          viennadata::access<MappingKeyType, long>(map_key)(*cit) = -1;
       }
       viennadata::access<MappingKeyType, bool>(map_key)(extract_domain<DomainType>::apply(domain)) = true;
@@ -89,7 +89,7 @@ long create_mapping(LinPdeSysT & pde_system,
 
    CellContainer cells = viennagrid::ncells(domain);
    for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
-   {  
+   {
       if (viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit))  // boundary cell
       {
          //std::cout << "boundary cell" << std::endl;

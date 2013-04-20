@@ -1,3 +1,6 @@
+#ifndef VIENNAFVM_PDE_ASSEMBLER_HPP
+#define VIENNAFVM_PDE_ASSEMBLER_HPP
+
 /* =======================================================================
    Copyright (c) 2011, Institute for Microelectronics, TU Wien
    http://www.iue.tuwien.ac.at
@@ -6,21 +9,18 @@
                              -----------------
 
    authors:    Karl Rupp                             rupp@iue.tuwien.ac.at
-               Josef Weinbub                      weinbub@iue.tuwien.ac.at               
-               
+               Josef Weinbub                      weinbub@iue.tuwien.ac.at
+
                (add your name here)
 
    license:    To be discussed, see file LICENSE in the ViennaFVM base directory
 ======================================================================= */
 
-#ifndef VIENNAFVM_PDE_ASSEMBLER_HPP
-#define VIENNAFVM_PDE_ASSEMBLER_HPP
 
 // *** local includes
 //
 #include "viennafvm/integral_form.hpp"
-#include "viennafvm/extract_integrals.hpp" 
-#include "viennafvm/rhs_zero.hpp"
+#include "viennafvm/extract_integrals.hpp"
 #include "viennafvm/linear_pde_system.hpp"
 #include "viennafvm/mapping.hpp"
 #include "viennafvm/util.hpp"
@@ -65,13 +65,13 @@ namespace viennafvm
   class linear_assembler
   {
     public:
-      template <typename LinPdeSysT, 
-                typename SegmentT, 
+      template <typename LinPdeSysT,
+                typename SegmentT,
                 typename MatrixT,
-                typename VectorT>  
+                typename VectorT>
       void operator()(LinPdeSysT pde_system,
                       SegmentT   & segment,
-                      MatrixT    & system_matrix, 
+                      MatrixT    & system_matrix,
                       VectorT    & load_vector)
       {
         typedef typename SegmentT::config_type                config_type;
@@ -79,12 +79,12 @@ namespace viennafvm
         typedef viennamath::expr                              expr_type;
         typedef typename expr_type::interface_type            interface_type;
         typedef typename expr_type::numeric_type              numeric_type;
-         
+
         typedef typename SegmentT::config_type              Config;
         typedef typename Config::cell_tag                   CellTag;
         typedef typename viennagrid::result_of::ncell<Config, CellTag::dim-1>::type             FacetType;
         typedef typename viennagrid::result_of::ncell<Config, CellTag::dim  >::type             CellType;
-      
+
         typedef typename viennagrid::result_of::ncell_range<SegmentT, CellTag::dim>::type        CellContainer;
         typedef typename viennagrid::result_of::iterator<CellContainer>::type                    CellIterator;
 
@@ -93,8 +93,8 @@ namespace viennafvm
 
 
          typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
-         MappingKeyType  map_key(pde_system.option(0).data_id());      
-      
+         MappingKeyType  map_key(pde_system.option(0).data_id());
+
          typedef typename LinPdeSysT::boundary_key_type  BoundaryKeyType;
          BoundaryKeyType bnd_key(pde_system.option(0).data_id());
 
@@ -113,11 +113,11 @@ namespace viennafvm
       #endif
 
          equ_type integral_form = viennafvm::make_integral_form( pde_system.pde(0) );
-         
+
       #ifdef VIENNAFVM_DEBUG
          std::cout << "integral form: " << std::endl;
          std::cout << integral_form << std::endl;
-      #endif 
+      #endif
 
 
         //
@@ -201,7 +201,7 @@ namespace viennafvm
           //std::cout << "Writing " << viennamath::eval(omega_integrand, p) << " * " << cell_volume << " to rhs at " << row_index << std::endl;
         }
 
-         
+
       } // functor
 
     private:
@@ -253,7 +253,7 @@ namespace viennafvm
         }
     }
   };
-   
+
   template <typename InterfaceType, typename SegmentT, typename MatrixT, typename VectorT>
   void assemble_pde( viennafvm::linear_pde_system<InterfaceType>  & pde_system,
                      SegmentT & segment,
@@ -265,7 +265,7 @@ namespace viennafvm
   }
 }
 
-#endif 
+#endif
 
 
 

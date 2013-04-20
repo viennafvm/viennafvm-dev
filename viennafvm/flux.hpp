@@ -1,3 +1,6 @@
+#ifndef VIENNAFVM_FLUX_HPP
+#define VIENNAFVM_FLUX_HPP
+
 /* =======================================================================
    Copyright (c) 2011, Institute for Microelectronics, TU Wien
    http://www.iue.tuwien.ac.at
@@ -12,9 +15,6 @@
 
    license:    To be discussed, see file LICENSE in the ViennaFVM base directory
 ======================================================================= */
-
-#ifndef VIENNAFVM_FLUX_HPP
-#define VIENNAFVM_FLUX_HPP
 
 // *** system includes
 //
@@ -31,7 +31,8 @@
 #include "viennamath/manipulation/diff.hpp"
 #include "viennamath/manipulation/eval.hpp"
 
-namespace viennafvm {
+namespace viennafvm
+{
 
   namespace detail
   {

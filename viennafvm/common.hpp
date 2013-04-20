@@ -1,3 +1,6 @@
+#ifndef VIENNAFVM_COMMON_HPP
+#define VIENNAFVM_COMMON_HPP
+
 /* =======================================================================
    Copyright (c) 2011, Institute for Microelectronics, TU Wien
    http://www.iue.tuwien.ac.at
@@ -10,9 +13,6 @@
 
    license:    To be discussed, see file LICENSE in the ViennaFVM base directory
 ======================================================================= */
-
-#ifndef VIENNAFVM_COMMON_HPP
-#define VIENNAFVM_COMMON_HPP
 
 #include <iostream>
 #include <fstream>
@@ -41,7 +41,7 @@ namespace viennafvm
         }
       }
     }
-    
+
 } //namespace viennashe
 
 #endif

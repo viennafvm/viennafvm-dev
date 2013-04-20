@@ -51,7 +51,7 @@
 #ifndef VIENNACL_HAVE_UBLAS
  #define VIENNACL_HAVE_UBLAS
 #endif
-    
+
 #ifdef USE_OPENCL
   #include "viennacl/matrix.hpp"
   #include "viennacl/vector.hpp"
@@ -61,7 +61,7 @@
 #include "viennacl/linalg/prod.hpp"
 
 
-//      
+//
 // Solve system of linear equations:
 //
 template <typename MatrixType, typename VectorType>
@@ -70,27 +70,27 @@ VectorType solve(MatrixType const & system_matrix,
 {
   typedef typename VectorType::value_type        numeric_type;
   VectorType result(load_vector.size());
-  
+
   std::cout << "* solve(): Solving linear system" << std::endl;
 
 #ifdef USE_OPENCL
   viennacl::matrix<viennafem::numeric_type> vcl_matrix(load_vector.size(), load_vector.size());
   viennacl::vector<viennafem::numeric_type> vcl_rhs(load_vector.size());
   viennacl::vector<viennafem::numeric_type> vcl_result(load_vector.size());
-  
+
   viennacl::copy(system_matrix, vcl_matrix);
   viennacl::copy(load_vector, vcl_rhs);
-  
+
   vcl_result = viennacl::linalg::solve(vcl_matrix, vcl_rhs, viennacl::linalg::cg_tag());
-  
+
   viennacl::copy(vcl_result, result);
 #else
   result = viennacl::linalg::solve(system_matrix, load_vector, viennacl::linalg::cg_tag());
   std::cout << "* solve(): Residual: " << norm_2(prod(system_matrix, result) - load_vector) << std::endl;
 #endif
-    
+
   //std::cout << load_vector << std::endl;
-  
+
   //print solution:
   //std::cout << "Solution: ";
   //for (size_t i=0; i<ublas_result.size(); ++i)
@@ -106,7 +106,7 @@ VectorType solve(MatrixType const & system_matrix,
 int main()
 {
   typedef double   numeric_type;
-  
+
   typedef viennagrid::config::tetrahedral_3d                ConfigType;
   typedef viennagrid::result_of::domain<ConfigType>::type   DomainType;
   typedef typename ConfigType::cell_tag                     CellTag;
@@ -122,14 +122,14 @@ int main()
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
-  
+
   typedef viennafvm::boundary_key      BoundaryKey;
-  
+
   //
   // Create a domain from file
   //
   DomainType my_domain;
-  
+
   try
   {
     viennagrid::io::netgen_reader my_netgen_reader;
@@ -140,14 +140,14 @@ int main()
     std::cerr << "File-Reader failed. Aborting program..." << std::endl;
     return EXIT_FAILURE;
   }
-  
+
   // Specify Poisson equation:
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
   Equation poisson_eq = viennamath::make_equation( viennamath::laplace(u), -1);  // \Delta u = -1
 
   MatrixType system_matrix;
   VectorType load_vector;
-  
+
   //
   // Setting boundary information on domain (this should come from device specification)
   //
@@ -174,14 +174,14 @@ int main()
     }
     viennadata::access<BoundaryKey, bool>(BoundaryKey(0))(*cit) = cell_on_boundary;
   }
-  
-  
+
+
   //
   // Create PDE assembler functor
   //
   viennafvm::linear_assembler fvm_assembler;
 
-  
+
   //
   // Assemble system
   //
@@ -191,19 +191,19 @@ int main()
                 load_vector
                );
 
-  
+
   //std::cout << system_matrix << std::endl;
   //std::cout << load_vector << std::endl;
-  
+
   //std::cout << poisson_config_1.load_vector() << std::endl;
-  
+
   VectorType pde_result = solve(system_matrix, load_vector);
 
   //
   // Writing solution back to domain (discussion about proper way of returning a solution required...)
   //
   viennafvm::io::write_solution_to_VTK_file(pde_result, "poisson_3d", my_domain, 0);
-  
+
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;
   std::cout << "*****************************************" << std::endl;
