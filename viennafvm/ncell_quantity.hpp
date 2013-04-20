@@ -21,7 +21,10 @@
 #include "viennamath/expression.hpp"
 #include "viennadata/api.hpp"
 
-/** @file  cell_quan.hpp
+#include "viennagrid/forwards.h"
+#include "viennagrid/segment.hpp"
+
+/** @file  ncell_quantity.hpp
     @brief Defines ViennaMath extensions: Piecewise constants (constants on each cell) and flux evaluators on interfaces
 */
 
@@ -35,7 +38,7 @@ namespace viennafvm
     * @param NumericT    Floating point type of the value to be returned (typically 'double')
     */
     template <typename CellType, typename NumericT = viennafvm::numeric_type>
-    class ncell_quan_interface
+    class ncell_quantity_interface
     {
       protected:
         typedef NumericT          numeric_type;
@@ -44,7 +47,7 @@ namespace viennafvm
         virtual numeric_type eval(CellType const & cell, numeric_type v) const = 0;
         virtual numeric_type eval(CellType const & cell, std::vector<numeric_type> const & v) const = 0;
 
-        virtual ncell_quan_interface<CellType, NumericT> * clone() const = 0;
+        virtual ncell_quantity_interface<CellType, NumericT> * clone() const = 0;
     };
 
     /** @brief Implementation of a function which is piecewise constant on each cell. Function values are retrieved from ViennaData.
@@ -54,13 +57,13 @@ namespace viennafvm
     * @param DataType    The data type to be used with ViennaData
     */
     template <typename CellType, typename KeyType, typename DataType>
-    class ncell_quan_constant : public ncell_quan_interface<CellType>
+    class ncell_quantity_constant : public ncell_quantity_interface<CellType>
     {
-        typedef ncell_quan_constant<CellType, KeyType, DataType>        self_type;
-        typedef typename ncell_quan_interface<CellType>::numeric_type    numeric_type;
+        typedef ncell_quantity_constant<CellType, KeyType, DataType>        self_type;
+        typedef typename ncell_quantity_interface<CellType>::numeric_type    numeric_type;
 
       public:
-        ncell_quan_constant(KeyType const & key) : key_(key) {}
+        ncell_quantity_constant(KeyType const & key) : key_(key) {}
 
         numeric_type eval(CellType const & cell, numeric_type v) const
         {
@@ -72,7 +75,7 @@ namespace viennafvm
           return viennadata::access<KeyType, DataType>(key_)(cell);
         }
 
-        ncell_quan_interface<CellType> * clone() const { return new self_type(key_); }
+        ncell_quantity_interface<CellType> * clone() const { return new self_type(key_); }
 
       private:
         KeyType key_;
@@ -86,15 +89,15 @@ namespace viennafvm
     * @param NumericT    Floating point type of the value to be returned (typically 'double')
     */
     template <typename CellType, typename NumericT = viennafvm::numeric_type>
-    class ncell_quan_wrapper
+    class ncell_quantity_wrapper
     {
       public:
         template <typename T>
-        ncell_quan_wrapper(T const * t) : functor_(t) {}
+        ncell_quantity_wrapper(T const * t) : functor_(t) {}
 
-        ncell_quan_wrapper() {}
+        ncell_quantity_wrapper() {}
 
-        ncell_quan_wrapper & operator=(ncell_quan_wrapper & other)
+        ncell_quantity_wrapper & operator=(ncell_quantity_wrapper & other)
         {
           functor_ = other.functor_;
           return *this;
@@ -112,10 +115,10 @@ namespace viennafvm
           return functor_->eval(cell, v);
         }
 
-        ncell_quan_interface<CellType> * clone() const { return functor_->clone(); }
+        ncell_quantity_interface<CellType> * clone() const { return functor_->clone(); }
 
       private:
-        std::auto_ptr< const ncell_quan_interface<CellType> > functor_;
+        std::auto_ptr< const ncell_quantity_interface<CellType> > functor_;
     };
 
   } //namespace detail
@@ -127,18 +130,18 @@ namespace viennafvm
     * @param InterfaceType  The runtime interface class of ViennaMath.
    */
   template <typename CellType, typename InterfaceType>
-  class ncell_quan : public InterfaceType
+  class ncell_quantity : public InterfaceType
   {
-      typedef ncell_quan<CellType, InterfaceType>     self_type;
+      typedef ncell_quantity<CellType, InterfaceType>     self_type;
       typedef typename InterfaceType::numeric_type            numeric_type;
     public:
 
-      explicit ncell_quan(CellType const * cell, detail::ncell_quan_wrapper<CellType, numeric_type> const & wrapper) : current_cell(cell), accessor(wrapper.clone()) {}
+      explicit ncell_quantity(CellType const * cell, detail::ncell_quantity_wrapper<CellType, numeric_type> const & wrapper) : current_cell(cell), accessor(wrapper.clone()) {}
 
       //template <typename T>
       //explicit cell_quan(T const & t) : current_cell(NULL), accessor( new quan_accessor<CellType, T, numeric_type>() ) {}
 
-      explicit ncell_quan() : current_cell(NULL) {}
+      explicit ncell_quantity() : current_cell(NULL) {}
 
       //interface requirements:
       InterfaceType * clone() const { return new self_type(current_cell, accessor); }
@@ -207,15 +210,15 @@ namespace viennafvm
       template <typename T>
       void wrap_constant(T const & t)
       {
-        detail::ncell_quan_wrapper<CellType, numeric_type> temp( new detail::ncell_quan_constant<CellType, T, numeric_type>(t) );
+        detail::ncell_quantity_wrapper<CellType, numeric_type> temp( new detail::ncell_quantity_constant<CellType, T, numeric_type>(t) );
         accessor = temp;
       }
 
-      detail::ncell_quan_wrapper<CellType, numeric_type> const & wrapper() const { return accessor; }
+      detail::ncell_quantity_wrapper<CellType, numeric_type> const & wrapper() const { return accessor; }
 
     private:
       mutable const CellType * current_cell;
-      detail::ncell_quan_wrapper<CellType, numeric_type> accessor;
+      detail::ncell_quantity_wrapper<CellType, numeric_type> accessor;
   };
 
   //TODO: Check whether cell_quan can be injected directly into existing ViennaMath overloads
@@ -223,7 +226,7 @@ namespace viennafvm
   /** @brief Operator overload for the multiplication of a cell quantity with a ViennaMath variable */
   template <typename CellType, typename InterfaceType>
   viennamath::rt_expr<InterfaceType> operator*(viennamath::rt_variable<InterfaceType> const & lhs,
-                                               ncell_quan<CellType, InterfaceType> const & rhs)
+                                               ncell_quantity<CellType, InterfaceType> const & rhs)
   {
     return viennamath::rt_expr<InterfaceType>(new viennamath::rt_binary_expr<InterfaceType>(lhs.clone(),
                                                             new viennamath::op_binary<viennamath::op_mult<viennamath::default_numeric_type>, InterfaceType >(),
@@ -234,7 +237,7 @@ namespace viennafvm
   /** @brief Operator overload for the multiplication of a cell quantity with a ViennaMath expression wrapper */
   template <typename CellType, typename InterfaceType>
   viennamath::rt_expr<InterfaceType> operator*(viennamath::rt_expr<InterfaceType> const & lhs,
-                                               ncell_quan<CellType, InterfaceType> const & rhs)
+                                               ncell_quantity<CellType, InterfaceType> const & rhs)
   {
     return viennamath::rt_expr<InterfaceType>(new viennamath::rt_binary_expr<InterfaceType>(lhs.get()->clone(),
                                                             new viennamath::op_binary<viennamath::op_mult<viennamath::default_numeric_type>, InterfaceType >(),
@@ -243,7 +246,7 @@ namespace viennafvm
 
   /** @brief Operator overload for the multiplication of a cell quantity with a ViennaMath unary expression */
   template <typename CellType, typename InterfaceType>
-  viennamath::rt_expr<InterfaceType> operator*(ncell_quan<CellType, InterfaceType> const & lhs,
+  viennamath::rt_expr<InterfaceType> operator*(ncell_quantity<CellType, InterfaceType> const & lhs,
                                                viennamath::rt_unary_expr<InterfaceType> const & rhs
                                )
   {
@@ -254,7 +257,7 @@ namespace viennafvm
 
   /** @brief Operator overload for the multiplication of a cell quantity with a ViennaMath binary expression */
   template <typename CellType, typename InterfaceType>
-  viennamath::rt_expr<InterfaceType> operator*(ncell_quan<CellType, InterfaceType> const & lhs,
+  viennamath::rt_expr<InterfaceType> operator*(ncell_quantity<CellType, InterfaceType> const & lhs,
                                                viennamath::rt_binary_expr<InterfaceType> const & rhs
                                )
   {
@@ -266,11 +269,119 @@ namespace viennafvm
   /** @brief Operator overload for the multiplication of a cell quantity with a ViennaMath expression wrapper */
   template <typename CellType, typename InterfaceType>
   viennamath::rt_expr<InterfaceType> operator/(viennamath::rt_expr<InterfaceType> const & lhs,
-                                               ncell_quan<CellType, InterfaceType> const & rhs)
+                                               ncell_quantity<CellType, InterfaceType> const & rhs)
   {
     return viennamath::rt_expr<InterfaceType>(new viennamath::rt_binary_expr<InterfaceType>(lhs.get()->clone(),
                                                             new viennamath::op_binary<viennamath::op_div<viennamath::default_numeric_type>, InterfaceType >(),
                                                             rhs.clone()));
+  }
+
+
+  //
+  // Convenience setter
+  //
+
+  //
+  // quantity region:
+  //
+
+  template <typename KeyType, typename CellType>
+  void set_quantity_region(KeyType const & key, CellType const & c, bool b)
+  {
+    viennadata::access<KeyType, bool >(key)(c) = b;
+  }
+
+  namespace detail
+  {
+    template <typename KeyType, typename DomSegType>
+    void set_quantity_region_impl(KeyType const & key,
+                                  DomSegType const & seg,
+                                  bool b)
+    {
+      typedef typename DomSegType::config_type  ConfigType;
+      typedef typename ConfigType::cell_tag     CellTag;
+
+      typedef typename viennagrid::result_of::ncell<ConfigType, CellTag::dim>::type               CellType;
+      typedef typename viennagrid::result_of::const_ncell_range<DomSegType, CellTag::dim>::type  CellContainer;
+      typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
+
+      CellContainer cells = viennagrid::ncells(seg);
+      for (CellIterator cit  = cells.begin();
+                        cit != cells.end();
+                      ++cit)
+      {
+        viennadata::access<KeyType, bool >(key)(*cit) = b;
+      }
+    }
+
+  }
+
+  template <typename KeyType, typename ConfigType>
+  void set_quantity_region(KeyType const & key,
+                           viennagrid::segment_t<ConfigType> const & seg,
+                           bool b)
+  {
+    detail::set_quantity_region_impl(key, seg, b);
+  }
+
+  template <typename KeyType, typename ConfigType>
+  void set_quantity_region(KeyType const & key,
+                           viennagrid::domain_t<ConfigType> const & dom,
+                           bool b)
+  {
+    detail::set_quantity_region_impl(key, dom, b);
+  }
+
+
+  //
+  // quantity value:
+  //
+
+  template <typename KeyType, typename CellType>
+  void set_quantity_value(KeyType const & key, CellType const & c, numeric_type val)
+  {
+    viennadata::access<KeyType, numeric_type >(key)(c) = val;
+  }
+
+  namespace detail
+  {
+    template <typename KeyType, typename DomSegType>
+    void set_quantity_value_impl(KeyType const & key,
+                                 DomSegType const & seg,
+                                 numeric_type val)
+    {
+      typedef typename DomSegType::config_type  ConfigType;
+      typedef typename ConfigType::cell_tag     CellTag;
+
+      typedef typename viennagrid::result_of::ncell<ConfigType, CellTag::dim>::type               CellType;
+      typedef typename viennagrid::result_of::const_ncell_range<DomSegType, CellTag::dim>::type  CellContainer;
+      typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
+
+      CellContainer cells = viennagrid::ncells(seg);
+      for (CellIterator cit  = cells.begin();
+                        cit != cells.end();
+                      ++cit)
+      {
+        viennadata::access<KeyType, numeric_type >(key)(*cit) = val;
+      }
+    }
+
+  }
+
+  template <typename KeyType, typename ConfigType>
+  void set_quantity_value(KeyType const & key,
+                          viennagrid::segment_t<ConfigType> const & seg,
+                          numeric_type val)
+  {
+    detail::set_quantity_value_impl(key, seg, val);
+  }
+
+  template <typename KeyType, typename ConfigType>
+  void set_quantity_value(KeyType const & key,
+                          viennagrid::domain_t<ConfigType> const & dom,
+                          numeric_type val)
+  {
+    detail::set_quantity_value_impl(key, dom, val);
   }
 
 }

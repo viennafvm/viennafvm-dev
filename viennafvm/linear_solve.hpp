@@ -19,7 +19,7 @@
  #define VIENNACL_HAVE_UBLAS
 #endif
 
-#include "viennacl/linalg/cg.hpp"
+#include "viennacl/linalg/bicgstab.hpp"
 #include "viennacl/linalg/norm_2.hpp"
 #include "viennacl/linalg/prod.hpp"
 
@@ -37,7 +37,7 @@ namespace viennafvm
 
     std::cout << "* solve(): Solving linear system" << std::endl;
 
-    result = viennacl::linalg::solve(system_matrix, load_vector, viennacl::linalg::cg_tag());
+    result = viennacl::linalg::solve(system_matrix, load_vector, viennacl::linalg::bicgstab_tag());
     std::cout << "* solve(): Residual: " << norm_2(prod(system_matrix, result) - load_vector) << std::endl;
 
     return result;

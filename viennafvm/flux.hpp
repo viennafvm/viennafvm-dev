@@ -27,7 +27,7 @@
 //
 #include "viennamath/expression.hpp"
 #include "viennamath/manipulation/substitute.hpp"
-#include "viennafvm/cell_quan.hpp"
+#include "viennafvm/ncell_quantity.hpp"
 #include "viennamath/manipulation/diff.hpp"
 #include "viennamath/manipulation/eval.hpp"
 
@@ -352,11 +352,11 @@ namespace viennafvm
 
         void operator()(InterfaceType const * e) const
         {
-          if (viennamath::callback_if_castable< viennafvm::ncell_quan<NCellType, InterfaceType> >::apply(e, *this))
+          if (viennamath::callback_if_castable< viennafvm::ncell_quantity<NCellType, InterfaceType> >::apply(e, *this))
             return;
         }
 
-        void operator()(viennafvm::ncell_quan<NCellType, InterfaceType> const & cq) const
+        void operator()(viennafvm::ncell_quantity<NCellType, InterfaceType> const & cq) const
         {
           cq.update(nc_);
           //std::cout << "cell_quan updated!" << std::endl;
@@ -419,7 +419,7 @@ namespace viennafvm
           std::cout << "Gradient prefactor: " << gradient_prefactor << std::endl;
 
           // Instantiate residual accessor for nonlinear terms:
-          viennafvm::ncell_quan<CellType, InterfaceType> current_iterate;
+          viennafvm::ncell_quantity<CellType, InterfaceType> current_iterate;
           current_iterate.wrap_constant(viennafvm::current_iterate_key(u.id()));
 
           viennamath::rt_expr<InterfaceType> replaced_gradient_prefactor = viennamath::substitute(u, viennamath::rt_expr<InterfaceType>(current_iterate.clone()), gradient_prefactor);
@@ -434,7 +434,7 @@ namespace viennafvm
           //
           // Todo: Deeper thought about stabilization in nonlinear case.
           //
-          viennafvm::ncell_quan<FacetType, InterfaceType> distance;
+          viennafvm::ncell_quantity<FacetType, InterfaceType> distance;
           distance.wrap_constant(viennafvm::facet_distance_key());
           viennamath::rt_expr<InterfaceType> modified_gradient = viennamath::substitute(u, viennamath::rt_expr<InterfaceType>(current_iterate.clone()), viennamath::diff(gradient_argument, u)) / distance;
 
@@ -465,7 +465,7 @@ namespace viennafvm
       {
         std::vector<double> p(3); //dummy point
 
-        viennamath::rt_traversal_wrapper<InterfaceType> cell_updater( new detail::ncell_updater<CellType, InterfaceType>(outer_cell) );
+        viennamath::rt_traversal_wrapper<InterfaceType> cell_updater( new detail::ncell_updater<CellType, InterfaceType>(inner_cell) );  //Note: This is not a copy&paste error. Volume-quantities must be consistently evaluated on the inner cell
         out_integrand_.get()->recursive_traversal(cell_updater);
 
         viennamath::rt_traversal_wrapper<InterfaceType> facet_updater( new detail::ncell_updater<FacetType, InterfaceType>(facet) );

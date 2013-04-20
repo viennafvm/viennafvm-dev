@@ -25,7 +25,7 @@
 #include "viennafvm/mapping.hpp"
 #include "viennafvm/util.hpp"
 #include "viennafvm/flux.hpp"
-#include "viennafvm/cell_quan.hpp"
+#include "viennafvm/ncell_quantity.hpp"
 
 #include "viennagrid/forwards.h"
 #include "viennagrid/algorithm/voronoi.hpp"

@@ -10,7 +10,7 @@ SET(CMAKE_VERBOSE_MAKEFILE ON)
 
 # alternate boost path for macs
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-   INCLUDE_DIRECTORIES("/opt/local/include") 
+   INCLUDE_DIRECTORIES("/opt/local/include")
 ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 
@@ -36,6 +36,8 @@ ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 #list all source files here
 ADD_EXECUTABLE(poisson_2d examples/tutorial/poisson_2d.cpp)
+ADD_EXECUTABLE(mosfet     examples/tutorial/mosfet.cpp)
+
 ADD_EXECUTABLE(poisson_3d examples/tutorial/poisson_3d.cpp)
 
 ##Compatibility with Qt-Creator
