@@ -21,6 +21,8 @@
 #include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/io/vtk_writer.hpp"
 #include "viennafvm/boundary.hpp"
+#include "viennafvm/linear_solve.hpp"
+
 
 // ViennaGrid includes:
 #include "viennagrid/domain.hpp"
@@ -36,69 +38,9 @@
 #include "viennamath/expression.hpp"
 
 #include <boost/numeric/ublas/io.hpp>
-#include <boost/numeric/ublas/triangular.hpp>
 #include <boost/numeric/ublas/matrix_sparse.hpp>
-#include <boost/numeric/ublas/matrix.hpp>
-#include <boost/numeric/ublas/matrix_proxy.hpp>
 #include <boost/numeric/ublas/operation.hpp>
 #include <boost/numeric/ublas/operation_sparse.hpp>
-#include <boost/numeric/ublas/io.hpp>
-#include <boost/numeric/ublas/lu.hpp>
-
-
-//ViennaCL includes:
-#ifndef VIENNACL_HAVE_UBLAS
- #define VIENNACL_HAVE_UBLAS
-#endif
-
-#ifdef USE_OPENCL
-  #include "viennacl/matrix.hpp"
-  #include "viennacl/vector.hpp"
-#endif
-#include "viennacl/linalg/cg.hpp"
-#include "viennacl/linalg/norm_2.hpp"
-#include "viennacl/linalg/prod.hpp"
-
-
-//
-// Solve system of linear equations:
-//
-template <typename MatrixType, typename VectorType>
-VectorType solve(MatrixType const & system_matrix,
-                 VectorType const & load_vector)
-{
-  typedef typename VectorType::value_type        numeric_type;
-  VectorType result(load_vector.size());
-
-  std::cout << "* solve(): Solving linear system" << std::endl;
-
-#ifdef USE_OPENCL
-  viennacl::matrix<viennafem::numeric_type> vcl_matrix(load_vector.size(), load_vector.size());
-  viennacl::vector<viennafem::numeric_type> vcl_rhs(load_vector.size());
-  viennacl::vector<viennafem::numeric_type> vcl_result(load_vector.size());
-
-  viennacl::copy(system_matrix, vcl_matrix);
-  viennacl::copy(load_vector, vcl_rhs);
-
-  vcl_result = viennacl::linalg::solve(vcl_matrix, vcl_rhs, viennacl::linalg::cg_tag());
-
-  viennacl::copy(vcl_result, result);
-#else
-  result = viennacl::linalg::solve(system_matrix, load_vector, viennacl::linalg::cg_tag());
-  std::cout << "* solve(): Residual: " << norm_2(prod(system_matrix, result) - load_vector) << std::endl;
-#endif
-
-  //std::cout << load_vector << std::endl;
-
-  //print solution:
-  //std::cout << "Solution: ";
-  //for (size_t i=0; i<ublas_result.size(); ++i)
-  //  std::cout << ublas_result(i) << " ";
-  //std::cout << std::endl;
-  //std::cout << std::endl;
-
-  return result;
-}
 
 
 int main()
@@ -200,11 +142,8 @@ int main()
   //std::cout << system_matrix_1 << std::endl;
   //std::cout << load_vector_1 << std::endl;
 
-  VectorType pde_result_1 = viennacl::linalg::solve(system_matrix_1, load_vector_1, viennacl::linalg::cg_tag());
-  std::cout << "* solve(): Residual: " << norm_2(prod(system_matrix_1, pde_result_1) - load_vector_1) / norm_2(load_vector_1) << std::endl;
-
-  VectorType pde_result_2 = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::cg_tag());
-  std::cout << "* solve(): Residual: " << norm_2(prod(system_matrix_2, pde_result_2) - load_vector_2) / norm_2(load_vector_2) << std::endl;
+  VectorType pde_result_1 = viennafvm::solve(system_matrix_1, load_vector_1);
+  VectorType pde_result_2 = viennafvm::solve(system_matrix_2, load_vector_2);
 
 
   //
