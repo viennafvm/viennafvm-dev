@@ -52,31 +52,33 @@ template <typename LinPdeSysT, typename DomainType>
 long create_mapping(LinPdeSysT & pde_system,
                     DomainType const & domain)
 {
-   typedef typename DomainType::config_type              Config;
-   typedef typename Config::cell_tag                     CellTag;
+  typedef typename DomainType::config_type              Config;
+  typedef typename Config::cell_tag                     CellTag;
 
-   typedef typename viennagrid::result_of::point<Config>::type                  PointType;
-   typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type    CellType;
+  typedef typename viennagrid::result_of::point<Config>::type                  PointType;
+  typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type    CellType;
 
-   typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
-   typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
+  typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
+  typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
-   typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
-   typedef typename LinPdeSysT::boundary_key_type  BoundaryKeyType;
+  typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
+  typedef typename LinPdeSysT::boundary_key_type  BoundaryKeyType;
 
-   BoundaryKeyType bnd_key(pde_system.option(0).data_id());
-   MappingKeyType  map_key(pde_system.option(0).data_id());
+  // the index starts from this index ...
+  long map_index = 0;     // viennadata::access<MappingKeyType, long>(map_key)(extract_domain<DomainType>::apply(domain));
+  bool init_done = false; // viennadata::access<MappingKeyType, bool>(map_key)(extract_domain<DomainType>::apply(domain));
 
-   // the index starts from this index ...
-   long map_index = viennadata::access<MappingKeyType, long>(map_key)(extract_domain<DomainType>::apply(domain));
-   bool init_done = viennadata::access<MappingKeyType, bool>(map_key)(extract_domain<DomainType>::apply(domain));
+  std::cout << "map-index: " << map_index << std::endl;
+  std::cout << "init-done: " << init_done << std::endl;
 
-   std::cout << "map-index: " << map_index << std::endl;
-   std::cout << "init-done: " << init_done << std::endl;
+  for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
+  {
+    BoundaryKeyType bnd_key(pde_system.option(pde_index).data_id());
+    MappingKeyType  map_key(pde_system.option(pde_index).data_id());
 
-   //eventually, map indices need to be set to invalid first:
-   if (!init_done)
-   {
+    //eventually, map indices need to be set to invalid first:
+    if (!init_done)
+    {
       typedef typename extract_domain<DomainType>::type   TrueDomainType;
       typedef typename viennagrid::result_of::const_ncell_range<TrueDomainType, CellTag::dim>::type  DomainCellContainer;
       typedef typename viennagrid::result_of::iterator<DomainCellContainer>::type                    DomainCellIterator;
@@ -86,33 +88,35 @@ long create_mapping(LinPdeSysT & pde_system,
                               cit != cells.end();
                             ++cit)
       {
-         viennadata::access<MappingKeyType, long>(map_key)(*cit) = -1;
+        viennadata::access<MappingKeyType, long>(map_key)(*cit) = -2;
       }
       viennadata::access<MappingKeyType, bool>(map_key)(extract_domain<DomainType>::apply(domain)) = true;
-   }
+    }
 
-   CellContainer cells = viennagrid::ncells(domain);
-   for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
-   {
+    CellContainer cells = viennagrid::ncells(domain);
+    for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
+    {
       if (viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit))  // boundary cell
       {
-         //std::cout << "boundary cell" << std::endl;
-         viennadata::access<MappingKeyType, long>(map_key)(*cit) = -1;
+        //std::cout << "boundary cell" << std::endl;
+        viennadata::access<MappingKeyType, long>(map_key)(*cit) = -1;
       }
       else
       {
-         //std::cout << "interior cell" << std::endl;
-         if (viennadata::access<MappingKeyType, long>(map_key)(*cit) < 0) //only assign if no dof assigned yet
-         {
-            viennadata::access<MappingKeyType, long>(map_key)(*cit) = map_index;
-            map_index += pde_system.unknown(0).size();
-         }
+        //std::cout << "interior cell" << std::endl;
+        if (viennadata::access<MappingKeyType, long>(map_key)(*cit) < 0) //only assign if no dof assigned yet
+        {
+          viennadata::access<MappingKeyType, long>(map_key)(*cit) = map_index;
+          map_index += pde_system.unknown(pde_index).size();
+        }
       }
-   }
+    }
 
-   viennadata::access<MappingKeyType, long>(map_key)(extract_domain<DomainType>::apply(domain)) = map_index;
+    viennadata::access<MappingKeyType, long>(map_key)(extract_domain<DomainType>::apply(domain)) = map_index;
 
-   return map_index;
+  }
+
+  return map_index;
 }
 
 

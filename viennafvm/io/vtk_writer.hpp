@@ -38,7 +38,7 @@ namespace viennafvm
     void write_solution_to_VTK_file(VectorType const & result,
                                     std::string filename,
                                     DomainType const & domain,
-                                    long id)
+                                    std::vector<long> id_vector)
     {
       typedef typename DomainType::config_type                                              ConfigType;
       typedef typename ConfigType::cell_tag                                                 CellTag;
@@ -51,33 +51,53 @@ namespace viennafvm
       typedef viennafvm::mapping_key          MappingKeyType;
       typedef viennafvm::boundary_key         BoundaryKeyType;
 
-      MappingKeyType map_key(id);
-      BoundaryKeyType bnd_key(id);
-
-
       std::cout << "* write_solution_to_VTK_file(): Writing result on mesh for later export" << std::endl;
-      CellContainer cells = viennagrid::ncells<CellTag::dim>(domain);
-      for (CellIterator cit = cells.begin();
-                        cit != cells.end();
-                      ++cit)
+      viennagrid::io::vtk_writer<DomainType> my_vtk_writer;
+
+      for (std::size_t i=0; i<id_vector.size(); ++i)
       {
-        long cur_index = viennadata::access<MappingKeyType, long>(map_key)(*cit);
-        if (cur_index > -1)
-          viennadata::access<std::string, double>("vtk_data")(*cit) = result[cur_index];
-        else //use Dirichlet boundary data:
-          viennadata::access<std::string, double>("vtk_data")(*cit) = viennadata::access<BoundaryKeyType, double>(bnd_key)(*cit);
+        long id = id_vector[i];
+        MappingKeyType map_key(id);
+        BoundaryKeyType bnd_key(id);
+
+        std::stringstream ss;
+        ss << "fvm_result" << id;
+        std::string result_string = ss.str(); // also used for passing staff over to VTK
+
+        CellContainer cells = viennagrid::ncells<CellTag::dim>(domain);
+        for (CellIterator cit = cells.begin();
+                          cit != cells.end();
+                        ++cit)
+        {
+          long cur_index = viennadata::access<MappingKeyType, long>(map_key)(*cit);
+          if (cur_index > -1)
+            viennadata::access<std::string, double>(result_string)(*cit) = result[cur_index];
+          else //use Dirichlet boundary data:
+            viennadata::access<std::string, double>(result_string)(*cit) = viennadata::access<BoundaryKeyType, double>(bnd_key)(*cit);
+        }
+
+        viennagrid::io::add_scalar_data_on_cells<std::string, double>(my_vtk_writer, result_string, result_string);
       }
 
       std::cout << "* write_solution_to_VTK_file(): Writing data to '"
                 << filename
                 << "' (can be viewed with e.g. Paraview)" << std::endl;
 
-      viennagrid::io::vtk_writer<DomainType> my_vtk_writer;
-      viennagrid::io::add_scalar_data_on_cells<std::string, double>(my_vtk_writer, "vtk_data", "fvm_result");
       my_vtk_writer(domain, filename);
     }
 
+    template <typename VectorType,
+              typename DomainType>
+    void write_solution_to_VTK_file(VectorType const & result,
+                                    std::string filename,
+                                    DomainType const & domain,
+                                    long id)
+    {
+      std::vector<long> id_vector(1);
+      id_vector[0] = id;
 
+      write_solution_to_VTK_file(result, filename, domain, id_vector);
+    }
   }
 }
 #endif

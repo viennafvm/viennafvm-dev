@@ -54,6 +54,35 @@ namespace viennafvm
         options_.push_back(option);
       }
 
+      void add_pde(equation_type      const & pde,
+                   unknown_cont_type  const & unknowns)
+      {
+        std::size_t current_id = size();
+
+        pdes_.push_back(pde);
+        unknowns_.push_back(unknowns);
+
+        key_cont_type key(1); key[0].push_back("dummy");
+        keys_.push_back(key);
+        options_.push_back(option_type(current_id));
+      }
+
+      void add_pde(equation_type      const & pde,
+                   unknown_type       const & unknown)
+      {
+        std::size_t current_id = size();
+
+        pdes_.push_back(pde);
+
+        unknown_cont_type new_unknown(1); new_unknown[0] = unknown;
+        unknowns_.push_back(new_unknown);
+
+        key_cont_type key(1);
+        key[0] = "dummy";
+        keys_.push_back(key);
+        options_.push_back(option_type(current_id));
+      }
+
       equation_type              pde(size_t index)       const { return pdes_[index]; }
       unknown_cont_type const &  unknown(size_t index)   const { return unknowns_[index]; }
       key_cont_type const &      keys(size_t index)      const { return keys_[index]; }

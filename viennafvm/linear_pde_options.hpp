@@ -35,7 +35,7 @@ namespace viennafvm
   class linear_pde_options
   {
     public:
-      explicit linear_pde_options() : data_id_(0), check_mapping_(false) {}
+      explicit linear_pde_options(long id = 0) : data_id_(id), check_mapping_(false) {}
 
       long data_id() const { return data_id_; }
       void data_id(long new_id) { data_id_ = new_id; }

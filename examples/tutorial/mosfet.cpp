@@ -91,7 +91,9 @@ int main()
   // Specify PDEs:
   //
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
-  Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(u)), 0);
+  FunctionSymbol v(1, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
+  Equation poisson_eq_1 = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(u)), 0);
+  Equation poisson_eq_2 = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(v)), 0);
 
   //
   // Setting boundary information on domain
@@ -103,6 +105,10 @@ int main()
   viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 0.5, 0); // Drain contact
   viennafvm::set_dirichlet_boundary(my_domain.segments()[7], 0.0, 0); // Body contact
 
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[0], 0.5, 1); // Gate contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 0.0, 1); // Source contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 0.7, 1); // Drain contact
+  // Note: second equation uses free-floating body
 
   //
   // Create PDE solver functors: (discussion about proper interface required)
@@ -114,12 +120,18 @@ int main()
   // Solve system and write solution vector to pde_result:
   // (discussion about proper interface required. Introduce a pde_result class?)
   //
-  pde_solver(viennafvm::make_linear_pde_system(poisson_eq, u), my_domain);
+  viennafvm::linear_pde_system<> pde_system;
+  pde_system.add_pde(poisson_eq_1, u); // equation and associated quantity
+  pde_system.add_pde(poisson_eq_2, v); // equation and associated quantity
+  pde_solver(pde_system, my_domain);
 
   //
   // Writing solution back to domain (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "potential", my_domain, 0);
+  std::vector<long> result_ids(2);
+  result_ids[0] = 0;
+  result_ids[1] = 1;
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "potential", my_domain, result_ids);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;

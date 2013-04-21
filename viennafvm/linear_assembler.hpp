@@ -91,14 +91,6 @@ namespace viennafvm
         typedef typename viennagrid::result_of::const_ncell_range<CellType, CellTag::dim-1>::type  FacetOnCellContainer;
         typedef typename viennagrid::result_of::iterator<FacetOnCellContainer>::type               FacetOnCellIterator;
 
-
-         typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
-         MappingKeyType  map_key(pde_system.option(0).data_id());
-
-         typedef typename LinPdeSysT::boundary_key_type  BoundaryKeyType;
-         BoundaryKeyType bnd_key(pde_system.option(0).data_id());
-
-
          std::size_t map_index = viennafvm::create_mapping(pde_system, segment);
 
          std::cout << "map index: " << map_index << std::endl;
@@ -107,101 +99,112 @@ namespace viennafvm
          load_vector.clear();
          load_vector.resize(map_index);
 
-      #ifdef VIENNAFVM_DEBUG
-         std::cout << "strong form: " << std::endl;
-         std::cout << pde_system.pde(0) << std::endl;
-      #endif
 
-         equ_type integral_form = viennafvm::make_integral_form( pde_system.pde(0) );
+         for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
+         {
+           typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
+           MappingKeyType  map_key(pde_system.option(pde_index).data_id());
 
-      #ifdef VIENNAFVM_DEBUG
-         std::cout << "integral form: " << std::endl;
-         std::cout << integral_form << std::endl;
-      #endif
+           typedef typename LinPdeSysT::boundary_key_type  BoundaryKeyType;
+           BoundaryKeyType bnd_key(pde_system.option(pde_index).data_id());
 
 
-        //
-        // Preprocess symbolic representation:
-        //
+        #ifdef VIENNAFVM_DEBUG
+           std::cout << "strong form: " << std::endl;
+           std::cout << pde_system.pde(pde_index) << std::endl;
+        #endif
 
-        //Note: Assuming that LHS holds all matrix terms, while RHS holds all load vector terms
-        expr_type  partial_omega_integrand = extract_surface_integrand(integral_form.lhs());
-        expr_type   matrix_omega_integrand = extract_volume_integrand(integral_form.lhs());
-        expr_type      rhs_omega_integrand = extract_volume_integrand(integral_form.rhs());
+           equ_type integral_form = viennafvm::make_integral_form( pde_system.pde(pde_index) );
 
-        std::cout << "Surface integrand for matrix: " << partial_omega_integrand << std::endl;
-        std::cout << " Volume integrand for matrix: " <<  matrix_omega_integrand << std::endl;
-        std::cout << " Volume integrand for rhs:    " <<     rhs_omega_integrand << std::endl;
+        #ifdef VIENNAFVM_DEBUG
+           std::cout << "integral form: " << std::endl;
+           std::cout << integral_form << std::endl;
+        #endif
 
-        viennafvm::flux_handler<CellType, FacetType, interface_type>  flux(partial_omega_integrand, pde_system.unknown(0)[0]);
 
-        expr_type substituted_matrix_omega_integrand  = viennamath::diff(matrix_omega_integrand, pde_system.unknown(0)[0]);
+            //
+            // Preprocess symbolic representation:
+            //
 
-        std::vector<double> p(3); //dummy vector for evaluation
+            //Note: Assuming that LHS holds all matrix terms, while RHS holds all load vector terms
+            expr_type  partial_omega_integrand = extract_surface_integrand(integral_form.lhs());
+            expr_type   matrix_omega_integrand = extract_volume_integrand(integral_form.lhs());
+            expr_type      rhs_omega_integrand = extract_volume_integrand(integral_form.rhs());
 
-        //
-        // Preprocess domain
-        //
-        setup(segment);
+            std::cout << "Surface integrand for matrix: " << partial_omega_integrand << std::endl;
+            std::cout << " Volume integrand for matrix: " <<  matrix_omega_integrand << std::endl;
+            std::cout << " Volume integrand for rhs:    " <<     rhs_omega_integrand << std::endl;
 
-        //
-        // Actual assembly:
-        //
-        CellContainer cells = viennagrid::ncells(segment);
-        for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
-        {
-          long row_index = viennadata::access<MappingKeyType, long>(map_key)(*cit);
+            viennafvm::flux_handler<CellType, FacetType, interface_type>  flux(partial_omega_integrand, pde_system.unknown(pde_index)[0]);
 
-          if (row_index < 0)
-            continue;
+            expr_type substituted_matrix_omega_integrand  = viennamath::diff(matrix_omega_integrand, pde_system.unknown(pde_index)[0]);
 
-          //flux.set_inner_cell(*cit);
+            std::vector<double> p(3); //dummy vector for evaluation
 
-          //
-          // Boundary integral terms:
-          //
-          FacetOnCellContainer facets_on_cell = viennagrid::ncells(*cit);
-          for (FacetOnCellIterator focit  = facets_on_cell.begin();
-                                   focit != facets_on_cell.end();
-                                 ++focit)
-          {
-            CellType const * other_cell = detail::other_cell_of_facet(*focit, *cit, segment);
+            //
+            // Preprocess domain
+            //
+            setup(segment);
 
-            if (other_cell)
+            //
+            // Actual assembly:
+            //
+            CellContainer cells = viennagrid::ncells(segment);
+            for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
             {
-              long col_index = viennadata::access<MappingKeyType, long>(map_key)(*other_cell);
-              double effective_facet_area = viennadata::access<viennafvm::facet_area_key, double>()(*focit);
-              //std::cout << "facet area: " << effective_facet_area << std::endl;
+              long row_index = viennadata::access<MappingKeyType, long>(map_key)(*cit);
 
-              if (col_index < 0)
+              if (row_index < 0)
+                continue;
+
+              //flux.set_inner_cell(*cit);
+
+              //
+              // Boundary integral terms:
+              //
+              FacetOnCellContainer facets_on_cell = viennagrid::ncells(*cit);
+              for (FacetOnCellIterator focit  = facets_on_cell.begin();
+                                       focit != facets_on_cell.end();
+                                     ++focit)
               {
-                double boundary_value = viennadata::access<BoundaryKeyType, double>(bnd_key)(*other_cell);
+                CellType const * other_cell = detail::other_cell_of_facet(*focit, *cit, segment);
 
-                load_vector(row_index) -= flux.out(*cit, *focit, *other_cell) * effective_facet_area * boundary_value;
+                if (other_cell)
+                {
+                  long col_index = viennadata::access<MappingKeyType, long>(map_key)(*other_cell);
+                  double effective_facet_area = viennadata::access<viennafvm::facet_area_key, double>()(*focit);
+                  //std::cout << "facet area: " << effective_facet_area << std::endl;
+
+                  if (col_index < 0)
+                  {
+                    double boundary_value = viennadata::access<BoundaryKeyType, double>(bnd_key)(*other_cell);
+
+                    load_vector(row_index) -= flux.out(*cit, *focit, *other_cell) * effective_facet_area * boundary_value;
+                  }
+                  else
+                    system_matrix(row_index, col_index) += flux.out(*cit, *focit, *other_cell) * effective_facet_area;
+
+                  system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell) * effective_facet_area;
+                }
               }
-              else
-                system_matrix(row_index, col_index) += flux.out(*cit, *focit, *other_cell) * effective_facet_area;
 
-              system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell) * effective_facet_area;
-            }
-          }
+              //
+              // Volume terms
+              //
+              double cell_volume      = viennagrid::volume(*cit);
 
-          //
-          // Volume terms
-          //
-          double cell_volume      = viennagrid::volume(*cit);
+              // Matrix:
+              // TODO: Integrand may depend on other solution variable. Need to wrap this appropriately here before handing this over to ViennaMath
+              system_matrix(row_index, row_index) += viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume;
 
-          // Matrix:
-          // TODO: Integrand may depend on other solution variable. Need to wrap this appropriately here before handing this over to ViennaMath
-          system_matrix(row_index, row_index) += viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume;
+              // RHS:
+              // TODO: Integrand may depend on other solution variable. Need to wrap this appropriately here before handing this over to ViennaMath
+              load_vector(row_index) += viennamath::eval(rhs_omega_integrand, p) * cell_volume;
+              //std::cout << "Writing " << viennamath::eval(omega_integrand, p) << " * " << cell_volume << " to rhs at " << row_index << std::endl;
 
-          // RHS:
-          // TODO: Integrand may depend on other solution variable. Need to wrap this appropriately here before handing this over to ViennaMath
-          load_vector(row_index) += viennamath::eval(rhs_omega_integrand, p) * cell_volume;
-          //std::cout << "Writing " << viennamath::eval(omega_integrand, p) << " * " << cell_volume << " to rhs at " << row_index << std::endl;
-        }
+            } // for cells
 
-
+          } // for pde_index
       } // functor
 
     private:
