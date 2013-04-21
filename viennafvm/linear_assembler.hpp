@@ -127,9 +127,9 @@ namespace viennafvm
             //
 
             //Note: Assuming that LHS holds all matrix terms, while RHS holds all load vector terms
-            expr_type  partial_omega_integrand = extract_surface_integrand(integral_form.lhs());
-            expr_type   matrix_omega_integrand = extract_volume_integrand(integral_form.lhs());
-            expr_type      rhs_omega_integrand = extract_volume_integrand(integral_form.rhs());
+           expr_type  partial_omega_integrand = extract_surface_integrand<FacetType>(integral_form.lhs(), pde_system.unknown(pde_index)[0]);
+           expr_type   matrix_omega_integrand = extract_volume_integrand<CellType>(integral_form.lhs(), pde_system.unknown(pde_index)[0]);
+           expr_type      rhs_omega_integrand = extract_volume_integrand<CellType>(integral_form.rhs(), pde_system.unknown(pde_index)[0]);
 
             std::cout << "Surface integrand for matrix: " << partial_omega_integrand << std::endl;
             std::cout << " Volume integrand for matrix: " <<  matrix_omega_integrand << std::endl;

@@ -74,9 +74,19 @@ namespace viennafvm
   class facet_distance_key {};
   class facet_area_key {};
 
+  template <typename CellType, typename InterfaceType>
+  class ncell_quantity;
 }
 
 
+namespace viennamath
+{
+  namespace traits
+  {
+    template <typename InterfaceType, typename CellType>
+    InterfaceType * clone(viennafvm::ncell_quantity<CellType, InterfaceType> const & c);
+  }
+}
 
 namespace viennadata
 {

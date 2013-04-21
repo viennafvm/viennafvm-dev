@@ -157,7 +157,7 @@ namespace viennafvm
       std::string deep_str() const
       {
         std::stringstream ss;
-        ss << "cell_quan(" << current_cell << ")";
+        ss << "cell_quan<" << CellType::tag::dim << ">(" << current_cell << ")";
         return ss.str();
       }
       numeric_type unwrap() const { throw "Cannot evaluate unknown_func!"; }
@@ -207,10 +207,10 @@ namespace viennafvm
         current_cell = &cell;
       }
 
-      template <typename T>
-      void wrap_constant(T const & t)
+      template <typename KeyType>
+      void wrap_constant(KeyType const & k)
       {
-        detail::ncell_quantity_wrapper<CellType, numeric_type> temp( new detail::ncell_quantity_constant<CellType, T, numeric_type>(t) );
+        detail::ncell_quantity_wrapper<CellType, numeric_type> temp( new detail::ncell_quantity_constant<CellType, KeyType, numeric_type>(k) );
         accessor = temp;
       }
 
@@ -275,7 +275,6 @@ namespace viennafvm
                                                             new viennamath::op_binary<viennamath::op_div<viennamath::default_numeric_type>, InterfaceType >(),
                                                             rhs.clone()));
   }
-
 
   //
   // Convenience setter
@@ -385,4 +384,19 @@ namespace viennafvm
   }
 
 }
+
+
+// generic clone:
+namespace viennamath
+{
+
+  /** @brief Any generic free functions for unifying interfaces are defined here. */
+  namespace traits
+  {
+    template <typename InterfaceType, typename CellType>
+    InterfaceType * clone(viennafvm::ncell_quantity<CellType, InterfaceType> const & c) { return c.clone(); }
+  }
+}
+
+
 #endif

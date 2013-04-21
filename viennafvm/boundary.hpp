@@ -85,6 +85,25 @@ namespace viennafvm
     viennadata::access<BoundaryKey, std::vector<NumericT> >(BoundaryKey(id))(c) = value;
   }
 
+  //
+  // allow the use of function symbols (more intuitive)
+  //
+
+  template <typename CellType, typename InterfaceType>
+  void set_dirichlet_boundary(CellType const & c,
+                              numeric_type const & value,
+                              viennamath::rt_function_symbol<InterfaceType> const & func_symbol)
+  {
+    set_dirichlet_boundary(c, value, func_symbol.id());
+  }
+
+  template <typename CellType, typename NumericT, typename InterfaceType>
+  void set_dirichlet_boundary(CellType const & c,
+                              std::vector<NumericT> const & value,
+                              viennamath::rt_function_symbol<InterfaceType> const & func_symbol)
+  {
+    set_dirichlet_boundary(c, value, func_symbol.id());
+  }
 
 }
 #endif
