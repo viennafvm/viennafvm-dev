@@ -497,7 +497,7 @@ namespace viennafvm
         gradient_scanner(integrand.get());
         if (gradient_scanner.found())
         {
-          std::cout << "Gradient found in flux expression!" << std::endl;
+          //std::cout << "Gradient found in flux expression!" << std::endl;
         }
         else
         {
@@ -506,12 +506,6 @@ namespace viennafvm
         }
 
         fsymbol_scanner(integrand.get());
-        if (fsymbol_scanner.found())
-        {
-          std::cout << "Function symbol found!" << std::endl;
-        }
-        else
-          std::cout << "Function symbol NOT found!" << std::endl;
 
         //
         // Now prepare expression
@@ -522,11 +516,11 @@ namespace viennafvm
 
         arg_extractor(integrand.get());
         viennamath::rt_expr<InterfaceType> gradient_argument = arg_extractor.get();
-        std::cout << "Gradient argument: " << gradient_argument << std::endl;
+        std::cout << " - Gradient argument: " << gradient_argument << std::endl;
 
         grad_prefactor_extractor(integrand.get());
         viennamath::rt_expr<InterfaceType> gradient_prefactor  = grad_prefactor_extractor.get();
-        std::cout << "Gradient prefactor: " << gradient_prefactor << std::endl;
+        std::cout << " - Gradient prefactor: " << gradient_prefactor << std::endl;
 
         // Instantiate residual accessor for nonlinear terms:
         viennafvm::ncell_quantity<CellType, InterfaceType> current_iterate;
@@ -543,7 +537,7 @@ namespace viennafvm
 
         if (gradient_scanner.found() && fsymbol_scanner.found()) //advection-diffusion
         {
-          std::cout << "Advection-Diffusion detected!" << std::endl;
+          std::cout << " - Detected type of equation: Advection-Diffusion" << std::endl;
           has_advection_ = true;
 
           // extract prefactor of 'u':
@@ -551,7 +545,7 @@ namespace viennafvm
 
           fs_prefactor_extractor(integrand.get());
           viennamath::rt_expr<InterfaceType> fs_prefactor  = fs_prefactor_extractor.get();
-          std::cout << "Function symbol prefactor: " << fs_prefactor << std::endl;
+          std::cout << " - Prefactor of " << u << ": " << fs_prefactor << std::endl;
 
           //
           // Canonical form: A * grad(n) + B * n   along straight line of length d
@@ -562,11 +556,11 @@ namespace viennafvm
           A_ = replaced_gradient_prefactor * distance;
           B_ = fs_prefactor;
 
-          std::cout << "B/A: " << B_ / A_ << std::endl;
+          std::cout << " - Expression for stabilization term B/(A*d): " << B_ / A_ << std::endl;
         }
         else //pure diffusion
         {
-          std::cout << "Purely diffusive problem detected!" << std::endl;
+          std::cout << " - Detected type of equation: Purely Diffusive" << std::endl;
 
           // replace grad() by 1/distance in expression, where 1/distance is a cell quantity
 
@@ -587,8 +581,8 @@ namespace viennafvm
           in_integrand_  = replaced_gradient_prefactor * modified_gradient;
           out_integrand_ = replaced_gradient_prefactor * modified_gradient;
 
-          std::cout << "Expression for in-flux:  " << in_integrand_ << std::endl;
-          std::cout << "Expression for out-flux: " << out_integrand_ << std::endl;
+          std::cout << " - Expression for in-flux:  " << in_integrand_ << std::endl;
+          std::cout << " - Expression for out-flux: " << out_integrand_ << std::endl;
         }
 
       }
@@ -609,13 +603,12 @@ namespace viennafvm
 
           double val_A = viennamath::eval(A_, p);
           double val_B = viennamath::eval(B_, p);
-          double d     = viennadata::access<viennafvm::facet_distance_key, double>()(facet);
-          double exponent = val_B / val_A / d;
+          double exponent = val_B / val_A;
 
           if ( std::abs(exponent) > 0.01)
             return val_B / (std::exp(exponent) - 1);
           else
-            return val_A / d;
+            return val_A;
         }
 
         // pure diffusion:

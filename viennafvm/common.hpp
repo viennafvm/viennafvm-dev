@@ -20,27 +20,58 @@
 
 #include <math.h>
 
-#include <viennagrid/domain.hpp>
-#include <viennagrid/iterators.hpp>
-#include <viennagrid/point.hpp>
+#include "viennagrid/domain.hpp"
+#include "viennagrid/iterators.hpp"
+#include "viennagrid/point.hpp"
+
+#include "viennamath/runtime/function_symbol.hpp"
+
+#include "viennafvm/forwards.h"
 
 namespace viennafvm
 {
 
-    template <typename DeviceType, typename VectorType>
-    void updateQuantity(DeviceType const & domain, VectorType & quantity, VectorType const & update)
-    {
-      for (unsigned long index_x = 0; index_x < domain.size_x(); ++index_x)
-      {
-        for (unsigned long index_y = 0; index_y < domain.size_y(); ++index_y)
-        {
-          if (domain.isDirichletBoundary(index_x, index_y))
-              continue;
+  template <typename ConfigType, typename InterfaceType>
+  void disable_quantity(viennagrid::segment_t<ConfigType> const & seg,
+                        viennamath::rt_function_symbol<InterfaceType> const & fs)
+  {
+    typedef viennafvm::disable_quantity_key   DisablerKey;
+    typedef viennagrid::segment_t<ConfigType> SegmentType;
+    typedef typename ConfigType::cell_tag     CellTag;
 
-          quantity(domain.getDOF(index_x, index_y)) += update(domain.getDOF(index_x, index_y));
-        }
-      }
+    typedef typename viennagrid::result_of::ncell<ConfigType, CellTag::dim>::type               CellType;
+    typedef typename viennagrid::result_of::const_ncell_range<SegmentType, CellTag::dim>::type  CellContainer;
+    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
+
+    DisablerKey key(fs.id());
+
+    CellContainer cells = viennagrid::ncells(seg);
+    for (CellIterator cit  = cells.begin();
+                      cit != cells.end();
+                    ++cit)
+    {
+      //set flag:
+      viennadata::access<DisablerKey, bool>(key)(*cit) = true;
     }
+  }
+
+  template <typename ConfigType, typename ElementTag>
+  bool is_quantity_disabled(viennagrid::element_t<ConfigType, ElementTag> const & cell,
+                            long id)
+  {
+    typedef viennafvm::disable_quantity_key   DisablerKey;
+
+    DisablerKey key(id);
+
+    return viennadata::access<DisablerKey, bool>(key)(cell);
+  }
+
+  template <typename ConfigType, typename ElementTag>
+  bool is_quantity_enabled(viennagrid::element_t<ConfigType, ElementTag> const & cell,
+                           long id)
+  {
+    return !is_quantity_disabled(cell, id);
+  }
 
 } //namespace viennashe
 

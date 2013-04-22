@@ -19,6 +19,7 @@
 
 #include <vector>
 #include "viennafvm/forwards.h"
+#include "viennafvm/common.hpp"
 
 #include "viennagrid/forwards.h"
 #include "viennagrid/iterators.hpp"
@@ -64,17 +65,15 @@ long create_mapping(LinPdeSysT & pde_system,
   typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
   typedef typename LinPdeSysT::boundary_key_type  BoundaryKeyType;
 
-  // the index starts from this index ...
-  long map_index = 0;     // viennadata::access<MappingKeyType, long>(map_key)(extract_domain<DomainType>::apply(domain));
-  bool init_done = false; // viennadata::access<MappingKeyType, bool>(map_key)(extract_domain<DomainType>::apply(domain));
-
-  std::cout << "map-index: " << map_index << std::endl;
-  std::cout << "init-done: " << init_done << std::endl;
+  long map_index = 0;
+  bool init_done = false;
 
   for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
   {
-    BoundaryKeyType bnd_key(pde_system.option(pde_index).data_id());
-    MappingKeyType  map_key(pde_system.option(pde_index).data_id());
+    long unknown_id = pde_system.option(pde_index).data_id();
+
+    BoundaryKeyType bnd_key(unknown_id);
+    MappingKeyType  map_key(unknown_id);
 
     //eventually, map indices need to be set to invalid first:
     if (!init_done)
@@ -88,7 +87,7 @@ long create_mapping(LinPdeSysT & pde_system,
                               cit != cells.end();
                             ++cit)
       {
-        viennadata::access<MappingKeyType, long>(map_key)(*cit) = -2;
+        viennadata::access<MappingKeyType, long>(map_key)(*cit) = viennafvm::QUANTITY_DISABLED; // some negative value
       }
       viennadata::access<MappingKeyType, bool>(map_key)(extract_domain<DomainType>::apply(domain)) = true;
     }
@@ -99,9 +98,9 @@ long create_mapping(LinPdeSysT & pde_system,
       if (viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit))  // boundary cell
       {
         //std::cout << "boundary cell" << std::endl;
-        viennadata::access<MappingKeyType, long>(map_key)(*cit) = -1;
+        viennadata::access<MappingKeyType, long>(map_key)(*cit) = viennafvm::DIRICHLET_BOUNDARY; // some negative value
       }
-      else
+      else if (viennafvm::is_quantity_enabled(*cit, unknown_id))
       {
         //std::cout << "interior cell" << std::endl;
         if (viennadata::access<MappingKeyType, long>(map_key)(*cit) < 0) //only assign if no dof assigned yet

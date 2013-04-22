@@ -13,6 +13,9 @@
 
 #define VIENNAFVM_DEBUG
 
+// Define NDEBUG to get any reasonable performance with ublas:
+#define NDEBUG
+
 // include necessary system headers
 #include <iostream>
 
@@ -89,7 +92,7 @@ int main()
   // Initialize cell_quantity
   //
   viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( permittivity_key() );
-  viennafvm::set_quantity_region(permittivity_key(), my_domain, true); //permittivity is defined everywhere
+  viennafvm::set_quantity_region(permittivity_key(), my_domain, true);               // permittivity is (for simplicity) defined everywhere
   viennafvm::set_quantity_value(permittivity_key(), my_domain, 11.7);                // relative permittivity of silicon
   viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[2], 15.6);  // relative permittivty of HfO2
 
@@ -98,9 +101,9 @@ int main()
   //
   // Specify PDEs:
   //
-  FunctionSymbol psi(0);   // potential
-  FunctionSymbol n(1);     // electron concentration
-  FunctionSymbol p(2);     // hole concentration
+  FunctionSymbol psi(0);   // potential, using id=0
+  FunctionSymbol n(1);     // electron concentration, using id=1
+  FunctionSymbol p(2);     // hole concentration, using id=2
 
   double q  = 1.6e-19;
   double kB = 1.38e-23; // Boltzmann constant
@@ -121,19 +124,41 @@ int main()
   viennafvm::set_dirichlet_boundary(my_domain.segments()[0], 0.5, psi); // Gate contact
   viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 0.0, psi); // Source contact
   viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 0.5, psi); // Drain contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[7], 0.0, psi); // Body contact
+  // using floating body, hence commented: viennafvm::set_dirichlet_boundary(my_domain.segments()[7], 0.0, psi); // Body contact
 
   // electron density
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 0.0, n); // Source contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 0.7, n); // Drain contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 1e20, n); // Source contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 1e20, n); // Drain contact
 
   // hole density
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 0.0, p); // Source contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 0.7, p); // Drain contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 1e12, p); // Source contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 1e12, p); // Drain contact
 
 
   //
-  // Create PDE solver functors: (discussion about proper interface required)
+  // Set quantity mask: By default, a quantity is defined on the entire domain.
+  //                    Boundary equations are already specified above.
+  //                    All that is left is to specify regions where a quantity 'does not make sense'
+  //                    Here, we need to disable {n,p} in the gate oxide and the gate
+  //
+
+  viennafvm::disable_quantity(my_domain.segments()[0], n); // Gate contact
+  viennafvm::disable_quantity(my_domain.segments()[2], n); // Gate oxide
+  // add body contact if not using floating body
+
+  viennafvm::disable_quantity(my_domain.segments()[0], p); // Gate contact
+  viennafvm::disable_quantity(my_domain.segments()[2], p); // Gate oxide
+  // add body contact if not using floating body
+
+
+  //
+  // TODO: Set initial guess and doping
+  //
+
+
+
+  //
+  // Create PDE solver instance:
   //
   viennafvm::pde_solver<> pde_solver;
 
@@ -144,22 +169,24 @@ int main()
   //
   viennafvm::linear_pde_system<> pde_system;
   pde_system.add_pde(poisson_eq, psi); // equation and associated quantity
-  pde_system.add_pde(cont_eq_n, n); // equation and associated quantity
-  pde_system.add_pde(cont_eq_p, p); // equation and associated quantity
-  pde_solver(pde_system, my_domain);
+  //pde_system.add_pde(cont_eq_n, n);    // equation and associated quantity
+  //pde_system.add_pde(cont_eq_p, p);    // equation and associated quantity
+
+  pde_solver(pde_system, my_domain);   // weird math happening in here ;-)
+
 
   //
-  // Writing solution back to domain (discussion about proper way of returning a solution required...)
+  // Writing all solution variables back to domain
   //
-  std::vector<long> result_ids(3);
-  result_ids[0] = 0;
-  result_ids[1] = 1;
-  result_ids[1] = 2;
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "potential", my_domain, result_ids);
+  std::vector<long> result_ids(pde_system.size());
+  for (std::size_t i=0; i<pde_system.size(); ++i)
+    result_ids[i] = pde_system.unknown(i)[0].id();
 
-  std::cout << "*****************************************" << std::endl;
-  std::cout << "* Poisson solver finished successfully! *" << std::endl;
-  std::cout << "*****************************************" << std::endl;
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "mosfet", my_domain, result_ids);
+
+  std::cout << "********************************************" << std::endl;
+  std::cout << "* MOSFET simulation finished successfully! *" << std::endl;
+  std::cout << "********************************************" << std::endl;
   return EXIT_SUCCESS;
 }
 

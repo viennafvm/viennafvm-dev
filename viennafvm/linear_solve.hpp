@@ -38,7 +38,7 @@ namespace viennafvm
     std::cout << "* solve(): Solving linear system" << std::endl;
 
     result = viennacl::linalg::solve(system_matrix, load_vector, viennacl::linalg::bicgstab_tag());
-    std::cout << "* solve(): Residual: " << norm_2(prod(system_matrix, result) - load_vector) << std::endl;
+    std::cout << "* solve(): Residual: " << norm_2(prod(system_matrix, result) - load_vector) / norm_2(load_vector) << std::endl;
 
     return result;
   }

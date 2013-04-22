@@ -70,12 +70,31 @@ namespace viennafvm
       long id_;
   };
 
+  class disable_quantity_key
+  {
+    public:
+      disable_quantity_key(long id) : id_(id) {}
+
+      bool operator<(disable_quantity_key const & other) const { return id_ < other.id_; }
+
+    private:
+      long id_;
+  };
+
   //box-integration related:
   class facet_distance_key {};
   class facet_area_key {};
 
   template <typename CellType, typename InterfaceType>
   class ncell_quantity;
+
+
+  // some constants:
+  enum
+  {
+    QUANTITY_DISABLED  = -2,
+    DIRICHLET_BOUNDARY = -1
+  };
 }
 
 
