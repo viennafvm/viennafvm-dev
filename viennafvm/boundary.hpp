@@ -105,5 +105,21 @@ namespace viennafvm
     set_dirichlet_boundary(c, value, func_symbol.id());
   }
 
+  template <typename CellType, typename InterfaceType>
+  bool is_dirichlet_boundary(CellType const & c, viennamath::rt_function_symbol<InterfaceType> const & func_symbol)
+  {
+    typedef viennafvm::boundary_key           BoundaryKey;
+
+    return viennadata::access<BoundaryKey, bool >(BoundaryKey(func_symbol.id()))(c);
+  }
+
+  template <typename CellType, typename InterfaceType>
+  numeric_type get_dirichlet_boundary(CellType const & c, viennamath::rt_function_symbol<InterfaceType> const & func_symbol)
+  {
+    typedef viennafvm::boundary_key           BoundaryKey;
+
+    return viennadata::access<BoundaryKey, numeric_type >(BoundaryKey(func_symbol.id()))(c);
+  }
+
 }
 #endif

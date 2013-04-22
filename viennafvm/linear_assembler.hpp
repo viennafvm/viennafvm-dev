@@ -35,32 +35,26 @@
 #include "viennamath/manipulation/eval.hpp"
 #include "viennamath/manipulation/diff.hpp"
 
+#include "viennadata/api.hpp"
+
 //#define VIENNAFVMDEBUG
 
 namespace viennafvm
 {
-  namespace detail
+  template <typename CellType, typename FacetType>
+  void compute_gradients_for_cell(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell, long id)
   {
-    template <typename FacetType, typename CellType, typename DomainType>
-    CellType const * other_cell_of_facet(FacetType const & facet, CellType const & cell, DomainType const & domain)
-    {
-      typedef typename CellType::tag      CellTag;
+    current_iterate_key key(id);
 
-      typedef typename viennagrid::result_of::const_ncell_range<FacetType, CellTag::dim>::type  CellOnFacetRange;
-      typedef typename viennagrid::result_of::iterator<CellOnFacetRange>::type                  CellOnFacetIterator;
+    double value_inner = viennadata::access<current_iterate_key, double>(key)(inner_cell);
+    double value_outer = viennadata::access<current_iterate_key, double>(key)(outer_cell);
+    double distance    = viennadata::access<facet_distance_key, double>(facet_distance_key())(facet);
 
-      CellOnFacetRange    cells = viennagrid::ncells<CellTag::dim>(facet, domain);
-      CellOnFacetIterator cofit = cells.begin();
-
-      if (&(*cofit) == &cell) // we know the first cell pointed to by the iterator already, so we pick the 'other'
-        ++cofit;
-
-      if (cofit != cells.end())
-        return &(*cofit);
-
-      return NULL;  // facet is part of one cell only, so there is no 'other' cell
-    }
+    viennadata::access<current_iterate_key, double>(key)(facet) = (value_outer - value_inner) / distance;
   }
+
+
+
 
   class linear_assembler
   {
@@ -69,7 +63,7 @@ namespace viennafvm
                 typename SegmentT,
                 typename MatrixT,
                 typename VectorT>
-      void operator()(LinPdeSysT pde_system,
+      void operator()(LinPdeSysT const & pde_system,
                       SegmentT   const & segment,
                       MatrixT          & system_matrix,
                       VectorT          & load_vector)
@@ -129,12 +123,14 @@ namespace viennafvm
             //
 
             //Note: Assuming that LHS holds all matrix terms, while RHS holds all load vector terms
-           expr_type  partial_omega_integrand = extract_surface_integrand<FacetType>(integral_form.lhs(), pde_system.unknown(pde_index)[0]);
-           expr_type   matrix_omega_integrand = extract_volume_integrand<CellType>(integral_form.lhs(), pde_system.unknown(pde_index)[0]);
-           expr_type      rhs_omega_integrand = extract_volume_integrand<CellType>(integral_form.rhs(), pde_system.unknown(pde_index)[0]);
+            expr_type  partial_omega_integrand = extract_surface_integrand<FacetType>(integral_form.lhs(), pde_system.unknown(pde_index)[0]);
+            expr_type   matrix_omega_integrand = extract_volume_integrand<CellType>(integral_form.lhs(), pde_system.unknown(pde_index)[0]);
+            expr_type      rhs_omega_integrand = extract_volume_integrand<CellType>(integral_form.rhs(), pde_system.unknown(pde_index)[0]);
+            expr_type  stabilization_integrand = prepare_for_evaluation<CellType>(pde_system.option(pde_index).damping_term(), pde_system.unknown(pde_index)[0]);
 
             std::cout << " - Surface integrand for matrix: " << partial_omega_integrand << std::endl;
             std::cout << " - Volume integrand for matrix:  " <<  matrix_omega_integrand << std::endl;
+            std::cout << " - Stabilization for matrix:     " << stabilization_integrand << std::endl;
             std::cout << " - Volume integrand for rhs:     " <<     rhs_omega_integrand << std::endl;
 
             viennafvm::flux_handler<CellType, FacetType, interface_type>  flux(partial_omega_integrand, pde_system.unknown(pde_index)[0]);
@@ -169,25 +165,33 @@ namespace viennafvm
                                        focit != facets_on_cell.end();
                                      ++focit)
               {
-                CellType const * other_cell = detail::other_cell_of_facet(*focit, *cit, segment);
+                CellType const * other_cell = util::other_cell_of_facet(*focit, *cit, segment);
 
                 if (other_cell)
                 {
                   long col_index = viennadata::access<MappingKeyType, long>(map_key)(*other_cell);
                   double effective_facet_area = viennadata::access<viennafvm::facet_area_key, double>()(*focit);
-                  //std::cout << "facet area: " << effective_facet_area << std::endl;
+
+                  for (std::size_t i=0; i<pde_system.size(); ++i)
+                    compute_gradients_for_cell(*cit, *focit, *other_cell, pde_system.unknown(i)[0].id());
 
                   if (col_index == viennafvm::DIRICHLET_BOUNDARY)
                   {
                     double boundary_value = viennadata::access<BoundaryKeyType, double>(bnd_key)(*other_cell);
 
-                    load_vector(row_index) -= flux.out(*cit, *focit, *other_cell) * effective_facet_area * boundary_value;
+                    // updates are homogeneous, hence no direct contribution to RHS here. Might change later when boundary values are slowly increased.
                     system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell) * effective_facet_area;
+
+                    load_vector(row_index) -= flux.out(*cit, *focit, *other_cell) * effective_facet_area * boundary_value;
+                    load_vector(row_index) += flux.in(*cit, *focit, *other_cell) * effective_facet_area * get_current_iterate(*cit, pde_system.unknown(pde_index)[0]);
                   }
                   else if (col_index >= 0)
                   {
                     system_matrix(row_index, col_index) += flux.out(*cit, *focit, *other_cell) * effective_facet_area;
                     system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell) * effective_facet_area;
+
+                    load_vector(row_index) -= flux.out(*cit, *focit, *other_cell) * effective_facet_area * get_current_iterate(*other_cell, pde_system.unknown(pde_index)[0]);
+                    load_vector(row_index) += flux.in(*cit, *focit, *other_cell) * effective_facet_area * get_current_iterate(*cit, pde_system.unknown(pde_index)[0]);
                   }
                   // else: nothing to do because other cell is not considered for this quantity
 
@@ -199,10 +203,13 @@ namespace viennafvm
               //
               double cell_volume      = viennagrid::volume(*cit);
 
-              // Matrix:
+              // Matrix (including residual contributions)
               system_matrix(row_index, row_index) += viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume;
+              load_vector(row_index) -= viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume * get_current_iterate(*cit, pde_system.unknown(pde_index)[0]);
 
-              // RHS:
+              system_matrix(row_index, row_index) += viennamath::eval(stabilization_integrand, p) * cell_volume;
+
+              // RHS
               load_vector(row_index) += viennamath::eval(rhs_omega_integrand, p) * cell_volume;
               //std::cout << "Writing " << viennamath::eval(omega_integrand, p) << " * " << cell_volume << " to rhs at " << row_index << std::endl;
 

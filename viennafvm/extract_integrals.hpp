@@ -226,6 +226,16 @@ namespace viennafvm {
     return viennamath::simplify(replaced_integrand);
   }
 
+  /** @brief Replaces all function symbols with their respective cell accessors */
+  template <typename NCellType, typename InterfaceType>
+  viennamath::rt_expr<InterfaceType> prepare_for_evaluation(viennamath::rt_expr<InterfaceType> const & ex, viennamath::rt_function_symbol<InterfaceType> const & u)
+  {
+    // replace 'other' function symbols (not the same as u) with ncell_quantity:
+    viennamath::rt_manipulation_wrapper<InterfaceType> wrapped_function_symbol_replacer( new detail::function_symbol_replacer<NCellType, InterfaceType>(u) );
+    viennamath::rt_expr<InterfaceType> replaced_ex(ex.get()->recursive_manipulation( wrapped_function_symbol_replacer ));
+
+    return viennamath::simplify(replaced_ex);
+  }
 
 
 

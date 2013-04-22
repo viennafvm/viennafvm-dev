@@ -73,6 +73,19 @@ namespace viennafvm
     return !is_quantity_disabled(cell, id);
   }
 
+
+  template <typename CellType, typename InterfaceType>
+  numeric_type get_current_iterate(CellType const & cell, viennamath::rt_function_symbol<InterfaceType> const & u)
+  {
+    return viennadata::access<current_iterate_key, numeric_type>(current_iterate_key(u.id()))(cell);
+  }
+
+  template <typename CellType, typename InterfaceType>
+  void set_current_iterate(CellType const & cell, viennamath::rt_function_symbol<InterfaceType> const & u, numeric_type value)
+  {
+    viennadata::access<current_iterate_key, numeric_type>(current_iterate_key(u.id()))(cell) = value;
+  }
+
 } //namespace viennashe
 
 #endif

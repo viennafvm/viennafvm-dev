@@ -43,6 +43,8 @@ namespace viennafvm
       typedef std::vector< std::string >                    key_cont_type;
       typedef viennafvm::linear_pde_options                 option_type;
 
+      linear_pde_system() : is_linear_(true) {}
+
       void add_pde(equation_type      const & pde,
                    unknown_cont_type  const & unknowns,
                    key_cont_type      const & keys,
@@ -83,10 +85,15 @@ namespace viennafvm
         options_.push_back(option_type(current_id));
       }
 
-      equation_type              pde(size_t index)       const { return pdes_[index]; }
+      equation_type const &      pde(size_t index)       const { return pdes_[index]; }
       unknown_cont_type const &  unknown(size_t index)   const { return unknowns_[index]; }
       key_cont_type const &      keys(size_t index)      const { return keys_[index]; }
-      option_type                option(size_t index)    const { return options_[index]; }
+      option_type const &        option(size_t index)    const { return options_[index]; }
+
+      option_type &              option(size_t index)          { return options_[index]; }
+
+      bool is_linear() const { return is_linear_; }
+      void is_linear(bool b) { is_linear_ = b; }
 
       size_t size() const { return pdes_.size(); }
 
@@ -95,6 +102,7 @@ namespace viennafvm
       std::vector< unknown_cont_type >    unknowns_;
       std::vector< key_cont_type >        keys_;
       std::vector< option_type >          options_;
+      bool is_linear_;
   };
 
 

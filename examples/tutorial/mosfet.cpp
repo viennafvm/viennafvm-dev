@@ -25,6 +25,7 @@
 #include "viennafvm/io/vtk_writer.hpp"
 #include "viennafvm/boundary.hpp"
 #include "viennafvm/pde_solver.hpp"
+#include "viennafvm/initial_guess.hpp"
 
 // ViennaGrid includes:
 #include "viennagrid/domain.hpp"
@@ -44,7 +45,11 @@
 #include <boost/numeric/ublas/operation.hpp>
 #include <boost/numeric/ublas/operation_sparse.hpp>
 
-
+//
+// Defining a bunch of accessor keys for physical quantities.
+// These should be part of a semiconductor application based on ViennaFVM, not of ViennaFVM itself
+// (which is just a generic finite volume solver and agnostic with respect to the actual physics).
+//
 
 struct permittivity_key
 {
@@ -52,12 +57,108 @@ struct permittivity_key
   bool operator<(permittivity_key const & other) const { return false; }
 };
 
-struct net_doping_key
+struct builtin_potential_key
 {
   // Operator< is required for compatibility with std::map
-  bool operator<(net_doping_key const & other) const { return false; }
+  bool operator<(builtin_potential_key const & other) const { return false; }
 };
 
+// N_D
+struct donator_doping_key
+{
+  // Operator< is required for compatibility with std::map
+  bool operator<(donator_doping_key const & other) const { return false; }
+};
+
+// N_A
+struct acceptor_doping_key
+{
+  // Operator< is required for compatibility with std::map
+  bool operator<(acceptor_doping_key const & other) const { return false; }
+};
+
+
+
+
+
+double built_in_potential(double temperature, double doping_n, double doping_p)
+{
+  const double net_doping = doping_n - doping_p;
+  const double x = std::abs(net_doping) / (2.0 * 1e16);
+
+  double bpot = 0.026 * std::log(x + std::sqrt( 1.0 + x*x ) );
+                              // V_T * arsinh( net_doping/(2 n_i))
+
+  if ( net_doping < 0) //above formula does not yet consider the doping polarity
+    bpot *= -1.0;
+
+  return bpot;
+}
+
+template <typename DomainType>
+void init_quantities(DomainType const & my_domain, double n_plus, double p_plus)
+{
+  //
+  // Init permittivity
+  //
+  viennafvm::set_quantity_region(permittivity_key(), my_domain, true);               // permittivity is (for simplicity) defined everywhere
+  viennafvm::set_quantity_value(permittivity_key(), my_domain, 11.7);                // relative permittivity of silicon
+  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[2], 15.6);  // relative permittivty of HfO2
+
+  //
+  // Initialize doping
+  //
+
+  // donator doping
+  viennafvm::set_quantity_region(donator_doping_key(), my_domain.segments()[4], true);    // source
+  viennafvm::set_quantity_region(donator_doping_key(), my_domain.segments()[5], true);    // drain
+  viennafvm::set_quantity_region(donator_doping_key(), my_domain.segments()[6], true);    // body
+  viennafvm::set_quantity_region(donator_doping_key(), my_domain.segments()[7], true);    // body contact (floating body)
+
+  viennafvm::set_quantity_value(donator_doping_key(), my_domain.segments()[4],  n_plus);      // source
+  viennafvm::set_quantity_value(donator_doping_key(), my_domain.segments()[5],  n_plus);      // drain
+  viennafvm::set_quantity_value(donator_doping_key(), my_domain.segments()[6],  1e32/p_plus); // body
+  viennafvm::set_quantity_value(donator_doping_key(), my_domain.segments()[7],  1e32/p_plus); // body contact (floating body)
+
+  // acceptor doping
+  viennafvm::set_quantity_region(acceptor_doping_key(), my_domain.segments()[4], true);   // source
+  viennafvm::set_quantity_region(acceptor_doping_key(), my_domain.segments()[5], true);   // drain
+  viennafvm::set_quantity_region(acceptor_doping_key(), my_domain.segments()[6], true);   // body
+  viennafvm::set_quantity_region(acceptor_doping_key(), my_domain.segments()[7], true);   // body contact (floating body)
+
+  viennafvm::set_quantity_value(acceptor_doping_key(), my_domain.segments()[4],  1e32/n_plus); // source
+  viennafvm::set_quantity_value(acceptor_doping_key(), my_domain.segments()[5],  1e32/n_plus); // drain
+  viennafvm::set_quantity_value(acceptor_doping_key(), my_domain.segments()[6],  p_plus);      // body
+  viennafvm::set_quantity_value(acceptor_doping_key(), my_domain.segments()[7],  p_plus);      // body contact (floating body)
+
+  // built-in potential:
+  viennafvm::set_quantity_region(builtin_potential_key(), my_domain, true);   // defined everywhere
+
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[0], built_in_potential(300, n_plus, 1e32/n_plus)); // gate
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[1], built_in_potential(300, n_plus, 1e32/n_plus)); // source contact
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[2], built_in_potential(300, n_plus, 1e32/n_plus)); // oxide (for simplicity set to same as gate)
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[3], built_in_potential(300, n_plus, 1e32/n_plus)); // drain contact
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[4], built_in_potential(300, n_plus, 1e32/n_plus)); // source
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[5], built_in_potential(300, n_plus, 1e32/n_plus)); // drain
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[6], built_in_potential(300, 1e32/p_plus, p_plus)); // body
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[7], built_in_potential(300, 1e32/p_plus, p_plus)); // body contact (floating body)
+}
+
+/** @brief Scales the entire simulation domain (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
+template <typename DomainType>
+void scale_domain(DomainType & domain, double factor)
+{
+  typedef typename viennagrid::result_of::ncell_range<DomainType, 0 > ::type VertexContainer;
+  typedef typename viennagrid::result_of::iterator<VertexContainer>::type VertexIterator;
+
+  VertexContainer vertices = viennagrid::ncells < 0 > (domain);
+  for ( VertexIterator vit = vertices.begin();
+        vit != vertices.end();
+        ++vit )
+  {
+    vit->point() *= factor; // scale
+  }
+}
 
 int main()
 {
@@ -88,51 +189,37 @@ int main()
     return EXIT_FAILURE;
   }
 
-  //
-  // Initialize cell_quantity
-  //
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( permittivity_key() );
-  viennafvm::set_quantity_region(permittivity_key(), my_domain, true);               // permittivity is (for simplicity) defined everywhere
-  viennafvm::set_quantity_value(permittivity_key(), my_domain, 11.7);                // relative permittivity of silicon
-  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[2], 15.6);  // relative permittivty of HfO2
-
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  net_doping; net_doping.wrap_constant( net_doping_key() );
+  scale_domain(my_domain, 1e-9); // scale to nanometer
 
   //
-  // Specify PDEs:
+  // Set initial values
+  //
+  double n_plus = 1e24;
+  double p_plus = 1e20;
+
+  init_quantities(my_domain, n_plus, p_plus);
+
+  //
+  // Setting boundary information on domain (see mosfet.in2d for segment indices)
   //
   FunctionSymbol psi(0);   // potential, using id=0
   FunctionSymbol n(1);     // electron concentration, using id=1
   FunctionSymbol p(2);     // hole concentration, using id=2
 
-  double q  = 1.6e-19;
-  double kB = 1.38e-23; // Boltzmann constant
-  double mu = 1;        // mobility (constant is fine for the moment)
-  double T  = 300;
-  double D  = mu * kB * T / q;  //diffusion constant
-
-  // here is all the fun: specify DD system
-  Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(psi)),                     /* = */ q * (n - p - net_doping));
-  Equation cont_eq_n  = viennamath::make_equation( viennamath::div(D * viennamath::grad(n) + mu * viennamath::grad(psi) * n), /* = */ 0);
-  Equation cont_eq_p  = viennamath::make_equation( viennamath::div(D * viennamath::grad(p) - mu * viennamath::grad(psi) * p), /* = */ 0);
-
-  //
-  // Setting boundary information on domain (see mosfet.in2d for segment indices)
-  //
-
   // potential:
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[0], 0.5, psi); // Gate contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 0.0, psi); // Source contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 0.5, psi); // Drain contact
+  double built_in_pot = built_in_potential(300, n_plus, 1e32/n_plus); // should match specification in init_quantities()!
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[0], 0.2 + built_in_pot, psi); // Gate contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 0.0 + built_in_pot, psi); // Source contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 0.2 + built_in_pot, psi); // Drain contact
   // using floating body, hence commented: viennafvm::set_dirichlet_boundary(my_domain.segments()[7], 0.0, psi); // Body contact
 
   // electron density
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 1e20, n); // Source contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 1e20, n); // Drain contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], n_plus, n); // Source contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], n_plus, n); // Drain contact
 
   // hole density
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 1e12, p); // Source contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 1e12, p); // Drain contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 1e32/n_plus, p); // Source contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 1e32/n_plus, p); // Drain contact
 
 
   //
@@ -150,27 +237,59 @@ int main()
   viennafvm::disable_quantity(my_domain.segments()[2], p); // Gate oxide
   // add body contact if not using floating body
 
+  //
+  // Initial conditions (required for nonlinear problems)
+  //
+  viennafvm::set_initial_guess(my_domain, psi, builtin_potential_key());
+  viennafvm::smooth_initial_guess(my_domain, psi, viennafvm::arithmetic_mean_smoother());
+  viennafvm::smooth_initial_guess(my_domain, psi, viennafvm::arithmetic_mean_smoother());
+
+  viennafvm::set_initial_guess(my_domain, n, donator_doping_key());
+  viennafvm::smooth_initial_guess(my_domain, n, viennafvm::geometric_mean_smoother());
+  viennafvm::smooth_initial_guess(my_domain, n, viennafvm::geometric_mean_smoother());
+
+  viennafvm::set_initial_guess(my_domain, p, acceptor_doping_key());
+  viennafvm::smooth_initial_guess(my_domain, p, viennafvm::geometric_mean_smoother());
+  viennafvm::smooth_initial_guess(my_domain, p, viennafvm::geometric_mean_smoother());
+
+
 
   //
-  // TODO: Set initial guess and doping
+  // Specify PDEs:
   //
 
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( permittivity_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  donator_doping; donator_doping.wrap_constant( donator_doping_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  acceptor_doping; acceptor_doping.wrap_constant( acceptor_doping_key() );
 
+  double q  = 1.6e-19;
+  double kB = 1.38e-23; // Boltzmann constant
+  double mu = 1;        // mobility (constant is fine for the moment)
+  double T  = 300;
+  double D  = mu * kB * T / q;  //diffusion constant
 
-  //
-  // Create PDE solver instance:
-  //
-  viennafvm::pde_solver<> pde_solver;
+  // here is all the fun: specify DD system
+  Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(psi)),                     /* = */ q * ((n - donator_doping) - (p - acceptor_doping)));
+  Equation cont_eq_n  = viennamath::make_equation( viennamath::div(D * viennamath::grad(n) - mu * viennamath::grad(psi) * n), /* = */ 0);
+  Equation cont_eq_p  = viennamath::make_equation( viennamath::div(D * viennamath::grad(p) + mu * viennamath::grad(psi) * p), /* = */ 0);
 
-
-  //
-  // Solve system and write solution vector to pde_result:
-  // (discussion about proper interface required. Introduce a pde_result class?)
-  //
+  // Specify the PDE system:
   viennafvm::linear_pde_system<> pde_system;
   pde_system.add_pde(poisson_eq, psi); // equation and associated quantity
-  //pde_system.add_pde(cont_eq_n, n);    // equation and associated quantity
-  //pde_system.add_pde(cont_eq_p, p);    // equation and associated quantity
+  pde_system.add_pde(cont_eq_n, n);    // equation and associated quantity
+  pde_system.add_pde(cont_eq_p, p);    // equation and associated quantity
+
+  pde_system.option(0).damping_term( (n + p) / (-1.0 * kB * T) );
+  pde_system.option(1).geometric_update(true);
+  pde_system.option(2).geometric_update(true);
+
+  pde_system.is_linear(false); // temporary solution up until automatic nonlinearity detection is running
+
+
+  //
+  // Create PDE solver instance and run the solver:
+  //
+  viennafvm::pde_solver<> pde_solver;
 
   pde_solver(pde_system, my_domain);   // weird math happening in here ;-)
 

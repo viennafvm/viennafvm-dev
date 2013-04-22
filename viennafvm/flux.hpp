@@ -553,10 +553,10 @@ namespace viennafvm
           // The ratio |B/(A*d)| determines the discretization. If close to zero, we use a standard differencing scheme
           //
 
-          A_ = replaced_gradient_prefactor * distance;
+          A_ = replaced_gradient_prefactor;
           B_ = fs_prefactor;
 
-          std::cout << " - Expression for stabilization term B/(A*d): " << B_ / A_ << std::endl;
+          std::cout << " - Expression for stabilization term B/A (without distance d): " << B_ / A_ << std::endl;
         }
         else //pure diffusion
         {
@@ -603,12 +603,13 @@ namespace viennafvm
 
           double val_A = viennamath::eval(A_, p);
           double val_B = viennamath::eval(B_, p);
-          double exponent = val_B / val_A;
+          double d     = viennadata::access<viennafvm::facet_distance_key, double>()(facet);
+          double exponent = val_B / (val_A / d);
 
-          if ( std::abs(exponent) > 0.01)
+          if ( std::abs(exponent) > 0.01) // Actual tolerance is not critical - this is for stabilization purposes only
             return val_B / (std::exp(exponent) - 1);
           else
-            return val_A;
+            return val_A / d;  // Note: Can be obtained from tailor expansion of the equation above
         }
 
         // pure diffusion:
@@ -635,12 +636,12 @@ namespace viennafvm
           double val_A = viennamath::eval(A_, p);
           double val_B = viennamath::eval(B_, p);
           double d     = viennadata::access<viennafvm::facet_distance_key, double>()(facet);
-          double exponent = val_B / val_A / d;
+          double exponent = val_B / (val_A / d);
 
-          if ( std::abs(exponent) > 0.01)
+          if ( std::abs(exponent) > 0.01) // Actual tolerance is not critical - this is for stabilization purposes only
             return val_B / (1.0 - std::exp(-exponent));
           else
-            return val_A / d;
+            return val_A / d;  // Note: Can be obtained from tailor expansion of the equation above
         }
 
         // pure diffusion:

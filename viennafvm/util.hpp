@@ -199,6 +199,35 @@ namespace viennafvm
     }
 
 
-  } //namespace detail
+
+
+
+    //
+    // Other cell of facet
+    //
+
+
+    template <typename FacetType, typename CellType, typename DomainType>
+    CellType const * other_cell_of_facet(FacetType const & facet, CellType const & cell, DomainType const & domain)
+    {
+      typedef typename CellType::tag      CellTag;
+
+      typedef typename viennagrid::result_of::const_ncell_range<FacetType, CellTag::dim>::type  CellOnFacetRange;
+      typedef typename viennagrid::result_of::iterator<CellOnFacetRange>::type                  CellOnFacetIterator;
+
+      CellOnFacetRange    cells = viennagrid::ncells<CellTag::dim>(facet, domain);
+      CellOnFacetIterator cofit = cells.begin();
+
+      if (&(*cofit) == &cell) // we know the first cell pointed to by the iterator already, so we pick the 'other'
+        ++cofit;
+
+      if (cofit != cells.end())
+        return &(*cofit);
+
+      return NULL;  // facet is part of one cell only, so there is no 'other' cell
+    }
+
+  } //namespace util
+
 } //namespace viennafvm
 #endif
