@@ -62,7 +62,7 @@ namespace viennafvm
         pdes_.push_back(pde);
         unknowns_.push_back(unknowns);
 
-        key_cont_type key(1); key[0].push_back("dummy");
+        key_cont_type key(1); key[0] = "dummy";
         keys_.push_back(key);
         options_.push_back(option_type(current_id));
       }

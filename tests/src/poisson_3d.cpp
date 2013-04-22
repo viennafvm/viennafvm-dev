@@ -21,7 +21,7 @@
 //#include "viennafvm/poisson_assembler.hpp"
 #include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/io/vtk_writer.hpp"
-#include "viennafvm/cell_quan.hpp"
+#include "viennafvm/ncell_quantity.hpp"
 
 // ViennaGrid includes:
 #include "viennagrid/domain.hpp"
