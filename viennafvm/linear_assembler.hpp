@@ -59,6 +59,7 @@ namespace viennafvm
   class linear_assembler
   {
     public:
+
       template <typename LinPdeSysT,
                 typename SegmentT,
                 typename MatrixT,
@@ -96,10 +97,12 @@ namespace viennafvm
 
          for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
          {
+#ifdef VIENNAFVM_DEBUG
            std::cout << std::endl;
            std::cout << "//" << std::endl;
            std::cout << "//   Equation " << pde_index << std::endl;
            std::cout << "//" << std::endl;
+#endif
            typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
            MappingKeyType  map_key(pde_system.option(pde_index).data_id());
 
@@ -107,15 +110,15 @@ namespace viennafvm
            BoundaryKeyType bnd_key(pde_system.option(pde_index).data_id());
 
 
-        #ifdef VIENNAFVM_DEBUG
+#ifdef VIENNAFVM_DEBUG
            std::cout << " - Strong form: " << pde_system.pde(pde_index) << std::endl;
-        #endif
+#endif
 
            equ_type integral_form = viennafvm::make_integral_form( pde_system.pde(pde_index) );
 
-        #ifdef VIENNAFVM_DEBUG
+#ifdef VIENNAFVM_DEBUG
            std::cout << " - Integral form: " << integral_form << std::endl;
-        #endif
+#endif
 
 
             //
@@ -128,10 +131,12 @@ namespace viennafvm
             expr_type      rhs_omega_integrand = extract_volume_integrand<CellType>(integral_form.rhs(), pde_system.unknown(pde_index)[0]);
             expr_type  stabilization_integrand = prepare_for_evaluation<CellType>(pde_system.option(pde_index).damping_term(), pde_system.unknown(pde_index)[0]);
 
-            std::cout << " - Surface integrand for matrix: " << partial_omega_integrand << std::endl;
-            std::cout << " - Volume integrand for matrix:  " <<  matrix_omega_integrand << std::endl;
-            std::cout << " - Stabilization for matrix:     " << stabilization_integrand << std::endl;
-            std::cout << " - Volume integrand for rhs:     " <<     rhs_omega_integrand << std::endl;
+#ifdef VIENNAFVM_DEBUG
+              std::cout << " - Surface integrand for matrix: " << partial_omega_integrand << std::endl;
+              std::cout << " - Volume integrand for matrix:  " <<  matrix_omega_integrand << std::endl;
+              std::cout << " - Stabilization for matrix:     " << stabilization_integrand << std::endl;
+              std::cout << " - Volume integrand for rhs:     " <<     rhs_omega_integrand << std::endl;
+#endif
 
             viennafvm::flux_handler<CellType, FacetType, interface_type>  flux(partial_omega_integrand, pde_system.unknown(pde_index)[0]);
 

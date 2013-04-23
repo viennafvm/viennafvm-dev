@@ -516,12 +516,14 @@ namespace viennafvm
 
         arg_extractor(integrand.get());
         viennamath::rt_expr<InterfaceType> gradient_argument = arg_extractor.get();
+#ifdef VIENNAFVM_DEBUG
         std::cout << " - Gradient argument: " << gradient_argument << std::endl;
-
+#endif
         grad_prefactor_extractor(integrand.get());
         viennamath::rt_expr<InterfaceType> gradient_prefactor  = grad_prefactor_extractor.get();
+#ifdef VIENNAFVM_DEBUG
         std::cout << " - Gradient prefactor: " << gradient_prefactor << std::endl;
-
+#endif
         // Instantiate residual accessor for nonlinear terms:
         viennafvm::ncell_quantity<CellType, InterfaceType> current_iterate;
         current_iterate.wrap_constant(viennafvm::current_iterate_key(u.id()));
@@ -537,7 +539,9 @@ namespace viennafvm
 
         if (gradient_scanner.found() && fsymbol_scanner.found()) //advection-diffusion
         {
+#ifdef VIENNAFVM_DEBUG
           std::cout << " - Detected type of equation: Advection-Diffusion" << std::endl;
+#endif
           has_advection_ = true;
 
           // extract prefactor of 'u':
@@ -545,7 +549,9 @@ namespace viennafvm
 
           fs_prefactor_extractor(integrand.get());
           viennamath::rt_expr<InterfaceType> fs_prefactor  = fs_prefactor_extractor.get();
+#ifdef VIENNAFVM_DEBUG
           std::cout << " - Prefactor of " << u << ": " << fs_prefactor << std::endl;
+#endif
 
           //
           // Canonical form: A * grad(n) + B * n   along straight line of length d
@@ -556,11 +562,15 @@ namespace viennafvm
           A_ = replaced_gradient_prefactor;
           B_ = fs_prefactor;
 
+#ifdef VIENNAFVM_DEBUG
           std::cout << " - Expression for stabilization term B/A (without distance d): " << B_ / A_ << std::endl;
+#endif
         }
         else //pure diffusion
         {
+#ifdef VIENNAFVM_DEBUG
           std::cout << " - Detected type of equation: Purely Diffusive" << std::endl;
+#endif
 
           // replace grad() by 1/distance in expression, where 1/distance is a cell quantity
 
@@ -581,8 +591,10 @@ namespace viennafvm
           in_integrand_  = replaced_gradient_prefactor * modified_gradient;
           out_integrand_ = replaced_gradient_prefactor * modified_gradient;
 
+#ifdef VIENNAFVM_DEBUG
           std::cout << " - Expression for in-flux:  " << in_integrand_ << std::endl;
           std::cout << " - Expression for out-flux: " << out_integrand_ << std::endl;
+#endif
         }
 
       }

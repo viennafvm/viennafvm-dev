@@ -55,6 +55,29 @@ namespace viennafvm
       numeric_type l2_update_norm = 0;
 
       CellContainer cells = viennagrid::ncells(domain);
+
+      // get damping term
+      numeric_type A_n = 0.0;
+      if (pde_system.option(pde_index).geometric_update())
+      {
+        for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
+        {
+          if (viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit))  // boundary cell
+          {
+            //nothing
+          }
+          else if (viennafvm::is_quantity_enabled(*cit, unknown_id))
+          {
+            double current_value = get_current_iterate(*cit, u);
+            double update_value = update(viennadata::access<MappingKeyType, long>(map_key)(*cit));
+
+            if (current_value != 0)
+              A_n = std::max(A_n, std::abs(update_value / current_value));
+          }
+        }
+      }
+
+      // apply update:
       for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
       {
         if (viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit))  // boundary cell
@@ -66,9 +89,15 @@ namespace viennafvm
           double current_value = get_current_iterate(*cit, u);
           double update_value = update(viennadata::access<MappingKeyType, long>(map_key)(*cit));
 
-          numeric_type new_value = pde_system.option(pde_index).geometric_update()
-                                    ? std::pow(current_value, 1.0 - alpha) * std::pow( std::max(current_value + update_value, 0.1), alpha)
-                                    : current_value + alpha * update_value;
+          numeric_type new_value = current_value + alpha * update_value;
+
+          if (pde_system.option(pde_index).geometric_update())
+          {
+            if (update_value < 0)
+              new_value = current_value + alpha * ( update_value / (1.0 - A_n * ( update_value / current_value ) ));
+            else
+              new_value = std::pow(current_value, 1.0 - alpha) * std::pow( current_value + update_value, alpha);
+          }
 
           l2_update_norm += new_value * new_value;
           set_current_iterate(*cit, u, new_value);
@@ -150,9 +179,10 @@ namespace viennafvm
         }
         else // nonlinear
         {
-          std::size_t iter_max = 50;
+          std::size_t iter_max = 100;
           for (std::size_t iter=0; iter < iter_max; ++iter)
           {
+            std::cout << " --- Iteration " << iter << " --- " << std::endl;
             MatrixType system_matrix;
             VectorType load_vector;
 

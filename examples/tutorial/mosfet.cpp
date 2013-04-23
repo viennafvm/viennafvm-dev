@@ -208,18 +208,21 @@ int main()
 
   // potential:
   double built_in_pot = built_in_potential(300, n_plus, 1e32/n_plus); // should match specification in init_quantities()!
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[0], 0.2 + built_in_pot, psi); // Gate contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[0], 0.0 + built_in_pot, psi); // Gate contact
   viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 0.0 + built_in_pot, psi); // Source contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 0.2 + built_in_pot, psi); // Drain contact
-  // using floating body, hence commented: viennafvm::set_dirichlet_boundary(my_domain.segments()[7], 0.0, psi); // Body contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 0.0 + built_in_pot, psi); // Drain contact
+  // using floating body, hence commented:
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[7], 0.0 + built_in_potential(300, 1e32/p_plus, p_plus), psi); // Body contact
 
   // electron density
   viennafvm::set_dirichlet_boundary(my_domain.segments()[1], n_plus, n); // Source contact
   viennafvm::set_dirichlet_boundary(my_domain.segments()[3], n_plus, n); // Drain contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[7], 1e32/p_plus, n); // Body contact
 
   // hole density
   viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 1e32/n_plus, p); // Source contact
   viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 1e32/n_plus, p); // Drain contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[7], p_plus, p); // Body contact
 
 
   //
@@ -231,11 +234,9 @@ int main()
 
   viennafvm::disable_quantity(my_domain.segments()[0], n); // Gate contact
   viennafvm::disable_quantity(my_domain.segments()[2], n); // Gate oxide
-  // add body contact if not using floating body
 
   viennafvm::disable_quantity(my_domain.segments()[0], p); // Gate contact
   viennafvm::disable_quantity(my_domain.segments()[2], p); // Gate oxide
-  // add body contact if not using floating body
 
   //
   // Initial conditions (required for nonlinear problems)
