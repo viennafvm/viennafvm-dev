@@ -54,12 +54,12 @@ namespace viennafvm
       template <typename NumericT>
       NumericT operator()(std::vector<NumericT> const & values) const
       {
-        assert(a >= 0 && bool("Quantity a in geometric smoother negative!"));
-        assert(b >= 0 && bool("Quantity b in geometric smoother negative!"));
-
         NumericT result = 1;
         for (std::size_t i=0; i<values.size(); ++i)
+        {
+          assert(values[i] >= 0 && bool("Quantity a in geometric smoother negative!"));
           result *= std::pow(values[i], 1.0 / values.size());
+        }
 
         return result;
       }
@@ -117,6 +117,9 @@ namespace viennafvm
         continue;
 
       cell_neighbor_values[&(*cit)].push_back(viennadata::access<IterateKey, numeric_type>(iter_key)(*cit));
+
+      if (is_dirichlet_boundary(*cit, u)) // Dirichlet boundaries should not be smoothed
+        continue;
 
       FacetOnCellContainer facets_on_cell = viennagrid::ncells(*cit);
       for (FacetOnCellIterator focit  = facets_on_cell.begin();

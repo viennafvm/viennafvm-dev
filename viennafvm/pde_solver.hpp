@@ -28,7 +28,7 @@ namespace viennafvm
 {
 
   template <typename PDESystemType, typename DomainType, typename VectorType>
-  void apply_update(PDESystemType const & pde_system, DomainType const & domain, VectorType const & update)
+  void apply_update(PDESystemType const & pde_system, std::size_t pde_index, DomainType const & domain, VectorType const & update, numeric_type alpha = 0.3)
   {
     typedef typename DomainType::config_type              Config;
     typedef typename Config::cell_tag                     CellTag;
@@ -42,69 +42,82 @@ namespace viennafvm
     typedef typename PDESystemType::mapping_key_type   MappingKeyType;
     typedef typename PDESystemType::boundary_key_type  BoundaryKeyType;
 
-    numeric_type alpha = 0.5;
+    long unknown_id = pde_system.unknown(pde_index)[0].id();
+
+    BoundaryKeyType bnd_key(unknown_id);
+    MappingKeyType  map_key(unknown_id);
+
+    viennamath::function_symbol const & u = pde_system.unknown(pde_index)[0];
+    numeric_type l2_update_norm = 0;
+
+    CellContainer cells = viennagrid::ncells(domain);
+
+    // get damping term
+    numeric_type A_n = 0.0;
+    if (pde_system.option(pde_index).geometric_update())
+    {
+      for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
+      {
+        if (viennafvm::is_quantity_enabled(*cit, unknown_id))
+        {
+          double current_value = get_current_iterate(*cit, u);
+          double update_value = viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit)
+                                 ? viennadata::access<BoundaryKeyType, numeric_type>(bnd_key)(*cit) - current_value
+                                 : update(viennadata::access<MappingKeyType, long>(map_key)(*cit));
+
+          if (current_value != 0)
+            A_n = std::max(A_n, std::abs(update_value / current_value));
+        }
+      }
+    }
+
+    // apply update:
+    for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
+    {
+      if (viennafvm::is_quantity_enabled(*cit, unknown_id))
+      {
+        double current_value = get_current_iterate(*cit, u);
+        double update_value = viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit)
+                               ? viennadata::access<BoundaryKeyType, numeric_type>(bnd_key)(*cit) - current_value
+                               : update(viennadata::access<MappingKeyType, long>(map_key)(*cit));
+
+        numeric_type new_value = current_value + alpha * update_value;
+
+        if (pde_system.option(pde_index).geometric_update())
+        {
+          if (update_value < 0)
+            new_value = current_value + alpha * ( update_value / (1.0 - A_n * ( update_value / current_value ) ));
+          else
+            new_value = std::pow(current_value, 1.0 - alpha) * std::pow( current_value + update_value, alpha);
+        }
+
+        l2_update_norm += (new_value - current_value) * (new_value - current_value);
+        set_current_iterate(*cit, u, new_value);
+      }
+    }
+
+    std::cout << "* Update norm for quantity " << pde_index << ": " << std::sqrt(l2_update_norm) << std::endl;
+  }
+
+
+  template <typename PDESystemType, typename DomainType, typename VectorType>
+  void apply_update(PDESystemType const & pde_system, DomainType const & domain, VectorType const & update, numeric_type alpha = 0.5)
+  {
+    typedef typename DomainType::config_type              Config;
+    typedef typename Config::cell_tag                     CellTag;
+
+    typedef typename viennagrid::result_of::point<Config>::type                  PointType;
+    typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type    CellType;
+
+    typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
+    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
+
+    typedef typename PDESystemType::mapping_key_type   MappingKeyType;
+    typedef typename PDESystemType::boundary_key_type  BoundaryKeyType;
 
     for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
     {
-      long unknown_id = pde_system.option(pde_index).data_id();
-
-      BoundaryKeyType bnd_key(unknown_id);
-      MappingKeyType  map_key(unknown_id);
-
-      viennamath::function_symbol const & u = pde_system.unknown(pde_index)[0];
-      numeric_type l2_update_norm = 0;
-
-      CellContainer cells = viennagrid::ncells(domain);
-
-      // get damping term
-      numeric_type A_n = 0.0;
-      if (pde_system.option(pde_index).geometric_update())
-      {
-        for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
-        {
-          if (viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit))  // boundary cell
-          {
-            //nothing
-          }
-          else if (viennafvm::is_quantity_enabled(*cit, unknown_id))
-          {
-            double current_value = get_current_iterate(*cit, u);
-            double update_value = update(viennadata::access<MappingKeyType, long>(map_key)(*cit));
-
-            if (current_value != 0)
-              A_n = std::max(A_n, std::abs(update_value / current_value));
-          }
-        }
-      }
-
-      // apply update:
-      for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
-      {
-        if (viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit))  // boundary cell
-        {
-          //nothing
-        }
-        else if (viennafvm::is_quantity_enabled(*cit, unknown_id))
-        {
-          double current_value = get_current_iterate(*cit, u);
-          double update_value = update(viennadata::access<MappingKeyType, long>(map_key)(*cit));
-
-          numeric_type new_value = current_value + alpha * update_value;
-
-          if (pde_system.option(pde_index).geometric_update())
-          {
-            if (update_value < 0)
-              new_value = current_value + alpha * ( update_value / (1.0 - A_n * ( update_value / current_value ) ));
-            else
-              new_value = std::pow(current_value, 1.0 - alpha) * std::pow( current_value + update_value, alpha);
-          }
-
-          l2_update_norm += new_value * new_value;
-          set_current_iterate(*cit, u, new_value);
-        }
-      }
-
-      std::cout << "Update norm for quantity " << pde_index << ": " << std::sqrt(l2_update_norm) << std::endl;
+      apply_update(pde_system, pde_index, domain, update, alpha);
     }
   }
 
@@ -125,7 +138,7 @@ namespace viennafvm
 
     for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
     {
-      long unknown_id = pde_system.option(pde_index).data_id();
+      long unknown_id = pde_system.unknown(pde_index)[0].id();
 
       BoundaryKeyType bnd_key(unknown_id);
       MappingKeyType  map_key(unknown_id);
@@ -173,29 +186,49 @@ namespace viennafvm
 
           result_.resize(load_vector.size());
           VectorType update = viennafvm::solve(system_matrix, load_vector);
+          //std::cout << update << std::endl;
 
-          apply_update(pde_system, domain, update);
+          apply_update(pde_system, domain, update, 1.0);
           transfer_to_solution_vector(pde_system, domain, result_);
         }
         else // nonlinear
         {
-          std::size_t iter_max = 100;
+          picard_iteration_ = true;
+          std::size_t iter_max = 40;
           for (std::size_t iter=0; iter < iter_max; ++iter)
           {
             std::cout << " --- Iteration " << iter << " --- " << std::endl;
-            MatrixType system_matrix;
-            VectorType load_vector;
 
-            // assemble linearized systems
-            viennafvm::linear_assembler fvm_assembler;
+            if (picard_iteration_)
+            {
+              for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
+              {
+                MatrixType system_matrix;
+                VectorType load_vector;
 
-            fvm_assembler(pde_system, domain, system_matrix, load_vector);
+                // assemble linearized systems
+                viennafvm::linear_assembler fvm_assembler;
 
-            result_.resize(load_vector.size());
-            VectorType update = viennafvm::solve(system_matrix, load_vector);
+                fvm_assembler(pde_system, pde_index, domain, system_matrix, load_vector);
 
-            apply_update(pde_system, domain, update);
+                //std::cout << system_matrix << std::endl;
+                //std::cout << load_vector << std::endl;
+
+                result_.resize(load_vector.size());
+                VectorType update = viennafvm::solve(system_matrix, load_vector);
+                //std::cout << update << std::endl;
+
+                apply_update(pde_system, pde_index, domain, update);
+              }
+            }
+            else
+            {
+              throw "not implemented!";
+            }
           }
+          // need to pack all approximations into a single vector:
+          std::size_t map_index = create_mapping(pde_system, domain);
+          result_.resize(map_index);
           transfer_to_solution_vector(pde_system, domain, result_);
         }
 
@@ -205,6 +238,7 @@ namespace viennafvm
 
     private:
       VectorType result_;
+      bool picard_iteration_;
   };
 
 }

@@ -81,14 +81,16 @@ namespace viennafvm
 
     row_normalize_system(system_matrix_2, load_vector_2);
 
-    std::cout << "* solve(): Solving linear system" << std::endl;
+    //std::cout << "* solve(): Solving linear system" << std::endl;
 
-    viennacl::linalg::ilu0_tag precond_tag;
-    viennacl::linalg::ilu0_precond<MatrixType> preconditioner(system_matrix, precond_tag);
+    viennacl::linalg::ilut_tag precond_tag;
+    viennacl::linalg::ilut_precond<MatrixType> preconditioner(system_matrix, precond_tag);
 
-    result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(), preconditioner);
-    std::cout << "* solve(): Residual: " << norm_2(prod(system_matrix, result) - load_vector) / norm_2(load_vector) << std::endl;
-
+    result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(1e-14), preconditioner);
+    //std::cout << "* linear solver: Residual (rescaled): " << norm_2(prod(system_matrix_2, result) - load_vector_2) / norm_2(load_vector_2) << std::endl;
+#ifdef VIENNAFVM_DEBUG
+    std::cout << "* linear solver: Residual (full): " << norm_2(prod(system_matrix, result) - load_vector) / norm_2(load_vector) << " (" << load_vector.size() << " unknowns)" << std::endl;
+#endif
     return result;
   }
 }

@@ -14,7 +14,7 @@
 //#define VIENNAFVM_DEBUG
 
 // Define NDEBUG to get any reasonable performance with ublas:
-#define NDEBUG
+//#define NDEBUG
 
 // include necessary system headers
 #include <iostream>
@@ -102,46 +102,32 @@ void init_quantities(DomainType const & my_domain, double n_plus, double p_plus)
   // Init permittivity
   //
   viennafvm::set_quantity_region(permittivity_key(), my_domain, true);               // permittivity is (for simplicity) defined everywhere
-  viennafvm::set_quantity_value(permittivity_key(), my_domain, 11.7 * 8.854e-12);                // permittivity of silicon
-  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[2], 15.6 * 8.854e-12);  // permittivty of HfO2
+  viennafvm::set_quantity_value(permittivity_key(), my_domain, 11.7 * 8.854e-12);                // relative permittivity of silicon
 
   //
   // Initialize doping
   //
 
   // donator doping
-  viennafvm::set_quantity_region(donator_doping_key(), my_domain.segments()[4], true);    // source
-  viennafvm::set_quantity_region(donator_doping_key(), my_domain.segments()[5], true);    // drain
-  viennafvm::set_quantity_region(donator_doping_key(), my_domain.segments()[6], true);    // body
-  viennafvm::set_quantity_region(donator_doping_key(), my_domain.segments()[7], true);    // body contact (floating body)
+  viennafvm::set_quantity_region(donator_doping_key(), my_domain, true);
 
-  viennafvm::set_quantity_value(donator_doping_key(), my_domain.segments()[4],  n_plus);      // source
-  viennafvm::set_quantity_value(donator_doping_key(), my_domain.segments()[5],  n_plus);      // drain
-  viennafvm::set_quantity_value(donator_doping_key(), my_domain.segments()[6],  1e32/p_plus); // body
-  viennafvm::set_quantity_value(donator_doping_key(), my_domain.segments()[7],  1e32/p_plus); // body contact (floating body)
+  viennafvm::set_quantity_value(donator_doping_key(), my_domain,  n_plus);
+  viennafvm::set_quantity_value(donator_doping_key(), my_domain.segments()[2],  1e32/p_plus);
 
   // acceptor doping
-  viennafvm::set_quantity_region(acceptor_doping_key(), my_domain.segments()[4], true);   // source
-  viennafvm::set_quantity_region(acceptor_doping_key(), my_domain.segments()[5], true);   // drain
-  viennafvm::set_quantity_region(acceptor_doping_key(), my_domain.segments()[6], true);   // body
-  viennafvm::set_quantity_region(acceptor_doping_key(), my_domain.segments()[7], true);   // body contact (floating body)
+  viennafvm::set_quantity_region(acceptor_doping_key(), my_domain, true);
 
-  viennafvm::set_quantity_value(acceptor_doping_key(), my_domain.segments()[4],  1e32/n_plus); // source
-  viennafvm::set_quantity_value(acceptor_doping_key(), my_domain.segments()[5],  1e32/n_plus); // drain
-  viennafvm::set_quantity_value(acceptor_doping_key(), my_domain.segments()[6],  p_plus);      // body
-  viennafvm::set_quantity_value(acceptor_doping_key(), my_domain.segments()[7],  p_plus);      // body contact (floating body)
+  viennafvm::set_quantity_value(acceptor_doping_key(), my_domain,  1e32/n_plus);
+  viennafvm::set_quantity_value(acceptor_doping_key(), my_domain.segments()[2],  p_plus);
 
   // built-in potential:
   viennafvm::set_quantity_region(builtin_potential_key(), my_domain, true);   // defined everywhere
 
-  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[0], built_in_potential(300, n_plus, 1e32/n_plus)); // gate
-  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[1], built_in_potential(300, n_plus, 1e32/n_plus)); // source contact
-  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[2], built_in_potential(300, n_plus, 1e32/n_plus)); // oxide (for simplicity set to same as gate)
-  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[3], built_in_potential(300, n_plus, 1e32/n_plus)); // drain contact
-  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[4], built_in_potential(300, n_plus, 1e32/n_plus)); // source
-  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[5], built_in_potential(300, n_plus, 1e32/n_plus)); // drain
-  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[6], built_in_potential(300, 1e32/p_plus, p_plus)); // body
-  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[7], built_in_potential(300, 1e32/p_plus, p_plus)); // body contact (floating body)
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[0], built_in_potential(300, n_plus, 1e32/n_plus));
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[1], built_in_potential(300, n_plus, 1e32/n_plus));
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[2], built_in_potential(300, 1e32/p_plus, p_plus));
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[3], built_in_potential(300, n_plus, 1e32/n_plus));
+  viennafvm::set_quantity_value(builtin_potential_key(), my_domain.segments()[4], built_in_potential(300, n_plus, 1e32/n_plus));
 }
 
 /** @brief Scales the entire simulation domain (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
@@ -164,8 +150,8 @@ int main()
 {
   typedef double   numeric_type;
 
-  typedef viennagrid::config::triangular_2d                           ConfigType;
-  typedef viennagrid::result_of::domain<ConfigType>::type             DomainType;
+  typedef viennagrid::config::line_1d                       ConfigType;
+  typedef viennagrid::result_of::domain<ConfigType>::type   DomainType;
   typedef typename ConfigType::cell_tag                     CellTag;
 
   typedef viennagrid::result_of::ncell<ConfigType, CellTag::dim>::type        CellType;
@@ -181,7 +167,7 @@ int main()
   try
   {
     viennagrid::io::netgen_reader my_reader;
-    my_reader(my_domain, "../examples/data/mosfet.mesh");
+    my_reader(my_domain, "../examples/data/line23.mesh");
   }
   catch (...)
   {
@@ -189,13 +175,13 @@ int main()
     return EXIT_FAILURE;
   }
 
-  scale_domain(my_domain, 1e-9); // scale to nanometer
+  scale_domain(my_domain, 1e-7);
 
   //
   // Set initial values
   //
   double n_plus = 1e24;
-  double p_plus = 1e20;
+  double p_plus = 1e10;
 
   init_quantities(my_domain, n_plus, p_plus);
 
@@ -208,35 +194,16 @@ int main()
 
   // potential:
   double built_in_pot = built_in_potential(300, n_plus, 1e32/n_plus); // should match specification in init_quantities()!
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[0], 0.2 + built_in_pot, psi); // Gate contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 0.0 + built_in_pot, psi); // Source contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 0.2 + built_in_pot, psi); // Drain contact
-  // using floating body, hence commented:
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[7], 0.0 + built_in_potential(300, 1e32/p_plus, p_plus), psi); // Body contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[0], 0.0 + built_in_pot, psi); // Gate contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[4], 0.0 + built_in_pot, psi); // Source contact
 
   // electron density
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], n_plus, n); // Source contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], n_plus, n); // Drain contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[7], 1e32/p_plus, n); // Body contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[0], n_plus, n); // Source contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[4], n_plus, n); // Drain contact
 
   // hole density
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[1], 1e32/n_plus, p); // Source contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 1e32/n_plus, p); // Drain contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[7], p_plus, p); // Body contact
-
-
-  //
-  // Set quantity mask: By default, a quantity is defined on the entire domain.
-  //                    Boundary equations are already specified above.
-  //                    All that is left is to specify regions where a quantity 'does not make sense'
-  //                    Here, we need to disable {n,p} in the gate oxide and the gate
-  //
-
-  viennafvm::disable_quantity(my_domain.segments()[0], n); // Gate contact
-  viennafvm::disable_quantity(my_domain.segments()[2], n); // Gate oxide
-
-  viennafvm::disable_quantity(my_domain.segments()[0], p); // Gate contact
-  viennafvm::disable_quantity(my_domain.segments()[2], p); // Gate oxide
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[0], 1e32/n_plus, p); // Source contact
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[4], 1e32/n_plus, p); // Drain contact
 
   //
   // Initial conditions (required for nonlinear problems)
@@ -271,11 +238,18 @@ int main()
   double D  = mu * VT;  //diffusion constant
 
   // here is all the fun: specify DD system
+  Equation laplace_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(psi)),                     /* = */ 0);
   Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(psi)),                     /* = */ q * ((n - donator_doping) - (p - acceptor_doping)));
   Equation cont_eq_n  = viennamath::make_equation( viennamath::div(D * viennamath::grad(n) - mu * viennamath::grad(psi) * n), /* = */ 0);
   Equation cont_eq_p  = viennamath::make_equation( viennamath::div(D * viennamath::grad(p) + mu * viennamath::grad(psi) * p), /* = */ 0);
 
   // Specify the PDE system:
+  //viennafvm::linear_pde_system<> pde_system_init;
+  //pde_system_init.add_pde(poisson_eq, psi); // equation and associated quantity
+  //viennafvm::pde_solver<> pde_solver_init;
+  //pde_solver_init(pde_system_init, my_domain);   // weird math happening in here ;-)
+
+  // actual DD system
   viennafvm::linear_pde_system<> pde_system;
   pde_system.add_pde(poisson_eq, psi); // equation and associated quantity
   pde_system.add_pde(cont_eq_n, n);    // equation and associated quantity
@@ -303,7 +277,7 @@ int main()
   for (std::size_t i=0; i<pde_system.size(); ++i)
     result_ids[i] = pde_system.unknown(i)[0].id();
 
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "mosfet", my_domain, result_ids);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "nin", my_domain, result_ids);
 
   std::cout << "********************************************" << std::endl;
   std::cout << "* MOSFET simulation finished successfully! *" << std::endl;

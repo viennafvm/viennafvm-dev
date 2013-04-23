@@ -85,6 +85,7 @@ int main()
   viennafvm::set_quantity_value(permittivity_key(), my_domain, 1);
   viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[2], 2);
   viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[3], 2);
+  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[4], 2);
 
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
   Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(u)), 0);  // \Delta u = 0
@@ -93,7 +94,7 @@ int main()
   // Setting boundary information on domain (this should come from device specification)
   //
   viennafvm::set_dirichlet_boundary(my_domain.segments()[0], 0.0, 0);
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[3], 1.0, 0);
+  viennafvm::set_dirichlet_boundary(my_domain.segments()[4], 1.0, 0);
 
 
   //

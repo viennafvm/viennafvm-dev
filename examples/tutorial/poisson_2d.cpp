@@ -83,8 +83,9 @@ int main()
   // Specify two PDEs:
   //
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
+  FunctionSymbol v(1, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
   Equation poisson_equ_1 = viennamath::make_equation( viennamath::laplace(u), -1);
-  Equation poisson_equ_2 = viennamath::make_equation( viennamath::laplace(u), 0);
+  Equation poisson_equ_2 = viennamath::make_equation( viennamath::laplace(v), 0);
 
   MatrixType system_matrix_1, system_matrix_2;
   VectorType load_vector_1, load_vector_2;
@@ -133,23 +134,24 @@ int main()
                 load_vector_1
               );
 
-  fvm_assembler(viennafvm::make_linear_pde_system(poisson_equ_2, u, viennafvm::make_linear_pde_options(1, 1)),
+  VectorType pde_result_1 = viennafvm::solve(system_matrix_1, load_vector_1);
+  viennafvm::io::write_solution_to_VTK_file(pde_result_1, "poisson_2d_1", my_domain, 0);
+
+  fvm_assembler(viennafvm::make_linear_pde_system(poisson_equ_2, v, viennafvm::make_linear_pde_options(1, 1)),
                 my_domain,
                 system_matrix_2,
                 load_vector_2
               );
 
-  //std::cout << system_matrix_1 << std::endl;
-  //std::cout << load_vector_1 << std::endl;
+  //std::cout << system_matrix_2 << std::endl;
+  //std::cout << load_vector_2 << std::endl;
 
-  VectorType pde_result_1 = viennafvm::solve(system_matrix_1, load_vector_1);
   VectorType pde_result_2 = viennafvm::solve(system_matrix_2, load_vector_2);
 
 
   //
   // Writing solution back to domain (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_result_1, "poisson_2d_1", my_domain, 0);
   viennafvm::io::write_solution_to_VTK_file(pde_result_2, "poisson_2d_2", my_domain, 1);
 
   std::cout << "*****************************************" << std::endl;
