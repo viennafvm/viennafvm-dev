@@ -22,17 +22,16 @@ INCLUDE_DIRECTORIES("../ViennaMath/")
 INCLUDE_DIRECTORIES("../ViennaCL/")
 INCLUDE_DIRECTORIES(${BOOSTPATH})
 
-#add definitions, compiler switches, etc.
-IF(DEFINED CMAKE_BUILD_TYPE)
- SET (CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE})
-ELSE()
- SET (CMAKE_BUILD_TYPE Release)
+#set default build type 
+IF (NOT CMAKE_BUILD_TYPE)
+  SET(CMAKE_BUILD_TYPE "Release")
 ENDIF()
 
-IF(CMAKE_COMPILER_IS_GNUCXX)
-   ADD_DEFINITIONS(-Wall -O0 -g -lpthread)
-   #ADD_DEFINITIONS(-Wall -pedantic -O3)
-ENDIF(CMAKE_COMPILER_IS_GNUCXX)
+#set compiler flags
+SET(CMAKE_CXX_FLAGS "-Wall -pedantic")
+SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g")
+SET(CMAKE_CXX_FLAGS_RELEASE "-O3")
+SET(CMAKE_CXX_FLAGS_DEBUG  "-O0 -g")
 
 #list all source files here
 ADD_EXECUTABLE(poisson_1d examples/tutorial/poisson_1d.cpp)
