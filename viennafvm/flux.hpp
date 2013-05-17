@@ -359,7 +359,7 @@ namespace viennafvm
           viennamath::callback_if_castable< viennamath::rt_function_symbol<InterfaceType> >::apply(e, *this);
         }
 
-        void operator()(viennamath::rt_function_symbol<InterfaceType> const & fs) const
+        void operator()(viennamath::rt_function_symbol<InterfaceType> const & /*fs*/) const
         {
           typedef typename InterfaceType::numeric_type     NumericType;
 
@@ -599,7 +599,7 @@ namespace viennafvm
 
       }
 
-      double in(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell) const
+      double in(CellType const & inner_cell, FacetType const & facet, CellType const & /*outer_cell*/) const
       {
         std::vector<double> p(3); //dummy point
 
@@ -631,7 +631,7 @@ namespace viennafvm
         return viennamath::eval(in_integrand_, p);
       }
 
-      double out(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell) const
+      double out(CellType const & inner_cell, FacetType const & facet, CellType const & /*outer_cell*/) const
       {
         std::vector<double> p(3); //dummy point
 

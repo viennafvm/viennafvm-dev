@@ -54,34 +54,34 @@
 struct permittivity_key
 {
   // Operator< is required for compatibility with std::map
-  bool operator<(permittivity_key const & other) const { return false; }
+  bool operator<(permittivity_key const & /*other*/) const { return false; }
 };
 
 struct builtin_potential_key
 {
   // Operator< is required for compatibility with std::map
-  bool operator<(builtin_potential_key const & other) const { return false; }
+  bool operator<(builtin_potential_key const & /*other*/) const { return false; }
 };
 
 // N_D
 struct donator_doping_key
 {
   // Operator< is required for compatibility with std::map
-  bool operator<(donator_doping_key const & other) const { return false; }
+  bool operator<(donator_doping_key const & /*other*/) const { return false; }
 };
 
 // N_A
 struct acceptor_doping_key
 {
   // Operator< is required for compatibility with std::map
-  bool operator<(acceptor_doping_key const & other) const { return false; }
+  bool operator<(acceptor_doping_key const & /*other*/) const { return false; }
 };
 
 
 
 
 
-double built_in_potential(double temperature, double doping_n, double doping_p)
+double built_in_potential(double /*temperature*/, double doping_n, double doping_p)
 {
   const double net_doping = doping_n - doping_p;
   const double x = std::abs(net_doping) / (2.0 * 1e16);

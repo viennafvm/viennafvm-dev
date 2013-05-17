@@ -47,7 +47,7 @@
 struct permittivity_key
 {
   // Operator< is required for compatibility with std::map
-  bool operator<(permittivity_key const & other) const { return false; }
+  bool operator<(permittivity_key const & /*other*/) const { return false; }
 };
 
 

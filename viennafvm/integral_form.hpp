@@ -184,7 +184,7 @@ namespace viennafvm
           integrated_expr = viennamath::integral(viennamath::symbolic_interval(viennafvm::cell_volume), bin);
         }
 
-        bool modifies(InterfaceType const * e) const { return true; }
+        bool modifies(InterfaceType const * /*e*/) const { return true; }
 
       private:
         mutable viennamath::rt_expr<InterfaceType> integrated_expr;

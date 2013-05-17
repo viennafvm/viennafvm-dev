@@ -93,7 +93,7 @@ namespace viennafvm {
           }
         }
 
-        bool modifies(InterfaceType const * e) const { return true; }
+        bool modifies(InterfaceType const * /*e*/) const { return true; }
 
       private:
         viennamath::id_type id_;
@@ -186,7 +186,7 @@ namespace viennafvm {
           }
         }
 
-        bool modifies(InterfaceType const * e) const { return true; }
+        bool modifies(InterfaceType const * /*e*/) const { return true; }
 
       private:
         viennamath::rt_function_symbol<InterfaceType> u_;
