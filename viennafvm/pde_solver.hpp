@@ -28,7 +28,7 @@ namespace viennafvm
 {
 
   template <typename PDESystemType, typename DomainType, typename VectorType>
-  void apply_update(PDESystemType const & pde_system, std::size_t pde_index, DomainType const & domain, VectorType const & update, numeric_type alpha = 0.3)
+  double apply_update(PDESystemType const & pde_system, std::size_t pde_index, DomainType const & domain, VectorType const & update, numeric_type alpha = 0.3)
   {
     typedef typename DomainType::config_type              Config;
     typedef typename Config::cell_tag                     CellTag;
@@ -96,7 +96,8 @@ namespace viennafvm
       }
     }
 
-    std::cout << "* Update norm for quantity " << pde_index << ": " << std::sqrt(l2_update_norm) << std::endl;
+//    std::cout << "* Update norm for quantity " << pde_index << ": " << std::sqrt(l2_update_norm) << std::endl;
+    return std::sqrt(l2_update_norm);
   }
 
 
@@ -164,6 +165,13 @@ namespace viennafvm
   class pde_solver
   {
     public:
+    
+      pde_solver()
+      {
+        nonlinear_iterations = 40;
+        linear_iterations = 500;
+        linear_breaktol = 1e-14;
+      }
 
       template <typename PDESystemType, typename DomainType>
       void operator()(PDESystemType const & pde_system, DomainType const & domain)
@@ -185,7 +193,7 @@ namespace viennafvm
           //std::cout << load_vector << std::endl;
 
           result_.resize(load_vector.size());
-          VectorType update = viennafvm::solve(system_matrix, load_vector);
+          VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
           //std::cout << update << std::endl;
 
           apply_update(pde_system, domain, update, 1.0);
@@ -194,8 +202,7 @@ namespace viennafvm
         else // nonlinear
         {
           picard_iteration_ = true;
-          std::size_t iter_max = 40;
-          for (std::size_t iter=0; iter < iter_max; ++iter)
+          for (std::size_t iter=0; iter < nonlinear_iterations; ++iter)
           {
             std::cout << " --- Iteration " << iter << " --- " << std::endl;
 
@@ -215,10 +222,11 @@ namespace viennafvm
                 //std::cout << load_vector << std::endl;
 
                 result_.resize(load_vector.size());
-                VectorType update = viennafvm::solve(system_matrix, load_vector);
+                VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
                 //std::cout << update << std::endl;
 
-                apply_update(pde_system, pde_index, domain, update);
+                double update_norm = apply_update(pde_system, pde_index, domain, update);
+                std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;                
               }
             }
             else
@@ -236,9 +244,21 @@ namespace viennafvm
 
       VectorType const & result() { return result_; }
 
+      std::size_t get_nonlinear_iterations() { return nonlinear_iterations; }
+      void set_nonlinear_iterations(std::size_t max_iters) { nonlinear_iterations = max_iters; }
+      
+      std::size_t get_linear_iterations() { return linear_iterations; }
+      void set_linear_iterations(std::size_t max_iters) { linear_iterations = max_iters; }            
+      
+      std::size_t get_linear_breaktol() { return linear_iterations; }
+      void set_linear_breaktol(double tol) { linear_breaktol = tol; }                  
+
     private:
       VectorType result_;
       bool picard_iteration_;
+      std::size_t nonlinear_iterations;
+      std::size_t linear_iterations;
+      double      linear_breaktol;
   };
 
 }

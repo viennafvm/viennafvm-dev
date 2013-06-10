@@ -71,7 +71,9 @@ namespace viennafvm
   //
   template <typename MatrixType, typename VectorType>
   VectorType solve(MatrixType const & system_matrix,
-                   VectorType const & load_vector)
+                   VectorType const & load_vector,
+                   std::size_t const& max_iters, 
+                   double      const& breaktol)
   {
     typedef typename VectorType::value_type        numeric_type;
     VectorType result(load_vector.size());
@@ -86,7 +88,8 @@ namespace viennafvm
     viennacl::linalg::ilut_tag precond_tag;
     viennacl::linalg::ilut_precond<MatrixType> preconditioner(system_matrix, precond_tag);
 
-    result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(1e-14), preconditioner);
+    //result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(breaktol,max_iters), preconditioner);
+    result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(breaktol,max_iters));
     //std::cout << "* linear solver: Residual (rescaled): " << norm_2(prod(system_matrix_2, result) - load_vector_2) / norm_2(load_vector_2) << std::endl;
 #ifdef VIENNAFVM_DEBUG
     std::cout << "* linear solver: Residual (full): " << norm_2(prod(system_matrix, result) - load_vector) / norm_2(load_vector) << " (" << load_vector.size() << " unknowns)" << std::endl;
