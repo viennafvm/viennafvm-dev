@@ -38,6 +38,7 @@ ADD_EXECUTABLE(poisson_1d examples/tutorial/poisson_1d.cpp)
 ADD_EXECUTABLE(poisson_2d examples/tutorial/poisson_2d.cpp)
 ADD_EXECUTABLE(poisson_3d examples/tutorial/poisson_3d.cpp)
 ADD_EXECUTABLE(nin_1d     examples/tutorial/nin_1d.cpp)
+ADD_EXECUTABLE(laplace_nin_2d     examples/tutorial/nin_2d_laplace.cpp)
 ADD_EXECUTABLE(mosfet     examples/tutorial/mosfet.cpp)
 
 
