@@ -57,7 +57,7 @@ namespace viennafvm
       viennamath::expr damping_term_;
   };
 
-  linear_pde_options make_linear_pde_options(long data_id, bool existing_mapping = false)
+  inline linear_pde_options make_linear_pde_options(long data_id, bool existing_mapping = false)
   {
     linear_pde_options options;
     options.data_id(data_id);
