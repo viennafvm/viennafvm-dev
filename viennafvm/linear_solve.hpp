@@ -88,8 +88,8 @@ namespace viennafvm
     viennacl::linalg::ilut_tag precond_tag;
     viennacl::linalg::ilut_precond<MatrixType> preconditioner(system_matrix, precond_tag);
 
-    //result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(breaktol,max_iters), preconditioner);
-    result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(breaktol,max_iters));
+    result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(breaktol,max_iters), preconditioner);
+    //result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(breaktol,max_iters));
     //std::cout << "* linear solver: Residual (rescaled): " << norm_2(prod(system_matrix_2, result) - load_vector_2) / norm_2(load_vector_2) << std::endl;
 #ifdef VIENNAFVM_DEBUG
     std::cout << "* linear solver: Residual (full): " << norm_2(prod(system_matrix, result) - load_vector) / norm_2(load_vector) << " (" << load_vector.size() << " unknowns)" << std::endl;

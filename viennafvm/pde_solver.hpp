@@ -101,26 +101,29 @@ namespace viennafvm
   }
 
 
-  template <typename PDESystemType, typename DomainType, typename VectorType>
-  void apply_update(PDESystemType const & pde_system, DomainType const & domain, VectorType const & update, numeric_type alpha = 0.5)
-  {
-    typedef typename DomainType::config_type              Config;
-    typedef typename Config::cell_tag                     CellTag;
+  // [JW] do we really need this? it seems we can do the pde_index loop in the calling instance, as we are doing it
+  // with the picard/non-linear approach anyway. that should thus also fly with the linear approach..
+  //
+//  template <typename PDESystemType, typename DomainType, typename VectorType>
+//  void apply_update(PDESystemType const & pde_system, DomainType const & domain, VectorType const & update, numeric_type alpha = 0.5)
+//  {
+//    typedef typename DomainType::config_type              Config;
+//    typedef typename Config::cell_tag                     CellTag;
 
-    typedef typename viennagrid::result_of::point<Config>::type                  PointType;
-    typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type    CellType;
+//    typedef typename viennagrid::result_of::point<Config>::type                  PointType;
+//    typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type    CellType;
 
-    typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
-    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
+//    typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
+//    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
-    typedef typename PDESystemType::mapping_key_type   MappingKeyType;
-    typedef typename PDESystemType::boundary_key_type  BoundaryKeyType;
+//    typedef typename PDESystemType::mapping_key_type   MappingKeyType;
+//    typedef typename PDESystemType::boundary_key_type  BoundaryKeyType;
 
-    for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
-    {
-      apply_update(pde_system, pde_index, domain, update, alpha);
-    }
-  }
+//    for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
+//    {
+//      apply_update(pde_system, pde_index, domain, update, alpha);
+//    }
+//  }
 
   template <typename PDESystemType, typename DomainType, typename VectorType>
   void transfer_to_solution_vector(PDESystemType const & pde_system, DomainType const & domain, VectorType & result)
@@ -171,6 +174,7 @@ namespace viennafvm
         nonlinear_iterations = 40;
         linear_iterations = 500;
         linear_breaktol = 1e-14;
+        damping = 1.0;
       }
 
       template <typename PDESystemType, typename DomainType>
@@ -196,7 +200,11 @@ namespace viennafvm
           VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
           //std::cout << update << std::endl;
 
-          apply_update(pde_system, domain, update, 1.0);
+          for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
+          {
+            double update_norm = apply_update(pde_system, pde_index, domain, update, damping);
+            std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;
+          }
           transfer_to_solution_vector(pde_system, domain, result_);
         }
         else // nonlinear
@@ -225,7 +233,7 @@ namespace viennafvm
                 VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
                 //std::cout << update << std::endl;
 
-                double update_norm = apply_update(pde_system, pde_index, domain, update);
+                double update_norm = apply_update(pde_system, pde_index, domain, update, damping);
                 std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;                
               }
             }
@@ -250,8 +258,11 @@ namespace viennafvm
       std::size_t get_linear_iterations() { return linear_iterations; }
       void set_linear_iterations(std::size_t max_iters) { linear_iterations = max_iters; }            
       
-      std::size_t get_linear_breaktol() { return linear_iterations; }
-      void set_linear_breaktol(double tol) { linear_breaktol = tol; }                  
+      double get_linear_breaktol() { return linear_iterations; }
+      void set_linear_breaktol(double value) { linear_breaktol = value; }
+
+      double get_damping() { return damping; }
+      void set_damping(double value) { damping = value; }
 
     private:
       VectorType result_;
@@ -259,6 +270,7 @@ namespace viennafvm
       std::size_t nonlinear_iterations;
       std::size_t linear_iterations;
       double      linear_breaktol;
+      double      damping;
   };
 
 }
