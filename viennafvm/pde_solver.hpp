@@ -168,7 +168,9 @@ namespace viennafvm
   class pde_solver
   {
     public:
-    
+
+      typedef viennafvm::numeric_type numeric_type;
+
       pde_solver()
       {
         nonlinear_iterations = 40;
@@ -202,7 +204,7 @@ namespace viennafvm
 
           for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
           {
-            double update_norm = apply_update(pde_system, pde_index, domain, update, damping);
+            numeric_type update_norm = apply_update(pde_system, pde_index, domain, update, damping);
             std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;
           }
           transfer_to_solution_vector(pde_system, domain, result_);
@@ -210,8 +212,12 @@ namespace viennafvm
         else // nonlinear
         {
           picard_iteration_ = true;
+
+          bool converged = false;
+          std::size_t required_nonlinear_iterations = 0;
           for (std::size_t iter=0; iter < nonlinear_iterations; ++iter)
           {
+            required_nonlinear_iterations++;
             std::cout << " --- Iteration " << iter << " --- " << std::endl;
 
             if (picard_iteration_)
@@ -233,15 +239,44 @@ namespace viennafvm
                 VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
                 //std::cout << update << std::endl;
 
-                double update_norm = apply_update(pde_system, pde_index, domain, update, damping);
-                std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;                
+                numeric_type update_norm = apply_update(pde_system, pde_index, domain, update, damping);
+                std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;
+
+                if(pde_index == 0) // check if the potential update has converged ..
+                {
+                    if(update_norm <= nonlinear_breaktol) converged = true;
+                }
               }
             }
             else
             {
               throw "not implemented!";
             }
+
+            if(converged) break; // .. the nonlinear for-loop
+
+          } // nonlinear for-loop
+
+          if(converged)
+          {
+              std::cout << std::endl;
+              std::cout << "--------" << std::endl;
+              std::cout << "Success: Simulation converged successfully!" << std::endl;
+              std::cout << "  Potential update reached the break-tolerance of " << nonlinear_breaktol
+                        << " in " << required_nonlinear_iterations << " iterations" << std::endl;
+              std::cout << "--------" << std::endl;
           }
+          else
+          {
+              std::cout << std::endl;
+              std::cout << "--------" << std::endl;
+              std::cout << "Error: Simulation did not converge" << std::endl;
+              std::cout << "  Potential update did not reach the break-tolerance of " << nonlinear_breaktol
+                        << " in " << nonlinear_iterations << " iterations" << std::endl;
+              std::cout << "--------" << std::endl;
+          }
+
+
           // need to pack all approximations into a single vector:
           std::size_t map_index = create_mapping(pde_system, domain);
           result_.resize(map_index);
@@ -255,22 +290,26 @@ namespace viennafvm
       std::size_t get_nonlinear_iterations() { return nonlinear_iterations; }
       void set_nonlinear_iterations(std::size_t max_iters) { nonlinear_iterations = max_iters; }
       
+      numeric_type get_nonlinear_breaktol() { return nonlinear_iterations; }
+      void set_nonlinear_breaktol(numeric_type value) { nonlinear_breaktol = value; }
+
       std::size_t get_linear_iterations() { return linear_iterations; }
       void set_linear_iterations(std::size_t max_iters) { linear_iterations = max_iters; }            
       
-      double get_linear_breaktol() { return linear_iterations; }
-      void set_linear_breaktol(double value) { linear_breaktol = value; }
+      numeric_type get_linear_breaktol() { return linear_iterations; }
+      void set_linear_breaktol(numeric_type value) { linear_breaktol = value; }
 
-      double get_damping() { return damping; }
-      void set_damping(double value) { damping = value; }
+      numeric_type get_damping() { return damping; }
+      void set_damping(numeric_type value) { damping = value; }
 
     private:
       VectorType result_;
       bool picard_iteration_;
       std::size_t nonlinear_iterations;
       std::size_t linear_iterations;
-      double      linear_breaktol;
-      double      damping;
+      numeric_type      linear_breaktol;
+      numeric_type      nonlinear_breaktol;
+      numeric_type      damping;
   };
 
 }
