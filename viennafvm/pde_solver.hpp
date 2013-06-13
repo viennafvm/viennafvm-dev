@@ -23,7 +23,6 @@
 #include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/linear_solve.hpp"
 
-
 namespace viennafvm
 {
 
@@ -236,7 +235,10 @@ namespace viennafvm
                 //std::cout << load_vector << std::endl;
 
                 result_.resize(load_vector.size());
+                
+                
                 VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
+                
                 //std::cout << update << std::endl;
 
                 numeric_type update_norm = apply_update(pde_system, pde_index, domain, update, damping);
@@ -252,7 +254,7 @@ namespace viennafvm
             {
               throw "not implemented!";
             }
-
+            std::cout << std::endl;
             if(converged) break; // .. the nonlinear for-loop
 
           } // nonlinear for-loop
