@@ -22,6 +22,7 @@
 #include "viennafvm/io/vtk_writer.hpp"
 #include "viennafvm/boundary.hpp"
 #include "viennafvm/linear_solve.hpp"
+#include "viennafvm/pde_solver.hpp"
 
 
 // ViennaGrid includes:
@@ -117,42 +118,26 @@ int main()
     }
   }
 
+  //
+  // Create PDE solver instance
+  //
+  viennafvm::pde_solver<> pde_solver;
 
   //
-  // Create PDE solver functors: (discussion about proper interface required)
+  // Pass system to solver:
   //
-  viennafvm::linear_assembler fvm_assembler;
+  pde_solver(viennafvm::make_linear_pde_system(poisson_equ_1, u),  // PDE with associated unknown
+             my_domain);
 
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_2d_1", my_domain, 0);
 
-  //
-  // Solve system and write solution vector to pde_result:
-  // (discussion about proper interface required. Introduce a pde_result class?)
-  //
-  fvm_assembler(viennafvm::make_linear_pde_system(poisson_equ_1, u),
-                my_domain,
-                system_matrix_1,
-                load_vector_1
-              );
-
-  VectorType pde_result_1 = viennafvm::solve(system_matrix_1, load_vector_1);
-  viennafvm::io::write_solution_to_VTK_file(pde_result_1, "poisson_2d_1", my_domain, 0);
-
-  fvm_assembler(viennafvm::make_linear_pde_system(poisson_equ_2, v, viennafvm::make_linear_pde_options(1, 1)),
-                my_domain,
-                system_matrix_2,
-                load_vector_2
-              );
-
-  //std::cout << system_matrix_2 << std::endl;
-  //std::cout << load_vector_2 << std::endl;
-
-  VectorType pde_result_2 = viennafvm::solve(system_matrix_2, load_vector_2);
-
+  pde_solver(viennafvm::make_linear_pde_system(poisson_equ_2, v, viennafvm::make_linear_pde_options(1, 1)),  // PDE with associated unknown
+             my_domain);
 
   //
   // Writing solution back to domain (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_result_2, "poisson_2d_2", my_domain, 1);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_2d_2", my_domain, 1);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;
