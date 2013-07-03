@@ -70,7 +70,7 @@ int main()
   try
   {
     viennagrid::io::netgen_reader my_netgen_reader;
-    my_netgen_reader(my_domain, "../examples/data/line10.mesh");
+    my_netgen_reader(my_domain, "../examples/data/line23.mesh");
   }
   catch (...)
   {
@@ -79,13 +79,13 @@ int main()
   }
 
   // Specify Poisson equation:
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( permittivity_key() );
+  viennafvm::ncell_quantity<CellType>  permittivity; permittivity.wrap_constant( permittivity_key() );
   std::cout << "No. of segments: " << my_domain.segments().size() << std::endl;
   viennafvm::set_quantity_region(permittivity_key(), my_domain, true);
-  viennafvm::set_quantity_value(permittivity_key(), my_domain, 1);
-  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[2], 2);
-  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[3], 2);
-  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[4], 2);
+  viennafvm::set_quantity_value(permittivity_key(), my_domain, 3);
+  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[2], 1);
+  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[3], 1);
+  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[4], 1);
 
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
   Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(u)), 0);  // \Delta u = 0

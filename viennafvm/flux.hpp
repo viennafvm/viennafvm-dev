@@ -588,8 +588,9 @@ namespace viennafvm
                                                                                         viennamath::rt_expr<InterfaceType>(current_iterate.clone()),
                                                                                         viennamath::diff(gradient_argument, u)) / distance;
 
-          in_integrand_  = replaced_gradient_prefactor * modified_gradient;
-          out_integrand_ = replaced_gradient_prefactor * modified_gradient;
+          in_integrand_  = modified_gradient;
+          out_integrand_ = modified_gradient;
+          integrand_prefactor_ = replaced_gradient_prefactor;
 
 #ifdef VIENNAFVM_DEBUG
           std::cout << " - Expression for in-flux:  " << in_integrand_ << std::endl;
@@ -599,18 +600,19 @@ namespace viennafvm
 
       }
 
-      double in(CellType const & inner_cell, FacetType const & facet, CellType const & /*outer_cell*/) const
+      double in(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell) const
       {
         std::vector<double> p(3); //dummy point
 
-        viennamath::rt_traversal_wrapper<InterfaceType> cell_updater( new detail::ncell_updater<CellType, InterfaceType>(inner_cell) );
+        viennamath::rt_traversal_wrapper<InterfaceType> cell_updater_inner( new detail::ncell_updater<CellType, InterfaceType>(inner_cell) );
+        viennamath::rt_traversal_wrapper<InterfaceType> cell_updater_outer( new detail::ncell_updater<CellType, InterfaceType>(outer_cell) );
         viennamath::rt_traversal_wrapper<InterfaceType> facet_updater( new detail::ncell_updater<FacetType, InterfaceType>(facet) );
 
         if (has_advection_)
         {
-          A_.get()->recursive_traversal(cell_updater);
+          A_.get()->recursive_traversal(cell_updater_inner);
           A_.get()->recursive_traversal(facet_updater);
-          B_.get()->recursive_traversal(cell_updater);
+          B_.get()->recursive_traversal(cell_updater_inner);
           B_.get()->recursive_traversal(facet_updater);
 
           double val_A = viennamath::eval(A_, p);
@@ -625,24 +627,32 @@ namespace viennafvm
         }
 
         // pure diffusion:
-        in_integrand_.get()->recursive_traversal(cell_updater);
+        in_integrand_.get()->recursive_traversal(cell_updater_inner);
         in_integrand_.get()->recursive_traversal(facet_updater);
-        //return 1.0 / viennadata::access<viennafvm::facet_distance_key, double>()(facet);  //TODO: Unhack!
-        return viennamath::eval(in_integrand_, p);
+
+        integrand_prefactor_.get()->recursive_traversal(facet_updater);
+        integrand_prefactor_.get()->recursive_traversal(cell_updater_inner);
+        double eps_inner = viennamath::eval(integrand_prefactor_, p);
+        integrand_prefactor_.get()->recursive_traversal(cell_updater_outer);
+        double eps_outer = viennamath::eval(integrand_prefactor_, p);
+
+        return viennamath::eval(in_integrand_, p) * 2.0 * eps_inner * eps_outer / (eps_inner + eps_outer);
+
       }
 
-      double out(CellType const & inner_cell, FacetType const & facet, CellType const & /*outer_cell*/) const
+      double out(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell) const
       {
         std::vector<double> p(3); //dummy point
 
-        viennamath::rt_traversal_wrapper<InterfaceType> cell_updater( new detail::ncell_updater<CellType, InterfaceType>(inner_cell) );  //Note: This is not a copy&paste error. Volume-quantities must be consistently evaluated on the inner cell
+        viennamath::rt_traversal_wrapper<InterfaceType> cell_updater_inner( new detail::ncell_updater<CellType, InterfaceType>(inner_cell) );
+        viennamath::rt_traversal_wrapper<InterfaceType> cell_updater_outer( new detail::ncell_updater<CellType, InterfaceType>(outer_cell) );
         viennamath::rt_traversal_wrapper<InterfaceType> facet_updater( new detail::ncell_updater<FacetType, InterfaceType>(facet) );
 
         if (has_advection_)
         {
-          A_.get()->recursive_traversal(cell_updater);
+          A_.get()->recursive_traversal(cell_updater_inner);
           A_.get()->recursive_traversal(facet_updater);
-          B_.get()->recursive_traversal(cell_updater);
+          B_.get()->recursive_traversal(cell_updater_inner);
           B_.get()->recursive_traversal(facet_updater);
 
           double val_A = viennamath::eval(A_, p);
@@ -657,10 +667,16 @@ namespace viennafvm
         }
 
         // pure diffusion:
-        out_integrand_.get()->recursive_traversal(cell_updater);
         out_integrand_.get()->recursive_traversal(facet_updater);
+        out_integrand_.get()->recursive_traversal(cell_updater_inner);
 
-        return viennamath::eval(out_integrand_, p);
+        integrand_prefactor_.get()->recursive_traversal(facet_updater);
+        integrand_prefactor_.get()->recursive_traversal(cell_updater_inner);
+        double eps_inner = viennamath::eval(integrand_prefactor_, p);
+        integrand_prefactor_.get()->recursive_traversal(cell_updater_outer);
+        double eps_outer = viennamath::eval(integrand_prefactor_, p);
+
+        return viennamath::eval(out_integrand_, p) * 2.0 * eps_inner * eps_outer / (eps_inner + eps_outer);
       }
 
     private:
@@ -669,6 +685,7 @@ namespace viennafvm
       // diffusive case:
       viennamath::rt_expr<InterfaceType> in_integrand_;
       viennamath::rt_expr<InterfaceType> out_integrand_;
+      viennamath::rt_expr<InterfaceType> integrand_prefactor_;
 
       // diffusion-advection:
       viennamath::rt_expr<InterfaceType> A_;
