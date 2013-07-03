@@ -16,6 +16,7 @@
 
 #include <ostream>
 #include "viennadata/api.hpp"
+#include "viennamath/forwards.h"
 
 #define NUM_PI 3.1415926535897932384626433832795
 
@@ -85,7 +86,7 @@ namespace viennafvm
   class facet_distance_key {};
   class facet_area_key {};
 
-  template <typename CellType, typename InterfaceType>
+  template <typename CellType, typename InterfaceType = viennamath::default_interface_type>
   class ncell_quantity;
 
 
