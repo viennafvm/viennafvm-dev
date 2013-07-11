@@ -26,16 +26,18 @@
 namespace viennafvm
 {
 
-  template <typename PDESystemType, typename DomainType, typename VectorType>
-  double apply_update(PDESystemType const & pde_system, std::size_t pde_index, DomainType const & domain, VectorType const & update, numeric_type alpha = 0.3)
+  template <typename StorageType, typename PDESystemType, typename DomainType, typename VectorType>
+  double apply_update(StorageType & storage,
+                      PDESystemType const & pde_system, std::size_t pde_index,
+                      DomainType const & domain,
+                      VectorType const & update, numeric_type alpha = 0.3)
   {
-    typedef typename DomainType::config_type              Config;
-    typedef typename Config::cell_tag                     CellTag;
+    typedef typename viennagrid::result_of::cell_tag<DomainType>::type CellTag;
+    
+    typedef typename viennagrid::result_of::point<DomainType>::type                  PointType;
+    typedef typename viennagrid::result_of::element<DomainType, CellTag>::type    CellType;
 
-    typedef typename viennagrid::result_of::point<Config>::type                  PointType;
-    typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type    CellType;
-
-    typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
+    typedef typename viennagrid::result_of::const_element_range<DomainType, CellTag>::type   CellContainer;
     typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
     typedef typename PDESystemType::mapping_key_type   MappingKeyType;
@@ -49,7 +51,23 @@ namespace viennafvm
     viennamath::function_symbol const & u = pde_system.unknown(pde_index)[0];
     numeric_type l2_update_norm = 0;
 
-    CellContainer cells = viennagrid::ncells(domain);
+    
+    typename viennadata::result_of::accessor<StorageType, viennafvm::current_iterate_key, double, CellType>::type current_iterate_accessor =
+        viennadata::accessor<viennafvm::current_iterate_key, double, CellType>(storage, viennafvm::current_iterate_key(u.id()));
+    
+    typename viennadata::result_of::accessor<StorageType, BoundaryKeyType, bool, CellType>::type boundary_accessor =
+        viennadata::accessor<BoundaryKeyType, bool, CellType>(storage, bnd_key);
+
+    typename viennadata::result_of::accessor<StorageType, BoundaryKeyType, numeric_type, CellType>::type boundary_value_accessor =
+        viennadata::accessor<BoundaryKeyType, numeric_type, CellType>(storage, bnd_key);
+
+    typename viennadata::result_of::accessor<StorageType, viennafvm::mapping_key, long, CellType>::type cell_mapping_accessor =
+        viennadata::accessor<viennafvm::mapping_key, long, CellType>(storage, map_key);
+
+    typename viennadata::result_of::accessor<StorageType, viennafvm::disable_quantity_key, bool, CellType>::type disable_quantity_accessor =
+        viennadata::accessor<viennafvm::disable_quantity_key, bool, CellType>(storage, viennafvm::disable_quantity_key(unknown_id));
+    
+    CellContainer cells = viennagrid::elements(domain);
 
     // get damping term
     numeric_type A_n = 0.0;
@@ -57,12 +75,12 @@ namespace viennafvm
     {
       for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
       {
-        if (viennafvm::is_quantity_enabled(*cit, unknown_id))
+        if (viennafvm::is_quantity_enabled(*cit, disable_quantity_accessor))
         {
-          double current_value = get_current_iterate(*cit, u);
-          double update_value = viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit)
-                                 ? viennadata::access<BoundaryKeyType, numeric_type>(bnd_key)(*cit) - current_value
-                                 : update(viennadata::access<MappingKeyType, long>(map_key)(*cit));
+          double current_value = get_current_iterate(*cit, current_iterate_accessor);
+          double update_value = boundary_accessor(*cit)
+                                 ? boundary_value_accessor(*cit) - current_value
+                                 : update(cell_mapping_accessor(*cit));
 
           if (current_value != 0)
             A_n = std::max(A_n, std::abs(update_value / current_value));
@@ -73,12 +91,12 @@ namespace viennafvm
     // apply update:
     for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
     {
-      if (viennafvm::is_quantity_enabled(*cit, unknown_id))
+      if (viennafvm::is_quantity_enabled(*cit, disable_quantity_accessor))
       {
-        double current_value = get_current_iterate(*cit, u);
-        double update_value = viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit)
-                               ? viennadata::access<BoundaryKeyType, numeric_type>(bnd_key)(*cit) - current_value
-                               : update(viennadata::access<MappingKeyType, long>(map_key)(*cit));
+        double current_value = get_current_iterate(*cit, current_iterate_accessor);
+        double update_value = boundary_accessor(*cit)
+                               ? boundary_value_accessor(*cit) - current_value
+                               : update(cell_mapping_accessor(*cit));
 
         numeric_type new_value = current_value + alpha * update_value;
 
@@ -91,7 +109,7 @@ namespace viennafvm
         }
 
         l2_update_norm += (new_value - current_value) * (new_value - current_value);
-        set_current_iterate(*cit, u, new_value);
+        set_current_iterate(*cit, current_iterate_accessor, new_value);
       }
     }
 
@@ -124,21 +142,24 @@ namespace viennafvm
 //    }
 //  }
 
-  template <typename PDESystemType, typename DomainType, typename VectorType>
-  void transfer_to_solution_vector(PDESystemType const & pde_system, DomainType const & domain, VectorType & result)
+  template <typename StorageType, typename PDESystemType, typename DomainType, typename VectorType>
+  void transfer_to_solution_vector(StorageType & storage,
+                                   PDESystemType const & pde_system,
+                                   DomainType const & domain,
+                                   VectorType & result)
   {
-    typedef typename DomainType::config_type              Config;
-    typedef typename Config::cell_tag                     CellTag;
+    typedef typename viennagrid::result_of::cell_tag<DomainType>::type CellTag;
 
-    typedef typename viennagrid::result_of::point<Config>::type                  PointType;
-    typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type    CellType;
+    typedef typename viennagrid::result_of::point<DomainType>::type                  PointType;
+    typedef typename viennagrid::result_of::element<DomainType, CellTag>::type    CellType;
 
-    typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
+    typedef typename viennagrid::result_of::const_element_range<DomainType, CellTag>::type   CellContainer;
     typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
     typedef typename PDESystemType::mapping_key_type   MappingKeyType;
     typedef typename PDESystemType::boundary_key_type  BoundaryKeyType;
 
+    
     for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
     {
       long unknown_id = pde_system.unknown(pde_index)[0].id();
@@ -146,16 +167,28 @@ namespace viennafvm
       BoundaryKeyType bnd_key(unknown_id);
       MappingKeyType  map_key(unknown_id);
 
-      CellContainer cells = viennagrid::ncells(domain);
+    typename viennadata::result_of::accessor<StorageType, viennafvm::current_iterate_key, double, CellType>::type current_iterate_accessor =
+        viennadata::accessor<viennafvm::current_iterate_key, double, CellType>(storage, viennafvm::current_iterate_key(unknown_id));
+      
+    typename viennadata::result_of::accessor<StorageType, MappingKeyType, long, CellType>::type cell_mapping_accessor =
+        viennadata::accessor<MappingKeyType, long, CellType>(storage, map_key);
+
+    typename viennadata::result_of::accessor<StorageType, BoundaryKeyType, bool, CellType>::type boundary_accessor =
+        viennadata::accessor<BoundaryKeyType, bool, CellType>(storage, bnd_key);
+
+    typename viennadata::result_of::accessor<StorageType, viennafvm::disable_quantity_key, bool, CellType>::type disable_quantity_accessor =
+        viennadata::accessor<viennafvm::disable_quantity_key, bool, CellType>(storage, viennafvm::disable_quantity_key(unknown_id));
+
+      CellContainer cells = viennagrid::elements(domain);
       for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
       {
-        if (viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit))  // boundary cell
+        if (boundary_accessor(*cit))  // boundary cell
         {
           //nothing
         }
-        else if (viennafvm::is_quantity_enabled(*cit, unknown_id))
+        else if (viennafvm::is_quantity_enabled(*cit, disable_quantity_accessor))
         {
-          result(viennadata::access<MappingKeyType, long>(map_key)(*cit)) = get_current_iterate(*cit, pde_system.unknown(pde_index)[0]);
+          result(cell_mapping_accessor(*cit)) = get_current_iterate(*cit, current_iterate_accessor);
         }
       }
     }
@@ -178,8 +211,8 @@ namespace viennafvm
         damping = 1.0;
       }
 
-      template <typename PDESystemType, typename DomainType>
-      void operator()(PDESystemType const & pde_system, DomainType const & domain)
+      template <typename StorageType, typename PDESystemType, typename DomainType>
+      void operator()(StorageType & storage, PDESystemType const & pde_system, DomainType const & domain)
       {
         bool is_linear = pde_system.is_linear(); //TODO: Replace with an automatic detection
 
@@ -191,7 +224,7 @@ namespace viennafvm
           // do something
           viennafvm::linear_assembler fvm_assembler;
 
-          fvm_assembler(pde_system, domain, system_matrix, load_vector);
+          fvm_assembler(storage, pde_system, domain, system_matrix, load_vector);
 
 
           //std::cout << system_matrix << std::endl;
@@ -203,10 +236,10 @@ namespace viennafvm
 
           for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
           {
-            numeric_type update_norm = apply_update(pde_system, pde_index, domain, update, damping);
+            numeric_type update_norm = apply_update(storage, pde_system, pde_index, domain, update, damping);
             std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;
           }
-          transfer_to_solution_vector(pde_system, domain, result_);
+          transfer_to_solution_vector(storage, pde_system, domain, result_);
         }
         else // nonlinear
         {
@@ -229,7 +262,7 @@ namespace viennafvm
                 // assemble linearized systems
                 viennafvm::linear_assembler fvm_assembler;
 
-                fvm_assembler(pde_system, pde_index, domain, system_matrix, load_vector);
+                fvm_assembler(storage, pde_system, pde_index, domain, system_matrix, load_vector);
 
                 //std::cout << system_matrix << std::endl;
                 //std::cout << load_vector << std::endl;
@@ -241,7 +274,7 @@ namespace viennafvm
                 
                 //std::cout << update << std::endl;
 
-                numeric_type update_norm = apply_update(pde_system, pde_index, domain, update, damping);
+                numeric_type update_norm = apply_update(storage, pde_system, pde_index, domain, update, damping);
                 std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;
 
                 if(pde_index == 0) // check if the potential update has converged ..
@@ -280,9 +313,9 @@ namespace viennafvm
 
 
           // need to pack all approximations into a single vector:
-          std::size_t map_index = create_mapping(pde_system, domain);
+          std::size_t map_index = create_mapping(storage, pde_system, domain);
           result_.resize(map_index);
-          transfer_to_solution_vector(pde_system, domain, result_);
+          transfer_to_solution_vector(storage, pde_system, domain, result_);
         }
 
       }

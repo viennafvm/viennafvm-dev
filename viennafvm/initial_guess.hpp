@@ -23,7 +23,7 @@
 #include "viennafvm/util.hpp"
 #include "viennafvm/boundary.hpp"
 
-#include "viennagrid/iterators.hpp"
+#include "viennagrid/domain/domain.hpp"
 
 #include "viennadata/api.hpp"
 
@@ -65,43 +65,47 @@ namespace viennafvm
       }
   };
 
-  template <typename DomainType, typename FunctionSymbol, typename KeyType>
-  void set_initial_guess(DomainType const & domain, FunctionSymbol const & u, KeyType const & key)
+  template <typename DomainType, typename FunctionSymbol, typename QuantityDisabledAccessorType, typename InputAccessorType, typename OutputAccessorType>
+  void set_initial_guess(DomainType const & domain, FunctionSymbol const & u, QuantityDisabledAccessorType const quantity_disabled_accessor, InputAccessorType const input_accessor, OutputAccessorType output_accessor)
   {
-    typedef viennafvm::current_iterate_key    IterateKey;
-    typedef typename DomainType::config_type  ConfigType;
-    typedef typename ConfigType::cell_tag     CellTag;
+    typedef typename viennagrid::result_of::cell_tag<DomainType>::type     CellTag;
+    
 
-    typedef typename viennagrid::result_of::ncell<ConfigType, CellTag::dim>::type               CellType;
-    typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
+    typedef typename viennagrid::result_of::element<DomainType, CellTag>::type               CellType;
+    typedef typename viennagrid::result_of::const_element_range<DomainType, CellTag>::type   CellContainer;
     typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
+    typedef viennafvm::current_iterate_key    IterateKey;
     IterateKey iter_key(u.id());
 
-    CellContainer cells = viennagrid::ncells(domain);
+    CellContainer cells = viennagrid::elements(domain);
     for (CellIterator cit  = cells.begin();
                       cit != cells.end();
                     ++cit)
     {
-      if (is_quantity_enabled(*cit, u.id()))
-        viennadata::access<IterateKey, numeric_type>(iter_key)(*cit) = viennadata::access<KeyType, numeric_type>(key)(*cit);
+      if (is_quantity_enabled(*cit, quantity_disabled_accessor))
+        output_accessor(*cit) = input_accessor(*cit);
+//         viennadata::access<IterateKey, numeric_type>(iter_key)(*cit) = viennadata::access<KeyType, numeric_type>(key)(*cit);
     }
   }
 
 
-  template <typename DomainType, typename FunctionSymbol, typename SmootherType>
-  void smooth_initial_guess(DomainType const & domain, FunctionSymbol const & u, SmootherType const & smoother)
+  template <typename DomainType, typename FunctionSymbol, typename SmootherType, typename AccessorType>
+  void smooth_initial_guess(DomainType const & domain, FunctionSymbol const & u, SmootherType const & smoother, AccessorType accessor)
   {
     typedef viennafvm::current_iterate_key              IterateKey;
-    typedef typename DomainType::config_type            Config;
-    typedef typename Config::cell_tag                   CellTag;
-    typedef typename viennagrid::result_of::ncell<Config, CellTag::dim-1>::type                FacetType;
-    typedef typename viennagrid::result_of::ncell<Config, CellTag::dim  >::type                CellType;
+    
+    typedef typename viennagrid::result_of::cell_tag<DomainType>::type     CellTag;
+    typedef typename viennagrid::result_of::facet_tag<CellTag>::type     FacetTag;
 
-    typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type  CellContainer;
+    
+    typedef typename viennagrid::result_of::element<DomainType, FacetTag>::type                FacetType;
+    typedef typename viennagrid::result_of::element<DomainType, CellTag >::type                CellType;
+
+    typedef typename viennagrid::result_of::const_element_range<DomainType, CellTag>::type  CellContainer;
     typedef typename viennagrid::result_of::iterator<CellContainer>::type                      CellIterator;
 
-    typedef typename viennagrid::result_of::const_ncell_range<CellType, CellTag::dim-1>::type  FacetOnCellContainer;
+    typedef typename viennagrid::result_of::const_element_range<CellType, FacetTag>::type  FacetOnCellContainer;
     typedef typename viennagrid::result_of::iterator<FacetOnCellContainer>::type               FacetOnCellIterator;
 
     std::map<CellType const *, std::vector<numeric_type> >  cell_neighbor_values;
@@ -110,18 +114,19 @@ namespace viennafvm
     //
     // Phase 1: Gather neighboring values:
     //
-    CellContainer cells = viennagrid::ncells(domain);
+    CellContainer cells = viennagrid::elements(domain);
     for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
     {
       if (is_quantity_disabled(*cit, u.id()))
         continue;
 
-      cell_neighbor_values[&(*cit)].push_back(viennadata::access<IterateKey, numeric_type>(iter_key)(*cit));
+//       cell_neighbor_values[&(*cit)].push_back(viennadata::access<IterateKey, numeric_type>(iter_key)(*cit));
+      cell_neighbor_values[&(*cit)].push_back(accessor(*cit));
 
       if (is_dirichlet_boundary(*cit, u)) // Dirichlet boundaries should not be smoothed
         continue;
 
-      FacetOnCellContainer facets_on_cell = viennagrid::ncells(*cit);
+      FacetOnCellContainer facets_on_cell = viennagrid::elements(*cit);
       for (FacetOnCellIterator focit  = facets_on_cell.begin();
                                focit != facets_on_cell.end();
                              ++focit)
@@ -135,7 +140,8 @@ namespace viennafvm
 
           numeric_type other_value = is_dirichlet_boundary(*other_cell, u)
               ? get_dirichlet_boundary(*other_cell, u)
-              : viennadata::access<IterateKey, numeric_type>(iter_key)(*other_cell);
+              : accessor(*other_cell);
+//               : viennadata::access<IterateKey, numeric_type>(iter_key)(*other_cell);
 
           cell_neighbor_values[&(*cit)].push_back(other_value);
         }
@@ -150,7 +156,8 @@ namespace viennafvm
       if (is_quantity_disabled(*cit, u.id()))
         continue;
 
-      viennadata::access<IterateKey, numeric_type>(iter_key)(*cit) = smoother(cell_neighbor_values[&(*cit)]);
+//       viennadata::access<IterateKey, numeric_type>(iter_key)(*cit) = smoother(cell_neighbor_values[&(*cit)]);
+        accessor(*cit) = smoother(cell_neighbor_values[&(*cit)]);
     }
   }
 

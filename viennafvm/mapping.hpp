@@ -21,8 +21,7 @@
 #include "viennafvm/forwards.h"
 #include "viennafvm/common.hpp"
 
-#include "viennagrid/forwards.h"
-#include "viennagrid/iterators.hpp"
+#include "viennagrid/forwards.hpp"
 
 namespace viennafvm
 {
@@ -50,19 +49,19 @@ struct extract_domain<viennagrid::segment_t<ConfigType> >
 /** @brief Distributes mapping indices over domain or segment
 *
 */
-template <typename LinPdeSysT, typename DomainType>
-long create_mapping(LinPdeSysT & pde_system,
+template <typename StorageType, typename LinPdeSysT, typename DomainType>
+long create_mapping(StorageType & storage,
+                    LinPdeSysT & pde_system,
                     std::size_t  pde_index,
                     DomainType const & domain,
                     long start_index = 0)
 {
-  typedef typename DomainType::config_type              Config;
-  typedef typename Config::cell_tag                     CellTag;
+  typedef typename viennagrid::result_of::cell<DomainType>::type CellTag;
 
-  typedef typename viennagrid::result_of::point<Config>::type                  PointType;
-  typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type    CellType;
+  typedef typename viennagrid::result_of::point<DomainType>::type                  PointType;
+  typedef typename viennagrid::result_of::element<DomainType, CellTag>::type    CellType;
 
-  typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
+  typedef typename viennagrid::result_of::const_element_range<DomainType, CellTag>::type   CellContainer;
   typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
   typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
@@ -76,43 +75,53 @@ long create_mapping(LinPdeSysT & pde_system,
   BoundaryKeyType bnd_key(unknown_id);
   MappingKeyType  map_key(unknown_id);
 
+  typename viennadata::result_of::accessor<StorageType, BoundaryKeyType, bool, CellType>::type boundary_accessor =
+      viennadata::accessor<BoundaryKeyType, bool, CellType>(storage, bnd_key);
+  
+  typename viennadata::result_of::accessor<StorageType, MappingKeyType, long, CellType>::type cell_mapping_accessor =
+      viennadata::accessor<MappingKeyType, long, CellType>(storage, map_key);
+
+    typename viennadata::result_of::accessor<StorageType, viennafvm::disable_quantity_key, bool, CellType>::type disable_quantity_accessor =
+        viennadata::accessor<viennafvm::disable_quantity_key, bool, CellType>(storage, viennafvm::disable_quantity_key(unknown_id));
+      
   //eventually, map indices need to be set to invalid first:
   if (!init_done)
   {
     typedef typename extract_domain<DomainType>::type   TrueDomainType;
-    typedef typename viennagrid::result_of::const_ncell_range<TrueDomainType, CellTag::dim>::type  DomainCellContainer;
+    typedef typename viennagrid::result_of::const_element_range<TrueDomainType, CellTag>::type  DomainCellContainer;
     typedef typename viennagrid::result_of::iterator<DomainCellContainer>::type                    DomainCellIterator;
 
-    DomainCellContainer cells = viennagrid::ncells<CellTag::dim>(extract_domain<DomainType>::apply(domain));
+    DomainCellContainer cells = viennagrid::elements(extract_domain<DomainType>::apply(domain));
     for (DomainCellIterator cit  = cells.begin();
                             cit != cells.end();
                           ++cit)
     {
-      viennadata::access<MappingKeyType, long>(map_key)(*cit) = viennafvm::QUANTITY_DISABLED; // some negative value
+      cell_mapping_accessor(*cit) = viennafvm::QUANTITY_DISABLED; // some negative value
     }
-    viennadata::access<MappingKeyType, bool>(map_key)(extract_domain<DomainType>::apply(domain)) = true;
+    viennadata::access<MappingKeyType, bool>(storage, map_key, extract_domain<DomainType>::apply(domain)) = true;
   }
 
-  CellContainer cells = viennagrid::ncells(domain);
+  CellContainer cells = viennagrid::elements(domain);
   for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
   {
-    if (viennadata::access<BoundaryKeyType, bool>(bnd_key)(*cit))  // boundary cell
+    if (boundary_accessor(*cit))  // boundary cell
     {
       //std::cout << "boundary cell" << std::endl;
-      viennadata::access<MappingKeyType, long>(map_key)(*cit) = viennafvm::DIRICHLET_BOUNDARY; // some negative value
+      cell_mapping_accessor(*cit) = viennafvm::DIRICHLET_BOUNDARY; // some negative value
     }
-    else if (viennafvm::is_quantity_enabled(*cit, unknown_id))
+    else if (viennafvm::is_quantity_enabled(*cit, disable_quantity_accessor))
     {
       //std::cout << "interior cell" << std::endl;
-      if (viennadata::access<MappingKeyType, long>(map_key)(*cit) < 0) //only assign if no dof assigned yet
+      if (cell_mapping_accessor(*cit) < 0) //only assign if no dof assigned yet
       {
-        viennadata::access<MappingKeyType, long>(map_key)(*cit) = map_index;
+        cell_mapping_accessor(*cit) = map_index;
         map_index += pde_system.unknown(pde_index).size();
       }
     }
   }
 
-  viennadata::access<MappingKeyType, long>(map_key)(extract_domain<DomainType>::apply(domain)) = map_index;
+  viennadata::access<MappingKeyType, long>(storage, map_key, extract_domain<DomainType>::apply(domain)) = map_index;
+//   viennadata::access<MappingKeyType, long>(map_key)(extract_domain<DomainType>::apply(domain)) = map_index;
 
   return map_index;
 }
@@ -121,17 +130,17 @@ long create_mapping(LinPdeSysT & pde_system,
 /** @brief Distributes mapping indices over domain or segment
 *
 */
-template <typename LinPdeSysT, typename DomainType>
-long create_mapping(LinPdeSysT & pde_system,
+template <typename StorageType, typename LinPdeSysT, typename DomainType>
+long create_mapping(StorageType & storage,
+                    LinPdeSysT & pde_system,
                     DomainType const & domain)
 {
-  typedef typename DomainType::config_type              Config;
-  typedef typename Config::cell_tag                     CellTag;
+  typedef typename viennagrid::result_of::cell<DomainType>::type CellTag;
 
-  typedef typename viennagrid::result_of::point<Config>::type                  PointType;
-  typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type    CellType;
+  typedef typename viennagrid::result_of::point<DomainType>::type                  PointType;
+  typedef typename viennagrid::result_of::element<DomainType, CellTag>::type    CellType;
 
-  typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
+  typedef typename viennagrid::result_of::const_element_range<DomainType, CellTag>::type   CellContainer;
   typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
   typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
@@ -141,7 +150,7 @@ long create_mapping(LinPdeSysT & pde_system,
 
   for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
   {
-    next_index = create_mapping(pde_system, pde_index, domain, next_index);
+    next_index = create_mapping(storage, pde_system, pde_index, domain, next_index);
   }
 
   return next_index;

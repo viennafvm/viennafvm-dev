@@ -485,11 +485,11 @@ namespace viennafvm
   } //namespace detail
 
 
-  template <typename CellType, typename FacetType, typename InterfaceType>
+  template <typename StorageType, typename CellType, typename FacetType, typename InterfaceType>
   class flux_handler
   {
     public:
-      flux_handler(viennamath::rt_expr<InterfaceType> const & integrand, viennamath::rt_function_symbol<InterfaceType> const & u) : has_advection_(false)
+      flux_handler(StorageType & storage_, viennamath::rt_expr<InterfaceType> const & integrand, viennamath::rt_function_symbol<InterfaceType> const & u) : storage(storage_), has_advection_(false)
       {
         detail::gradient_scanner<InterfaceType> gradient_scanner(u);
         detail::func_symbol_scanner<InterfaceType> fsymbol_scanner(u);
@@ -526,7 +526,7 @@ namespace viennafvm
 #endif
         // Instantiate residual accessor for nonlinear terms:
         viennafvm::ncell_quantity<CellType, InterfaceType> current_iterate;
-        current_iterate.wrap_constant(viennafvm::current_iterate_key(u.id()));
+        current_iterate.wrap_constant(storage, viennafvm::current_iterate_key(u.id()));
 
         viennamath::rt_expr<InterfaceType> replaced_gradient_prefactor = viennamath::substitute(u,
                                                                                                 viennamath::rt_expr<InterfaceType>(current_iterate.clone()),
@@ -534,7 +534,7 @@ namespace viennafvm
 
         // accessor for distance between barycenters:
         viennafvm::ncell_quantity<FacetType, InterfaceType> distance;
-        distance.wrap_constant(viennafvm::facet_distance_key());
+        distance.wrap_constant(storage, viennafvm::facet_distance_key());
 
 
         if (gradient_scanner.found() && fsymbol_scanner.found()) //advection-diffusion
@@ -600,7 +600,8 @@ namespace viennafvm
 
       }
 
-      double in(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell) const
+      template<typename AccessorType>
+      double in(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell, AccessorType const facet_distance_accessor) const
       {
         std::vector<double> p(3); //dummy point
 
@@ -617,7 +618,7 @@ namespace viennafvm
 
           double val_A = viennamath::eval(A_, p);
           double val_B = viennamath::eval(B_, p);
-          double d     = viennadata::access<viennafvm::facet_distance_key, double>()(facet);
+          double d     = facet_distance_accessor(facet); //viennadata::access<viennafvm::facet_distance_key, double>()(facet);
           double exponent = val_B / (val_A / d);
 
           if ( std::abs(exponent) > 0.01) // Actual tolerance is not critical - this is for stabilization purposes only
@@ -640,7 +641,8 @@ namespace viennafvm
 
       }
 
-      double out(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell) const
+      template<typename AccessorType>
+      double out(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell, AccessorType const facet_distance_accessor) const
       {
         std::vector<double> p(3); //dummy point
 
@@ -657,7 +659,7 @@ namespace viennafvm
 
           double val_A = viennamath::eval(A_, p);
           double val_B = viennamath::eval(B_, p);
-          double d     = viennadata::access<viennafvm::facet_distance_key, double>()(facet);
+          double d     = facet_distance_accessor(facet); //viennadata::access<viennafvm::facet_distance_key, double>()(facet);
           double exponent = val_B / (val_A / d);
 
           if ( std::abs(exponent) > 0.01) // Actual tolerance is not critical - this is for stabilization purposes only
@@ -680,6 +682,9 @@ namespace viennafvm
       }
 
     private:
+
+      StorageType & storage;
+      
       bool has_advection_;
 
       // diffusive case:

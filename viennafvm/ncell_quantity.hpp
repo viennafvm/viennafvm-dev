@@ -21,8 +21,8 @@
 #include "viennamath/expression.hpp"
 #include "viennadata/api.hpp"
 
-#include "viennagrid/forwards.h"
-#include "viennagrid/segment.hpp"
+#include "viennagrid/forwards.hpp"
+#include "viennagrid/domain/segmentation.hpp"
 
 /** @file  ncell_quantity.hpp
     @brief Defines ViennaMath extensions: Piecewise constants (constants on each cell) and flux evaluators on interfaces
@@ -56,29 +56,31 @@ namespace viennafvm
     * @param KeyType     The key type to be used with ViennaData
     * @param DataType    The data type to be used with ViennaData
     */
-    template <typename CellType, typename KeyType, typename DataType>
+    template <typename CellType, typename AccessorType>
     class ncell_quantity_constant : public ncell_quantity_interface<CellType>
     {
-        typedef ncell_quantity_constant<CellType, KeyType, DataType>        self_type;
+        typedef ncell_quantity_constant<CellType, AccessorType>        self_type;
         typedef typename ncell_quantity_interface<CellType>::numeric_type    numeric_type;
 
       public:
-        ncell_quantity_constant(KeyType const & key) : key_(key) {}
+        ncell_quantity_constant(AccessorType const & accessor_) : accessor(accessor_) {}
 
         numeric_type eval(CellType const & cell, numeric_type /*v*/) const
         {
-          return viennadata::access<KeyType, DataType>(key_)(cell);
+          return accessor(cell);
+//           return viennadata::access<KeyType, DataType>(key_)(cell);
         }
 
         numeric_type eval(CellType const & cell, std::vector<numeric_type> const & /*v*/) const
         {
-          return viennadata::access<KeyType, DataType>(key_)(cell);
+          return accessor(cell);
+//           return viennadata::access<KeyType, DataType>(key_)(cell);
         }
 
-        ncell_quantity_interface<CellType> * clone() const { return new self_type(key_); }
+        ncell_quantity_interface<CellType> * clone() const { return new self_type(accessor); }
 
       private:
-        KeyType key_;
+        AccessorType accessor;
     };
 
 
@@ -207,10 +209,14 @@ namespace viennafvm
         current_cell = &cell;
       }
 
-      template <typename KeyType>
-      void wrap_constant(KeyType const & k)
+      template <typename StorageType, typename KeyType>
+      void wrap_constant(StorageType & storage, KeyType const & k)
       {
-        detail::ncell_quantity_wrapper<CellType, numeric_type> temp( new detail::ncell_quantity_constant<CellType, KeyType, numeric_type>(k) );
+        detail::ncell_quantity_wrapper<CellType, numeric_type> temp(
+          new detail::ncell_quantity_constant<CellType, typename viennadata::result_of::accessor<StorageType, KeyType, numeric_type, CellType>::type >(
+            viennadata::accessor<KeyType, numeric_type, CellType>(storage, k)
+          )
+        );
         accessor = temp;
       }
 
@@ -292,43 +298,42 @@ namespace viennafvm
 
   namespace detail
   {
-    template <typename KeyType, typename DomSegType>
-    void set_quantity_region_impl(KeyType const & key,
+    template <typename AccessorType, typename DomSegType>
+    void set_quantity_region_impl(AccessorType accessor,
                                   DomSegType const & seg,
                                   bool b)
     {
-      typedef typename DomSegType::config_type  ConfigType;
-      typedef typename ConfigType::cell_tag     CellTag;
-
-      typedef typename viennagrid::result_of::ncell<ConfigType, CellTag::dim>::type               CellType;
-      typedef typename viennagrid::result_of::const_ncell_range<DomSegType, CellTag::dim>::type  CellContainer;
+      typedef typename viennagrid::result_of::cell_tag<DomSegType>::type CellTag;
+      
+      typedef typename viennagrid::result_of::element<DomSegType, CellTag>::type               CellType;
+      typedef typename viennagrid::result_of::const_element_range<DomSegType, CellTag>::type  CellContainer;
       typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
-      CellContainer cells = viennagrid::ncells(seg);
+      CellContainer cells = viennagrid::elements(seg);
       for (CellIterator cit  = cells.begin();
                         cit != cells.end();
                       ++cit)
       {
-        viennadata::access<KeyType, bool >(key)(*cit) = b;
+        accessor(*cit) = b;
       }
     }
 
   }
 
-  template <typename KeyType, typename ConfigType>
-  void set_quantity_region(KeyType const & key,
+  template <typename AccessorType, typename ConfigType>
+  void set_quantity_region(AccessorType accessor,
                            viennagrid::segment_t<ConfigType> const & seg,
                            bool b)
   {
-    detail::set_quantity_region_impl(key, seg, b);
+    detail::set_quantity_region_impl(accessor, seg, b);
   }
 
-  template <typename KeyType, typename ConfigType>
-  void set_quantity_region(KeyType const & key,
+  template <typename AccessorType, typename ConfigType>
+  void set_quantity_region(AccessorType accessor,
                            viennagrid::domain_t<ConfigType> const & dom,
                            bool b)
   {
-    detail::set_quantity_region_impl(key, dom, b);
+    detail::set_quantity_region_impl(accessor, dom, b);
   }
 
 
@@ -336,32 +341,31 @@ namespace viennafvm
   // quantity value:
   //
 
-  template <typename KeyType, typename CellType>
-  void set_quantity_value(KeyType const & key, CellType const & c, numeric_type val)
+  template <typename AccessorType, typename CellType>
+  void set_quantity_value(AccessorType accessor, CellType const & c, numeric_type val)
   {
-    viennadata::access<KeyType, numeric_type >(key)(c) = val;
+    accessor(c) = val;
   }
 
   namespace detail
   {
-    template <typename KeyType, typename DomSegType>
-    void set_quantity_value_impl(KeyType const & key,
+    template <typename AccessorType, typename DomSegType>
+    void set_quantity_value_impl(AccessorType accessor,
                                  DomSegType const & seg,
                                  numeric_type val)
     {
-      typedef typename DomSegType::config_type  ConfigType;
-      typedef typename ConfigType::cell_tag     CellTag;
+      typedef typename viennagrid::result_of::cell_tag<DomSegType>::type CellTag;
 
-      typedef typename viennagrid::result_of::ncell<ConfigType, CellTag::dim>::type               CellType;
-      typedef typename viennagrid::result_of::const_ncell_range<DomSegType, CellTag::dim>::type  CellContainer;
+      typedef typename viennagrid::result_of::element<DomSegType, CellTag>::type               CellType;
+      typedef typename viennagrid::result_of::const_element_range<DomSegType, CellTag>::type  CellContainer;
       typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
-      CellContainer cells = viennagrid::ncells(seg);
+      CellContainer cells = viennagrid::elements(seg);
       for (CellIterator cit  = cells.begin();
                         cit != cells.end();
                       ++cit)
       {
-        viennadata::access<KeyType, numeric_type >(key)(*cit) = val;
+        accessor(*cit) = val;
       }
     }
 

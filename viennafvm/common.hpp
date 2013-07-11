@@ -20,8 +20,7 @@
 
 #include <math.h>
 
-#include "viennagrid/domain.hpp"
-#include "viennagrid/iterators.hpp"
+#include "viennagrid/domain/domain.hpp"
 #include "viennagrid/point.hpp"
 
 #include "viennamath/runtime/function_symbol.hpp"
@@ -31,59 +30,52 @@
 namespace viennafvm
 {
 
-  template <typename ConfigType, typename InterfaceType>
-  void disable_quantity(viennagrid::segment_t<ConfigType> const & seg,
-                        viennamath::rt_function_symbol<InterfaceType> const & fs)
+  template <typename SegmentationType, typename AccessorType>
+  void disable_quantity(viennagrid::segment_t<SegmentationType> const & seg,
+                        AccessorType accessor)
   {
-    typedef viennafvm::disable_quantity_key   DisablerKey;
-    typedef viennagrid::segment_t<ConfigType> SegmentType;
-    typedef typename ConfigType::cell_tag     CellTag;
+    typedef viennagrid::segment_t<SegmentationType> SegmentType;
+    typedef typename viennagrid::result_of::cell_tag<SegmentType>::type CellTag;
 
-    typedef typename viennagrid::result_of::ncell<ConfigType, CellTag::dim>::type               CellType;
-    typedef typename viennagrid::result_of::const_ncell_range<SegmentType, CellTag::dim>::type  CellContainer;
+    typedef typename viennagrid::result_of::element<SegmentType, CellTag>::type               CellType;
+    typedef typename viennagrid::result_of::const_element_range<SegmentType, CellTag>::type  CellContainer;
     typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
-    DisablerKey key(fs.id());
-
-    CellContainer cells = viennagrid::ncells(seg);
+    CellContainer cells = viennagrid::elements(seg);
     for (CellIterator cit  = cells.begin();
                       cit != cells.end();
                     ++cit)
     {
       //set flag:
-      viennadata::access<DisablerKey, bool>(key)(*cit) = true;
+      accessor(*cit) = true;
     }
   }
 
-  template <typename ConfigType, typename ElementTag>
-  bool is_quantity_disabled(viennagrid::element_t<ConfigType, ElementTag> const & cell,
-                            long id)
+  template <typename ElementTag, typename WrappedConfigType, typename AccessorType>
+  bool is_quantity_disabled(viennagrid::element_t<ElementTag, WrappedConfigType> const & cell,
+                            AccessorType const accessor)
   {
-    typedef viennafvm::disable_quantity_key   DisablerKey;
-
-    DisablerKey key(id);
-
-    return viennadata::access<DisablerKey, bool>(key)(cell);
+    return accessor(cell);
   }
 
-  template <typename ConfigType, typename ElementTag>
-  bool is_quantity_enabled(viennagrid::element_t<ConfigType, ElementTag> const & cell,
-                           long id)
+  template <typename ElementTag, typename WrappedConfigType, typename AccessorType>
+  bool is_quantity_enabled(viennagrid::element_t<ElementTag, WrappedConfigType> const & cell,
+                            AccessorType const accessor)
   {
-    return !is_quantity_disabled(cell, id);
+    return !is_quantity_disabled(cell, accessor);
   }
 
 
-  template <typename CellType, typename InterfaceType>
-  numeric_type get_current_iterate(CellType const & cell, viennamath::rt_function_symbol<InterfaceType> const & u)
+  template <typename CellType, typename AccessorType>
+  numeric_type get_current_iterate(CellType const & cell, AccessorType const accessor)
   {
-    return viennadata::access<current_iterate_key, numeric_type>(current_iterate_key(u.id()))(cell);
+    return accessor(cell);
   }
 
-  template <typename CellType, typename InterfaceType>
-  void set_current_iterate(CellType const & cell, viennamath::rt_function_symbol<InterfaceType> const & u, numeric_type value)
+  template <typename CellType, typename AccessorType>
+  void set_current_iterate(CellType const & cell, AccessorType accessor, numeric_type value)
   {
-    viennadata::access<current_iterate_key, numeric_type>(current_iterate_key(u.id()))(cell) = value;
+    accessor(cell) = value;
   }
 
 } //namespace viennashe

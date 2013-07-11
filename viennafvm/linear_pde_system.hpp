@@ -25,7 +25,7 @@
 // *** vienna includes:
 #include "viennamath/forwards.h"
 #include "viennadata/api.hpp"
-#include "viennagrid/domain.hpp"
+#include "viennagrid/domain/domain.hpp"
 
 namespace viennafvm
 {

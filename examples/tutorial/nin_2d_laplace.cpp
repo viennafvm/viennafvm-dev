@@ -28,8 +28,7 @@
 #include "viennafvm/initial_guess.hpp"
 
 // ViennaGrid includes:
-#include "viennagrid/domain.hpp"
-#include <viennagrid/config/simplex.hpp>
+#include "viennagrid/config/default_configs.hpp"
 #include "viennagrid/io/netgen_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
 #include "viennagrid/algorithm/voronoi.hpp"
@@ -75,44 +74,49 @@ double built_in_potential(double /*temperature*/, double doping_n, double doping
   return bpot;
 }
 
-template <typename DomainType>
-void init_quantities(DomainType const & my_domain)
+template <typename StorageType, typename SegmentationType>
+void init_quantities( StorageType & storage, SegmentationType const & segmentation )
 {
+  typedef typename viennagrid::result_of::cell<SegmentationType>::type CellType;
+  
   //
   // Init permittivity
   //
   double eps0 = 8.854e-12;
   double epsr_silicon = 11.7; // silicon!
   double eps_silicon = eps0 * epsr_silicon;
+  
 
   // donator doping
-  viennafvm::set_quantity_region(permittivity_key(), my_domain.segments()[0], false);
+  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[0], false);
   
-  viennafvm::set_quantity_region(permittivity_key(), my_domain.segments()[1], true);  
-  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[1],  eps_silicon);
+  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[1], true);
+  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[1],  eps_silicon);
 
-  viennafvm::set_quantity_region(permittivity_key(), my_domain.segments()[2], true);  
-  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[2],  eps_silicon);
+  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[2], true);
+  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[2],  eps_silicon);
 
-  viennafvm::set_quantity_region(permittivity_key(), my_domain.segments()[3], true);  
-  viennafvm::set_quantity_value(permittivity_key(), my_domain.segments()[3],  eps_silicon);
+  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[3], true);
+  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[3],  eps_silicon);
 
-  viennafvm::set_quantity_region(permittivity_key(), my_domain.segments()[4], false);
+  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[4], false);
 }
 
 /** @brief Scales the entire simulation domain (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
 template <typename DomainType>
 void scale_domain(DomainType & domain, double factor)
 {
-  typedef typename viennagrid::result_of::ncell_range<DomainType, 0 > ::type VertexContainer;
+  typedef typename viennagrid::result_of::vertex_range<DomainType> ::type VertexContainer;
   typedef typename viennagrid::result_of::iterator<VertexContainer>::type VertexIterator;
 
-  VertexContainer vertices = viennagrid::ncells < 0 > (domain);
+  typename viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(domain);
+  
+  VertexContainer vertices = viennagrid::elements(domain);
   for ( VertexIterator vit = vertices.begin();
         vit != vertices.end();
         ++vit )
   {
-    vit->point() *= factor; // scale
+    point_accessor(*vit) *= factor; // scale
   }
 }
 
@@ -120,11 +124,12 @@ int main()
 {
   typedef double   numeric_type;
 
-  typedef viennagrid::config::triangular_2d                       ConfigType;
-  typedef viennagrid::result_of::domain<ConfigType>::type   DomainType;
-  typedef typename ConfigType::cell_tag                     CellTag;
+  typedef viennagrid::triangular_2d_domain   DomainType;
+  typedef viennagrid::result_of::segmentation<DomainType>::type SegmentationType;
+  
+  typedef viennagrid::result_of::cell_tag<DomainType>::type CellTag;
 
-  typedef viennagrid::result_of::ncell<ConfigType, CellTag::dim>::type        CellType;
+  typedef viennagrid::result_of::element<DomainType, CellTag>::type        CellType;
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
@@ -133,11 +138,13 @@ int main()
   // Create a domain from file
   //
   DomainType my_domain;
+  SegmentationType my_segmentation(my_domain);
+  viennadata::storage<> my_storage;
 
   try
   {
     viennagrid::io::netgen_reader my_reader;
-    my_reader(my_domain, "../examples/data/nin2d.mesh");
+    my_reader(my_domain, my_segmentation, "../examples/data/nin2d.mesh");
   }
   catch (...)
   {
@@ -150,7 +157,7 @@ int main()
   //
   // Assign doping and set initial values
   //
-  init_quantities(my_domain);
+  init_quantities(my_storage, my_segmentation);
 
   //
   // Setting boundary information on domain (see mosfet.in2d for segment indices)
@@ -159,14 +166,14 @@ int main()
 
   // potential:
   double built_in_pot = built_in_potential(300, 1.0e24, 1.0e8); // should match specification in init_quantities()!
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[0], 0.0 + built_in_pot, psi); // Gate contact
-  viennafvm::set_dirichlet_boundary(my_domain.segments()[4], 0.8 + built_in_pot, psi); // Source contact
+  viennafvm::set_dirichlet_boundary( my_storage, my_segmentation[0], 0.0 + built_in_pot, psi); // Gate contact
+  viennafvm::set_dirichlet_boundary( my_storage, my_segmentation[4], 0.8 + built_in_pot, psi); // Source contact
 
   //
   // Specify PDEs:
   //
 
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( permittivity_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( my_storage, permittivity_key() );
 
 
   // here is all the fun: specify DD system
@@ -183,7 +190,7 @@ int main()
   //
   viennafvm::pde_solver<> pde_solver;
 
-  pde_solver(pde_system, my_domain);   // weird math happening in here ;-)
+  pde_solver(my_storage, pde_system, my_domain);   // weird math happening in here ;-)
 
 
   //
@@ -193,7 +200,7 @@ int main()
   for (std::size_t i=0; i<pde_system.size(); ++i)
     result_ids[i] = pde_system.unknown(i)[0].id();
 
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "nin", my_domain, result_ids);
+  viennafvm::io::write_solution_to_VTK_file(my_storage, pde_solver.result(), "nin", my_domain, my_segmentation, result_ids);
 
   std::cout << "*************************************" << std::endl;
   std::cout << "* Simulation finished successfully! *" << std::endl;

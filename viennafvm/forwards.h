@@ -83,8 +83,15 @@ namespace viennafvm
   };
 
   //box-integration related:
-  class facet_distance_key {};
-  class facet_area_key {};
+  struct facet_distance_key
+  {
+      bool operator<(facet_distance_key const &) const { return false; }
+  };
+  
+  struct facet_area_key
+  {
+      bool operator<(facet_area_key const &) const { return false; }
+  };
 
   template <typename CellType, typename InterfaceType = viennamath::default_interface_type>
   class ncell_quantity;
@@ -113,17 +120,17 @@ namespace viennadata
   namespace config
   {
     //box-integration related:
-    template <>
-    struct key_dispatch<viennafvm::facet_distance_key>
-    {
-      typedef type_key_dispatch_tag    tag;
-    };
-
-    template <>
-    struct key_dispatch<viennafvm::facet_area_key>
-    {
-      typedef type_key_dispatch_tag    tag;
-    };
+//     template <>
+//     struct key_dispatch<viennafvm::facet_distance_key>
+//     {
+//       typedef type_key_dispatch_tag    tag;
+//     };
+// 
+//     template <>
+//     struct key_dispatch<viennafvm::facet_area_key>
+//     {
+//       typedef type_key_dispatch_tag    tag;
+//     };
   }
 }
 
