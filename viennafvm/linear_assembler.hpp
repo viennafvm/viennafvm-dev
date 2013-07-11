@@ -61,18 +61,17 @@ namespace viennafvm
     public:
 
       /** @brief  Assembles the full PDE system into the same matrix */
-      template <typename StorageType,
-                typename LinPdeSysT,
+      template <typename LinPdeSysT,
                 typename SegmentT,
+                typename StorageType,
                 typename MatrixT,
                 typename VectorT>
-      void operator()(StorageType      & storage,
-                      LinPdeSysT const & pde_system,
+      void operator()(LinPdeSysT const & pde_system,
                       SegmentT   const & segment,
+                      StorageType      & storage,
                       MatrixT          & system_matrix,
                       VectorT          & load_vector)
       {
-        typedef typename SegmentT::config_type                config_type;
         typedef viennamath::equation                          equ_type;
         typedef viennamath::expr                              expr_type;
         typedef typename expr_type::interface_type            interface_type;
@@ -80,7 +79,7 @@ namespace viennafvm
 
         typedef typename viennagrid::result_of::cell_tag<SegmentT>::type CellTag;
 
-        std::size_t map_index = viennafvm::create_mapping(storage, pde_system, segment);
+        std::size_t map_index = viennafvm::create_mapping(pde_system, segment, storage);
 
         system_matrix.clear();
         system_matrix.resize(map_index, map_index, false);
@@ -96,23 +95,24 @@ namespace viennafvm
           std::cout << "//   Equation " << pde_index << std::endl;
           std::cout << "//" << std::endl;
 #endif
-          assemble(storage, pde_system, pde_index,
-                   segment, system_matrix, load_vector);
+          assemble(pde_system, pde_index,
+                   segment, storage,
+                   system_matrix, load_vector);
 
         } // for pde_index
       } // functor
 
 
       /** @brief  Assembles one PDE out of the PDE system into the matrix */
-      template <typename StorageType,
-                typename LinPdeSysT,
+      template <typename LinPdeSysT,
                 typename SegmentT,
+                typename StorageType,
                 typename MatrixT,
                 typename VectorT>
-      void operator()(StorageType      & storage,
-                      LinPdeSysT const & pde_system,
+      void operator()(LinPdeSysT const & pde_system,
                       std::size_t        pde_index,
                       SegmentT   const & segment,
+                      StorageType      & storage,
                       MatrixT          & system_matrix,
                       VectorT          & load_vector)
       {
@@ -126,7 +126,7 @@ namespace viennafvm
 //         typedef typename Config::cell_tag                   CellTag;
         typedef typename viennagrid::result_of::cell_tag<SegmentT>::type CellTag;
 
-        std::size_t map_index = viennafvm::create_mapping(storage, pde_system, pde_index, segment);
+        std::size_t map_index = viennafvm::create_mapping(pde_system, pde_index, segment, storage);
 
         system_matrix.clear();
         system_matrix.resize(map_index, map_index, false);
@@ -140,23 +140,24 @@ namespace viennafvm
         std::cout << "//   Equation " << pde_index << std::endl;
         std::cout << "//" << std::endl;
 #endif
-        assemble(storage, pde_system, pde_index,
-                 segment, system_matrix, load_vector);
+        assemble(pde_system, pde_index,
+                 segment, storage,
+                 system_matrix, load_vector);
 
       } // functor
 
 
     private:
 
-      template <typename StorageType,
-                typename PDESystemType,
+      template <typename PDESystemType,
                 typename SegmentT,
+                typename StorageType,
                 typename MatrixT,
                 typename VectorT>
-      void assemble(StorageType & storage,
-                    PDESystemType const & pde_system,
+      void assemble(PDESystemType const & pde_system,
                     std::size_t           pde_index,
                     SegmentT      const & segment,
+                    StorageType & storage,
                     MatrixT             & system_matrix,
                     VectorT             & load_vector)
       {
@@ -222,7 +223,7 @@ namespace viennafvm
         //
         // Preprocess domain
         //
-        setup(storage, segment);
+        setup(segment, storage);
 
 
         typename viennadata::result_of::accessor<StorageType, viennafvm::mapping_key, long, CellType>::type cell_mapping_accessor =
@@ -284,22 +285,22 @@ namespace viennafvm
               if (col_index == viennafvm::DIRICHLET_BOUNDARY)
               {
                 double boundary_value = boundary_accessor(*other_cell);
-                double current_value  = get_current_iterate(*cit, current_iterate_accessor);
+                double current_value  = current_iterate_accessor(*cit);
 
                 // updates are homogeneous, hence no direct contribution to RHS here. Might change later when boundary values are slowly increased.
                 load_vector(row_index)              -= flux.out(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * (boundary_value - current_value);
                 system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area;
 
                 load_vector(row_index) -= flux.out(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * current_value;
-                load_vector(row_index) += flux.in(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * get_current_iterate(*cit, current_iterate_accessor);
+                load_vector(row_index) += flux.in(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * current_iterate_accessor(*cit);
               }
               else if (col_index >= 0)
               {
                 system_matrix(row_index, col_index) += flux.out(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area;
                 system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area;
 
-                load_vector(row_index) -= flux.out(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * get_current_iterate(*other_cell, current_iterate_accessor);
-                load_vector(row_index) += flux.in(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * get_current_iterate(*cit, current_iterate_accessor);
+                load_vector(row_index) -= flux.out(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * current_iterate_accessor(*other_cell);
+                load_vector(row_index) += flux.in(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * current_iterate_accessor(*cit);
               }
               // else: nothing to do because other cell is not considered for this quantity
 
@@ -313,7 +314,7 @@ namespace viennafvm
 
           // Matrix (including residual contributions)
           system_matrix(row_index, row_index) += viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume;
-          load_vector(row_index) -= viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume * get_current_iterate(*cit, current_iterate_accessor);
+          load_vector(row_index) -= viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume * current_iterate_accessor(*cit);
 
           system_matrix(row_index, row_index) += viennamath::eval(stabilization_integrand, p) * cell_volume;
 
@@ -325,8 +326,8 @@ namespace viennafvm
 
       } // assemble
 
-      template <typename StorageType, typename SegmentT>
-      void setup(StorageType & storage, SegmentT const & segment)
+      template <typename SegmentT, typename StorageType>
+      void setup(SegmentT const & segment, StorageType & storage)
       {
         typedef typename SegmentT::config_type                config_type;
         typedef viennamath::equation                          equ_type;

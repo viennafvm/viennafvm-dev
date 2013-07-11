@@ -26,10 +26,10 @@
 namespace viennafvm
 {
 
-  template <typename StorageType, typename PDESystemType, typename DomainType, typename VectorType>
-  double apply_update(StorageType & storage,
-                      PDESystemType const & pde_system, std::size_t pde_index,
+  template <typename PDESystemType, typename DomainType, typename StorageType, typename VectorType>
+  double apply_update(PDESystemType const & pde_system, std::size_t pde_index,
                       DomainType const & domain,
+                      StorageType & storage,
                       VectorType const & update, numeric_type alpha = 0.3)
   {
     typedef typename viennagrid::result_of::cell_tag<DomainType>::type CellTag;
@@ -75,9 +75,9 @@ namespace viennafvm
     {
       for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
       {
-        if (viennafvm::is_quantity_enabled(*cit, disable_quantity_accessor))
+        if (!disable_quantity_accessor(*cit))
         {
-          double current_value = get_current_iterate(*cit, current_iterate_accessor);
+          double current_value = current_iterate_accessor(*cit);
           double update_value = boundary_accessor(*cit)
                                  ? boundary_value_accessor(*cit) - current_value
                                  : update(cell_mapping_accessor(*cit));
@@ -91,9 +91,9 @@ namespace viennafvm
     // apply update:
     for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
     {
-      if (viennafvm::is_quantity_enabled(*cit, disable_quantity_accessor))
+      if (!disable_quantity_accessor(*cit))
       {
-        double current_value = get_current_iterate(*cit, current_iterate_accessor);
+        double current_value = current_iterate_accessor(*cit);
         double update_value = boundary_accessor(*cit)
                                ? boundary_value_accessor(*cit) - current_value
                                : update(cell_mapping_accessor(*cit));
@@ -109,7 +109,7 @@ namespace viennafvm
         }
 
         l2_update_norm += (new_value - current_value) * (new_value - current_value);
-        set_current_iterate(*cit, current_iterate_accessor, new_value);
+        current_iterate_accessor(*cit) = new_value;
       }
     }
 
@@ -142,10 +142,10 @@ namespace viennafvm
 //    }
 //  }
 
-  template <typename StorageType, typename PDESystemType, typename DomainType, typename VectorType>
-  void transfer_to_solution_vector(StorageType & storage,
-                                   PDESystemType const & pde_system,
+  template <typename PDESystemType, typename DomainType, typename StorageType, typename VectorType>
+  void transfer_to_solution_vector(PDESystemType const & pde_system,
                                    DomainType const & domain,
+                                   StorageType & storage,
                                    VectorType & result)
   {
     typedef typename viennagrid::result_of::cell_tag<DomainType>::type CellTag;
@@ -186,9 +186,9 @@ namespace viennafvm
         {
           //nothing
         }
-        else if (viennafvm::is_quantity_enabled(*cit, disable_quantity_accessor))
+        else if (!disable_quantity_accessor(*cit))
         {
-          result(cell_mapping_accessor(*cit)) = get_current_iterate(*cit, current_iterate_accessor);
+          result(cell_mapping_accessor(*cit)) = current_iterate_accessor(*cit);
         }
       }
     }
@@ -211,8 +211,8 @@ namespace viennafvm
         damping = 1.0;
       }
 
-      template <typename StorageType, typename PDESystemType, typename DomainType>
-      void operator()(StorageType & storage, PDESystemType const & pde_system, DomainType const & domain)
+      template <typename PDESystemType, typename DomainType, typename StorageType>
+      void operator()(PDESystemType const & pde_system, DomainType const & domain, StorageType & storage)
       {
         bool is_linear = pde_system.is_linear(); //TODO: Replace with an automatic detection
 
@@ -224,7 +224,7 @@ namespace viennafvm
           // do something
           viennafvm::linear_assembler fvm_assembler;
 
-          fvm_assembler(storage, pde_system, domain, system_matrix, load_vector);
+          fvm_assembler(pde_system, domain, storage, system_matrix, load_vector);
 
 
           //std::cout << system_matrix << std::endl;
@@ -236,10 +236,10 @@ namespace viennafvm
 
           for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
           {
-            numeric_type update_norm = apply_update(storage, pde_system, pde_index, domain, update, damping);
+            numeric_type update_norm = apply_update(pde_system, pde_index, domain, storage, update, damping);
             std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;
           }
-          transfer_to_solution_vector(storage, pde_system, domain, result_);
+          transfer_to_solution_vector(pde_system, domain, storage, result_);
         }
         else // nonlinear
         {
@@ -262,7 +262,7 @@ namespace viennafvm
                 // assemble linearized systems
                 viennafvm::linear_assembler fvm_assembler;
 
-                fvm_assembler(storage, pde_system, pde_index, domain, system_matrix, load_vector);
+                fvm_assembler(pde_system, pde_index, domain, storage, system_matrix, load_vector);
 
                 //std::cout << system_matrix << std::endl;
                 //std::cout << load_vector << std::endl;
@@ -274,7 +274,7 @@ namespace viennafvm
                 
                 //std::cout << update << std::endl;
 
-                numeric_type update_norm = apply_update(storage, pde_system, pde_index, domain, update, damping);
+                numeric_type update_norm = apply_update(pde_system, pde_index, domain, storage, update, damping);
                 std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;
 
                 if(pde_index == 0) // check if the potential update has converged ..
@@ -313,9 +313,9 @@ namespace viennafvm
 
 
           // need to pack all approximations into a single vector:
-          std::size_t map_index = create_mapping(storage, pde_system, domain);
+          std::size_t map_index = create_mapping(pde_system, domain, storage);
           result_.resize(map_index);
-          transfer_to_solution_vector(storage, pde_system, domain, result_);
+          transfer_to_solution_vector(pde_system, domain, storage, result_);
         }
 
       }

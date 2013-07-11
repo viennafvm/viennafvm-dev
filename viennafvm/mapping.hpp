@@ -49,11 +49,11 @@ struct extract_domain<viennagrid::segment_t<ConfigType> >
 /** @brief Distributes mapping indices over domain or segment
 *
 */
-template <typename StorageType, typename LinPdeSysT, typename DomainType>
-long create_mapping(StorageType & storage,
-                    LinPdeSysT & pde_system,
+template <typename LinPdeSysT, typename DomainType, typename StorageType>
+long create_mapping(LinPdeSysT & pde_system,
                     std::size_t  pde_index,
                     DomainType const & domain,
+                    StorageType & storage,
                     long start_index = 0)
 {
   typedef typename viennagrid::result_of::cell<DomainType>::type CellTag;
@@ -109,7 +109,7 @@ long create_mapping(StorageType & storage,
       //std::cout << "boundary cell" << std::endl;
       cell_mapping_accessor(*cit) = viennafvm::DIRICHLET_BOUNDARY; // some negative value
     }
-    else if (viennafvm::is_quantity_enabled(*cit, disable_quantity_accessor))
+    else if (!disable_quantity_accessor(*cit))
     {
       //std::cout << "interior cell" << std::endl;
       if (cell_mapping_accessor(*cit) < 0) //only assign if no dof assigned yet
@@ -130,10 +130,10 @@ long create_mapping(StorageType & storage,
 /** @brief Distributes mapping indices over domain or segment
 *
 */
-template <typename StorageType, typename LinPdeSysT, typename DomainType>
-long create_mapping(StorageType & storage,
-                    LinPdeSysT & pde_system,
-                    DomainType const & domain)
+template <typename LinPdeSysT, typename DomainType, typename StorageType>
+long create_mapping(LinPdeSysT & pde_system,
+                    DomainType const & domain,
+                    StorageType & storage)
 {
   typedef typename viennagrid::result_of::cell<DomainType>::type CellTag;
 
@@ -150,7 +150,7 @@ long create_mapping(StorageType & storage,
 
   for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
   {
-    next_index = create_mapping(storage, pde_system, pde_index, domain, next_index);
+    next_index = create_mapping(pde_system, pde_index, domain, storage, next_index);
   }
 
   return next_index;

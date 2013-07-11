@@ -77,14 +77,14 @@ int main()
   //
   // Create a domain from file
   //
-  DomainType my_domain;
-  SegmentationType my_segmentation(my_domain);
-  StorageType my_storage;
+  DomainType domain;
+  SegmentationType segmentation(domain);
+  StorageType storage;
 
   try
   {
     viennagrid::io::netgen_reader my_reader;
-    my_reader(my_domain, my_segmentation, "../examples/data/square128.mesh");
+    my_reader(domain, segmentation, "../examples/data/square128.mesh");
   }
   catch (...)
   {
@@ -107,24 +107,24 @@ int main()
   // Setting boundary information on domain (this should come from device specification)
   //
 
-  viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(my_domain);
+  viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(domain);
 
-  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_0_accessor =
-      viennadata::accessor<viennafvm::boundary_key, bool, CellType>(my_storage, viennafvm::boundary_key(0));
+  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_u_accessor =
+      viennadata::accessor<viennafvm::boundary_key, bool, CellType>(storage, viennafvm::boundary_key( u.id() ));
       
-  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_0_value_accessor =
-      viennadata::accessor<viennafvm::boundary_key, double, CellType>(my_storage, viennafvm::boundary_key(0));
+  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_u_value_accessor =
+      viennadata::accessor<viennafvm::boundary_key, double, CellType>(storage, viennafvm::boundary_key( u.id() ));
 
       
-  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_1_accessor =
-      viennadata::accessor<viennafvm::boundary_key, bool, CellType>(my_storage, viennafvm::boundary_key(1));
+  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_v_accessor =
+      viennadata::accessor<viennafvm::boundary_key, bool, CellType>(storage, viennafvm::boundary_key( v.id() ));
 
-  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_1_value_accessor =
-      viennadata::accessor<viennafvm::boundary_key, double, CellType>(my_storage, viennafvm::boundary_key(1));
+  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_v_value_accessor =
+      viennadata::accessor<viennafvm::boundary_key, double, CellType>(storage, viennafvm::boundary_key( v.id() ));
 
       
   //setting some boundary flags:
-  CellContainer cells = viennagrid::elements(my_domain);
+  CellContainer cells = viennagrid::elements(domain);
   for (CellIterator cit  = cells.begin();
                     cit != cells.end();
                   ++cit)
@@ -137,13 +137,24 @@ int main()
       //boundary for first equation: Homogeneous Dirichlet everywhere
       if ( point_accessor(*vit)[0] == 0.0 || point_accessor(*vit)[0] == 1.0
            || point_accessor(*vit)[1] == 0.0 || point_accessor(*vit)[1] == 1.0 )
-        viennafvm::set_dirichlet_boundary(*cit, 0.0, boundary_0_accessor, boundary_0_value_accessor);  //simulation with ID 0 uses homogeneous boundary data
+      {
+        //simulation with ID 0 uses homogeneous boundary data
+        boundary_u_accessor(*cit) = true;
+        boundary_u_value_accessor(*cit) = 0.0;
+      }
 
       //boundary for second equation (ID 1): 0 at left boundary, 1 at right boundary
       if ( point_accessor(*vit)[0] == 0.0)
-        viennafvm::set_dirichlet_boundary(*cit, 0.0, boundary_1_accessor, boundary_1_value_accessor);
+      {
+        boundary_v_accessor(*cit) = true;
+        boundary_v_value_accessor(*cit) = 0.0;
+      }
+
       else if ( point_accessor(*vit)[0] == 1.0)
-        viennafvm::set_dirichlet_boundary(*cit, 1.0, boundary_1_accessor, boundary_1_value_accessor);
+      {
+        boundary_v_accessor(*cit) = true;
+        boundary_v_value_accessor(*cit) = 1.0;
+      }
     }
   }
 
@@ -155,20 +166,20 @@ int main()
   //
   // Pass system to solver:
   //
-  pde_solver(my_storage,
-             viennafvm::make_linear_pde_system(poisson_equ_1, u),  // PDE with associated unknown
-             my_domain);
+  pde_solver(viennafvm::make_linear_pde_system(poisson_equ_1, u),  // PDE with associated unknown
+             domain,
+             storage);
 
-  viennafvm::io::write_solution_to_VTK_file(my_storage, pde_solver.result(), "poisson_2d_1", my_domain, my_segmentation, 0);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_2d_1", domain, segmentation, storage, 0);
 
-  pde_solver(my_storage,
-             viennafvm::make_linear_pde_system(poisson_equ_2, v, viennafvm::make_linear_pde_options(1, 1)),  // PDE with associated unknown
-             my_domain);
+  pde_solver(viennafvm::make_linear_pde_system(poisson_equ_2, v, viennafvm::make_linear_pde_options(1, 1)),  // PDE with associated unknown
+             domain,
+             storage);
 
   //
   // Writing solution back to domain (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(my_storage, pde_solver.result(), "poisson_2d_2", my_domain, my_segmentation, 1);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_2d_2", domain, segmentation, storage, 1);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;

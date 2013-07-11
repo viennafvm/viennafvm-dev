@@ -74,8 +74,8 @@ double built_in_potential(double /*temperature*/, double doping_n, double doping
   return bpot;
 }
 
-template <typename StorageType, typename SegmentationType>
-void init_quantities( StorageType & storage, SegmentationType const & segmentation )
+template <typename SegmentationType, typename StorageType>
+void init_quantities( SegmentationType const & segmentation, StorageType & storage )
 {
   typedef typename viennagrid::result_of::cell<SegmentationType>::type CellType;
   
@@ -88,18 +88,18 @@ void init_quantities( StorageType & storage, SegmentationType const & segmentati
   
 
   // donator doping
-  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation(1), false);
+  viennafvm::set_quantity_region( segmentation(1), storage, permittivity_key(), false);
   
-  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation(2), true);
-  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, double, CellType>(storage, permittivity_key()), segmentation(2),  eps_silicon);
+  viennafvm::set_quantity_region( segmentation(2), storage, permittivity_key(), true);
+  viennafvm::set_quantity_value( segmentation(2),  storage, permittivity_key(), eps_silicon);
 
-  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation(3), true);
-  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, double, CellType>(storage, permittivity_key()), segmentation(3),  eps_silicon);
+  viennafvm::set_quantity_region( segmentation(3), storage, permittivity_key(), true);
+  viennafvm::set_quantity_value( segmentation(3),  storage, permittivity_key(), eps_silicon);
 
-  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation(4), true);
-  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, double, CellType>(storage, permittivity_key()), segmentation(4),  eps_silicon);
+  viennafvm::set_quantity_region( segmentation(4), storage, permittivity_key(), true);
+  viennafvm::set_quantity_value( segmentation(4),  storage, permittivity_key(), eps_silicon);
 
-  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation(5), false);
+  viennafvm::set_quantity_region( segmentation(5), storage, permittivity_key(), false);
 }
 
 /** @brief Scales the entire simulation domain (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
@@ -137,14 +137,14 @@ int main()
   //
   // Create a domain from file
   //
-  DomainType my_domain;
-  SegmentationType my_segmentation(my_domain);
-  viennadata::storage<> my_storage;
+  DomainType domain;
+  SegmentationType segmentation(domain);
+  viennadata::storage<> storage;
 
   try
   {
     viennagrid::io::netgen_reader my_reader;
-    my_reader(my_domain, my_segmentation, "../examples/data/nin2d.mesh");
+    my_reader(domain, segmentation, "../examples/data/nin2d.mesh");
   }
   catch (...)
   {
@@ -153,14 +153,14 @@ int main()
   }
 
 //   for (int i = 0; i < 10; ++i)
-//     std::cout << "Segment " << i << " - " << my_segmentation.segment_present(i) << std::endl;
+//     std::cout << "Segment " << i << " - " << segmentation.segment_present(i) << std::endl;
 
-  scale_domain(my_domain, 1e-9);
+  scale_domain(domain, 1e-9);
 
   //
   // Assign doping and set initial values
   //
-  init_quantities(my_storage, my_segmentation);
+  init_quantities(segmentation, storage);
 
   //
   // Setting boundary information on domain (see mosfet.in2d for segment indices)
@@ -169,14 +169,14 @@ int main()
 
   // potential:
   double built_in_pot = built_in_potential(300, 1.0e24, 1.0e8); // should match specification in init_quantities()!
-  viennafvm::set_dirichlet_boundary( my_storage, my_segmentation(1), 0.0 + built_in_pot, psi); // Gate contact
-  viennafvm::set_dirichlet_boundary( my_storage, my_segmentation(5), 0.8 + built_in_pot, psi); // Source contact
+  viennafvm::set_dirichlet_boundary( segmentation(1), storage, psi, 0.0 + built_in_pot); // Gate contact
+  viennafvm::set_dirichlet_boundary( segmentation(5), storage, psi, 0.8 + built_in_pot); // Source contact
 
   //
   // Specify PDEs:
   //
 
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( my_storage, permittivity_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( storage, permittivity_key() );
 
 
   // here is all the fun: specify DD system
@@ -193,7 +193,7 @@ int main()
   //
   viennafvm::pde_solver<> pde_solver;
 
-  pde_solver(my_storage, pde_system, my_domain);   // weird math happening in here ;-)
+  pde_solver(pde_system, domain, storage);   // weird math happening in here ;-)
 
 
   //
@@ -203,7 +203,7 @@ int main()
   for (std::size_t i=0; i<pde_system.size(); ++i)
     result_ids[i] = pde_system.unknown(i)[0].id();
 
-  viennafvm::io::write_solution_to_VTK_file(my_storage, pde_solver.result(), "nin", my_domain, my_segmentation, result_ids);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "nin", domain, segmentation, storage, result_ids);
 
   std::cout << "*************************************" << std::endl;
   std::cout << "* Simulation finished successfully! *" << std::endl;

@@ -65,29 +65,59 @@ namespace viennafvm
       }
   };
 
-  template <typename DomainType, typename FunctionSymbol, typename QuantityDisabledAccessorType, typename InputAccessorType, typename OutputAccessorType>
-  void set_initial_guess(DomainType const & domain, FunctionSymbol const & u, QuantityDisabledAccessorType const quantity_disabled_accessor, InputAccessorType const input_accessor, OutputAccessorType output_accessor)
+  template <typename DomainSegmentType, typename QuantityDisabledAccessorType, typename SourceAccessorType, typename DestinationAccessorType>
+  void set_initial_guess(DomainSegmentType const & domain,
+                         QuantityDisabledAccessorType const quantity_disabled_accessor,
+                         SourceAccessorType const source_accessor,
+                         DestinationAccessorType destination_accessor)
   {
-    typedef typename viennagrid::result_of::cell_tag<DomainType>::type     CellTag;
+    typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type     CellTag;
     
 
-    typedef typename viennagrid::result_of::element<DomainType, CellTag>::type               CellType;
-    typedef typename viennagrid::result_of::const_element_range<DomainType, CellTag>::type   CellContainer;
+    typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag>::type               CellType;
+    typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type   CellContainer;
     typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
-
-    typedef viennafvm::current_iterate_key    IterateKey;
-    IterateKey iter_key(u.id());
 
     CellContainer cells = viennagrid::elements(domain);
     for (CellIterator cit  = cells.begin();
                       cit != cells.end();
                     ++cit)
     {
-      if (is_quantity_enabled(*cit, quantity_disabled_accessor))
-        output_accessor(*cit) = input_accessor(*cit);
-//         viennadata::access<IterateKey, numeric_type>(iter_key)(*cit) = viennadata::access<KeyType, numeric_type>(key)(*cit);
+      if (!quantity_disabled_accessor(*cit))
+        destination_accessor(*cit) = source_accessor(*cit);
     }
   }
+
+
+  template <typename DomainSegmentType, typename StorageType, typename QuantityDisabledKeyType, typename SourceKeyType, typename DestinationKeyType>
+  void set_initial_guess(DomainSegmentType const & domain,
+                         StorageType & storage,
+                         QuantityDisabledKeyType const & quantity_disabled_key,
+                         SourceKeyType const & source_key,
+                         DestinationKeyType const & destination_key)
+  {
+    typedef typename viennagrid::result_of::cell<DomainSegmentType>::type     CellType;
+    
+    set_initial_guess(domain,
+                      viennadata::accessor<QuantityDisabledKeyType, bool, CellType>(storage, quantity_disabled_key),
+                      viennadata::accessor<SourceKeyType, numeric_type, CellType>(storage, source_key),
+                      viennadata::accessor<DestinationKeyType, numeric_type, CellType>(storage, destination_key));
+  }
+
+
+  template <typename DomainSegmentType, typename StorageType, typename InterfaceType, typename SourceKeyType>
+  void set_initial_guess(DomainSegmentType const & domain,
+                         StorageType & storage,
+                         viennamath::rt_function_symbol<InterfaceType> const & func_symbol,
+                         SourceKeyType const & source_key)
+  {
+    set_initial_guess(domain, storage,
+                      viennafvm::disable_quantity_key(func_symbol.id()),
+                      source_key,
+                      viennafvm::current_iterate_key(func_symbol.id()));
+  }
+  
+  
 
 
   template <typename DomainType, typename FunctionSymbol, typename SmootherType, typename AccessorType>

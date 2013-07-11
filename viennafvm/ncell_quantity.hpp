@@ -290,23 +290,23 @@ namespace viennafvm
   // quantity region:
   //
 
-  template <typename KeyType, typename CellType>
-  void set_quantity_region(KeyType const & key, CellType const & c, bool b)
-  {
-    viennadata::access<KeyType, bool >(key)(c) = b;
-  }
+//   template <typename KeyType, typename CellType>
+//   void set_quantity_region(KeyType const & key, CellType const & c, bool b)
+//   {
+//     viennadata::access<KeyType, bool >(key)(c) = b;
+//   }
 
   namespace detail
   {
-    template <typename AccessorType, typename DomSegType>
-    void set_quantity_region_impl(AccessorType accessor,
-                                  DomSegType const & seg,
+    template <typename DomainSegmentType, typename AccessorType>
+    void set_quantity_region_impl(DomainSegmentType const & seg,
+                                  AccessorType accessor,
                                   bool b)
     {
-      typedef typename viennagrid::result_of::cell_tag<DomSegType>::type CellTag;
+      typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
       
-      typedef typename viennagrid::result_of::element<DomSegType, CellTag>::type               CellType;
-      typedef typename viennagrid::result_of::const_element_range<DomSegType, CellTag>::type  CellContainer;
+      typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag>::type               CellType;
+      typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type  CellContainer;
       typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
       CellContainer cells = viennagrid::elements(seg);
@@ -320,38 +320,49 @@ namespace viennafvm
 
   }
 
-  template <typename AccessorType, typename ConfigType>
-  void set_quantity_region(AccessorType accessor,
-                           viennagrid::segment_t<ConfigType> const & seg,
+  template <typename DomainSegmentType, typename AccessorType>
+  void set_quantity_region(DomainSegmentType const & domseg,
+                           AccessorType accessor,
                            bool b)
   {
-    detail::set_quantity_region_impl(accessor, seg, b);
+    detail::set_quantity_region_impl(domseg, accessor, b);
   }
 
-  template <typename AccessorType, typename ConfigType>
-  void set_quantity_region(AccessorType accessor,
-                           viennagrid::domain_t<ConfigType> const & dom,
+  template <typename DomainSegmentType, typename StorageType, typename KeyType>
+  void set_quantity_region(DomainSegmentType const & domseg,
+                           StorageType & storage,
+                           KeyType const & key,
                            bool b)
   {
-    detail::set_quantity_region_impl(accessor, dom, b);
+    typedef typename viennagrid::result_of::cell<DomainSegmentType>::type CellType;
+    set_quantity_region(domseg, viennadata::accessor<KeyType, bool, CellType>(storage, key), b);
   }
+  
+
+//   template <typename AccessorType, typename ConfigType>
+//   void set_quantity_region(AccessorType accessor,
+//                            viennagrid::domain_t<ConfigType> const & dom,
+//                            bool b)
+//   {
+//     detail::set_quantity_region_impl(accessor, dom, b);
+//   }
 
 
   //
   // quantity value:
   //
 
-  template <typename AccessorType, typename CellType>
-  void set_quantity_value(AccessorType accessor, CellType const & c, numeric_type val)
-  {
-    accessor(c) = val;
-  }
+//   template <typename AccessorType, typename CellType>
+//   void set_quantity_value(AccessorType accessor, CellType const & c, numeric_type val)
+//   {
+//     accessor(c) = val;
+//   }
 
   namespace detail
   {
-    template <typename AccessorType, typename DomSegType>
-    void set_quantity_value_impl(AccessorType accessor,
-                                 DomSegType const & seg,
+    template <typename DomSegType, typename AccessorType>
+    void set_quantity_value_impl(DomSegType const & seg,
+                                 AccessorType accessor,
                                  numeric_type val)
     {
       typedef typename viennagrid::result_of::cell_tag<DomSegType>::type CellTag;
@@ -371,21 +382,39 @@ namespace viennafvm
 
   }
 
-  template <typename KeyType, typename ConfigType>
-  void set_quantity_value(KeyType const & key,
-                          viennagrid::segment_t<ConfigType> const & seg,
+  template <typename DomainSegmentType, typename AccessorType>
+  void set_quantity_value(DomainSegmentType const & domseg,
+                          AccessorType accessor,
                           numeric_type val)
   {
-    detail::set_quantity_value_impl(key, seg, val);
+    detail::set_quantity_value_impl(domseg, accessor, val);
   }
 
-  template <typename KeyType, typename ConfigType>
-  void set_quantity_value(KeyType const & key,
-                          viennagrid::domain_t<ConfigType> const & dom,
-                          numeric_type val)
+  template <typename DomainSegmentType, typename StorageType, typename KeyType>
+  void set_quantity_value(DomainSegmentType const & domseg,
+                           StorageType & storage,
+                           KeyType const & key,
+                           numeric_type val)
   {
-    detail::set_quantity_value_impl(key, dom, val);
+    typedef typename viennagrid::result_of::cell<DomainSegmentType>::type CellType;
+    set_quantity_value(domseg, viennadata::accessor<KeyType, numeric_type, CellType>(storage, key), val);
   }
+  
+//   template <typename AccessorType, typename ConfigType>
+//   void set_quantity_value(AccessorType accessor,
+//                           viennagrid::segment_t<ConfigType> const & seg,
+//                           numeric_type val)
+//   {
+//     detail::set_quantity_value_impl(accessor, seg, val);
+//   }
+// 
+//   template <typename AccessorType, typename ConfigType>
+//   void set_quantity_value(AccessorType accessor,
+//                           viennagrid::domain_t<ConfigType> const & dom,
+//                           numeric_type val)
+//   {
+//     detail::set_quantity_value_impl(accessor, dom, val);
+//   }
 
 }
 

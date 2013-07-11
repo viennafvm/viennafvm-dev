@@ -31,15 +31,15 @@ namespace viennafvm
   namespace io
   {
 
-    template <typename StorageType,
-              typename VectorType,
+    template <typename VectorType,
               typename DomainType,
-              typename SegmentationType>
-    void write_solution_to_VTK_file(StorageType const & storage,
-                                    VectorType const & result,
+              typename SegmentationType,
+              typename StorageType>
+    void write_solution_to_VTK_file(VectorType const & result,
                                     std::string filename,
                                     DomainType const & domain,
                                     SegmentationType const & segmentation,
+                                    StorageType const & storage,
                                     std::vector<long> id_vector)
     {
 //       typedef typename DomainType::config_type                                              ConfigType;
@@ -102,21 +102,21 @@ namespace viennafvm
       my_vtk_writer(domain, segmentation, filename);
     }
 
-    template <typename StorageType,
-              typename VectorType,
+    template <typename VectorType,
               typename DomainType,
-              typename SegmentationType>
-    void write_solution_to_VTK_file(StorageType const & storage,
-                                    VectorType const & result,
+              typename SegmentationType,
+              typename StorageType>
+    void write_solution_to_VTK_file(VectorType const & result,
                                     std::string filename,
                                     DomainType const & domain,
                                     SegmentationType const & segmentation,
+                                    StorageType const & storage,
                                     long id)
     {
       std::vector<long> id_vector(1);
       id_vector[0] = id;
 
-      write_solution_to_VTK_file(storage, result, filename, domain, segmentation, id_vector);
+      write_solution_to_VTK_file(result, filename, domain, segmentation, storage, id_vector);
     }
   }
 }

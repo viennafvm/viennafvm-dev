@@ -30,18 +30,17 @@
 namespace viennafvm
 {
 
-  template <typename SegmentationType, typename AccessorType>
-  void disable_quantity(viennagrid::segment_t<SegmentationType> const & seg,
+  template <typename DomainSegmentType, typename AccessorType>
+  void disable_quantity(DomainSegmentType const & domseg,
                         AccessorType accessor)
   {
-    typedef viennagrid::segment_t<SegmentationType> SegmentType;
-    typedef typename viennagrid::result_of::cell_tag<SegmentType>::type CellTag;
+    typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
 
-    typedef typename viennagrid::result_of::element<SegmentType, CellTag>::type               CellType;
-    typedef typename viennagrid::result_of::const_element_range<SegmentType, CellTag>::type  CellContainer;
+    typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag>::type               CellType;
+    typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type  CellContainer;
     typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
-    CellContainer cells = viennagrid::elements(seg);
+    CellContainer cells = viennagrid::elements(domseg);
     for (CellIterator cit  = cells.begin();
                       cit != cells.end();
                     ++cit)
@@ -51,31 +50,22 @@ namespace viennafvm
     }
   }
 
-  template <typename ElementTag, typename WrappedConfigType, typename AccessorType>
-  bool is_quantity_disabled(viennagrid::element_t<ElementTag, WrappedConfigType> const & cell,
-                            AccessorType const accessor)
+
+  template <typename DomainSegmentType, typename A, typename B, typename KeyType>
+  void disable_quantity(DomainSegmentType const & domseg,
+                        viennadata::storage<A,B> & storage,
+                        KeyType const & key)
   {
-    return accessor(cell);
+    typedef typename viennagrid::result_of::cell<DomainSegmentType>::type CellType;
+    disable_quantity(domseg, viennadata::accessor<KeyType, bool, CellType>(storage, key));
   }
 
-  template <typename ElementTag, typename WrappedConfigType, typename AccessorType>
-  bool is_quantity_enabled(viennagrid::element_t<ElementTag, WrappedConfigType> const & cell,
-                            AccessorType const accessor)
+  template <typename DomainSegmentType, typename A, typename B, typename InterfaceType>
+  void disable_quantity(DomainSegmentType const & domseg,
+                        viennadata::storage<A,B> & storage,
+                        viennamath::rt_function_symbol<InterfaceType> const & func_symbol)
   {
-    return !is_quantity_disabled(cell, accessor);
-  }
-
-
-  template <typename CellType, typename AccessorType>
-  numeric_type get_current_iterate(CellType const & cell, AccessorType const accessor)
-  {
-    return accessor(cell);
-  }
-
-  template <typename CellType, typename AccessorType>
-  void set_current_iterate(CellType const & cell, AccessorType accessor, numeric_type value)
-  {
-    accessor(cell) = value;
+    disable_quantity( domseg, storage, viennafvm::disable_quantity_key(func_symbol.id()) );
   }
 
 } //namespace viennashe
