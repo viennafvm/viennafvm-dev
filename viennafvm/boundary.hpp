@@ -77,21 +77,30 @@ namespace viennafvm
     }
   }
 
+  template <typename StorageType, typename SegmentationType>
+  void set_dirichlet_boundary(StorageType & storage,
+                              viennagrid::segment_t<SegmentationType> const & seg,
+                              numeric_type const & value,
+                              long id)
+  {
+    typedef typename viennagrid::result_of::cell< viennagrid::segment_t<SegmentationType> >::type CellType;
+
+    typename viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_accessor =
+        viennadata::accessor<viennafvm::boundary_key, bool, CellType>(storage, viennafvm::boundary_key(id));
+
+    typename viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, numeric_type, CellType>::type boundary_value_accessor =
+        viennadata::accessor<viennafvm::boundary_key, numeric_type, CellType>(storage, viennafvm::boundary_key(id));
+
+    set_dirichlet_boundary(seg, value, boundary_accessor, boundary_value_accessor);
+  }
+  
   template <typename StorageType, typename SegmentationType, typename InterfaceType>
   void set_dirichlet_boundary(StorageType & storage,
                               viennagrid::segment_t<SegmentationType> const & seg,
                               numeric_type const & value,
                               viennamath::rt_function_symbol<InterfaceType> const & func_symbol)
   {
-    typedef typename viennagrid::result_of::cell< viennagrid::segment_t<SegmentationType> >::type CellType;
-    
-    typename viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_accessor =
-        viennadata::accessor<viennafvm::boundary_key, bool, CellType>(storage, viennafvm::boundary_key(func_symbol.id()));
-
-    typename viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, numeric_type, CellType>::type boundary_value_accessor =
-        viennadata::accessor<viennafvm::boundary_key, numeric_type, CellType>(storage, viennafvm::boundary_key(func_symbol.id()));
-
-    set_dirichlet_boundary(seg, value, boundary_accessor, boundary_value_accessor);
+    set_dirichlet_boundary(storage, seg, value, func_symbol.id());
   }
 
   

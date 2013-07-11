@@ -88,18 +88,18 @@ void init_quantities( StorageType & storage, SegmentationType const & segmentati
   
 
   // donator doping
-  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[0], false);
+  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation(1), false);
   
-  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[1], true);
-  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[1],  eps_silicon);
+  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation(2), true);
+  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, double, CellType>(storage, permittivity_key()), segmentation(2),  eps_silicon);
 
-  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[2], true);
-  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[2],  eps_silicon);
+  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation(3), true);
+  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, double, CellType>(storage, permittivity_key()), segmentation(3),  eps_silicon);
 
-  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[3], true);
-  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[3],  eps_silicon);
+  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation(4), true);
+  viennafvm::set_quantity_value( viennadata::accessor<permittivity_key, double, CellType>(storage, permittivity_key()), segmentation(4),  eps_silicon);
 
-  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation[4], false);
+  viennafvm::set_quantity_region( viennadata::accessor<permittivity_key, bool, CellType>(storage, permittivity_key()), segmentation(5), false);
 }
 
 /** @brief Scales the entire simulation domain (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
@@ -152,6 +152,9 @@ int main()
     return EXIT_FAILURE;
   }
 
+//   for (int i = 0; i < 10; ++i)
+//     std::cout << "Segment " << i << " - " << my_segmentation.segment_present(i) << std::endl;
+
   scale_domain(my_domain, 1e-9);
 
   //
@@ -166,8 +169,8 @@ int main()
 
   // potential:
   double built_in_pot = built_in_potential(300, 1.0e24, 1.0e8); // should match specification in init_quantities()!
-  viennafvm::set_dirichlet_boundary( my_storage, my_segmentation[0], 0.0 + built_in_pot, psi); // Gate contact
-  viennafvm::set_dirichlet_boundary( my_storage, my_segmentation[4], 0.8 + built_in_pot, psi); // Source contact
+  viennafvm::set_dirichlet_boundary( my_storage, my_segmentation(1), 0.0 + built_in_pot, psi); // Gate contact
+  viennafvm::set_dirichlet_boundary( my_storage, my_segmentation(5), 0.8 + built_in_pot, psi); // Source contact
 
   //
   // Specify PDEs:

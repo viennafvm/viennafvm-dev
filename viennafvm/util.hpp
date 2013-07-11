@@ -53,12 +53,12 @@ namespace viennafvm
       typedef typename viennagrid::line_tag CellTag;
 
       FacetType const * other_facet = &(viennagrid::elements<typename CellTag::facet_tag>(cell)[0]);
-      if ( point_accessor(other_facet)[0] == point_accessor(facet)[0])
+      if ( point_accessor(*other_facet)[0] == point_accessor(facet)[0])
         other_facet = &(viennagrid::elements<CellTag::facet_tag>(cell)[1]);
 
       PointType n;
 
-      n[0] = (facet.point()[0] < other_facet->point()[0]) ? -1: 1;  //left facet has normal -1, right facet has normal +1
+      n[0] = (point_accessor(facet)[0] < point_accessor(*other_facet)[0]) ? -1: 1;  //left facet has normal -1, right facet has normal +1
 
       return n;
     }
