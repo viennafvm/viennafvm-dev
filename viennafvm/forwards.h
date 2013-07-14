@@ -87,7 +87,7 @@ namespace viennafvm
   {
       bool operator<(facet_distance_key const &) const { return false; }
   };
-  
+
   struct facet_area_key
   {
       bool operator<(facet_area_key const &) const { return false; }
@@ -115,23 +115,5 @@ namespace viennamath
   }
 }
 
-namespace viennadata
-{
-  namespace config
-  {
-    //box-integration related:
-//     template <>
-//     struct key_dispatch<viennafvm::facet_distance_key>
-//     {
-//       typedef type_key_dispatch_tag    tag;
-//     };
-// 
-//     template <>
-//     struct key_dispatch<viennafvm::facet_area_key>
-//     {
-//       typedef type_key_dispatch_tag    tag;
-//     };
-  }
-}
 
 #endif

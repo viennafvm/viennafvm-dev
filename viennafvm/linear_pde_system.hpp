@@ -164,14 +164,6 @@ namespace viennafvm
       return ret;
    }
 
-////  template <typename InterfaceType>
-////  linear_pde_system<InterfaceType> make_linear_pde_system(viennamath::equation<InterfaceType> equ_1,
-////                                                          std::vector<viennamath::function_symbol<InterfaceType> > unknowns_1)
-////  {
-////    linear_pde_system<InterfaceType> ret;
-////    ret.add_pde(equ_1, unknowns_1);
-////    return ret;
-////  }
 
 }
 #endif

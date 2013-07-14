@@ -77,13 +77,13 @@ long create_mapping(LinPdeSysT & pde_system,
 
   typename viennadata::result_of::accessor<StorageType, BoundaryKeyType, bool, CellType>::type boundary_accessor =
       viennadata::accessor<BoundaryKeyType, bool, CellType>(storage, bnd_key);
-  
+
   typename viennadata::result_of::accessor<StorageType, MappingKeyType, long, CellType>::type cell_mapping_accessor =
       viennadata::accessor<MappingKeyType, long, CellType>(storage, map_key);
 
     typename viennadata::result_of::accessor<StorageType, viennafvm::disable_quantity_key, bool, CellType>::type disable_quantity_accessor =
         viennadata::accessor<viennafvm::disable_quantity_key, bool, CellType>(storage, viennafvm::disable_quantity_key(unknown_id));
-      
+
   //eventually, map indices need to be set to invalid first:
   if (!init_done)
   {
@@ -121,7 +121,6 @@ long create_mapping(LinPdeSysT & pde_system,
   }
 
   viennadata::access<MappingKeyType, long>(storage, map_key, extract_domain<DomainType>::apply(domain)) = map_index;
-//   viennadata::access<MappingKeyType, long>(map_key)(extract_domain<DomainType>::apply(domain)) = map_index;
 
   return map_index;
 }

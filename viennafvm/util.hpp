@@ -208,10 +208,8 @@ namespace viennafvm
       typedef typename CellType::tag      CellTag;
 
       typedef typename viennagrid::result_of::const_coboundary_range<DomainType, FacetType, CellTag>::type CellOnFacetRange;
-//       typedef typename viennagrid::result_of::const_element_range<FacetType, CellTag>::type  CellOnFacetRange;
       typedef typename viennagrid::result_of::iterator<CellOnFacetRange>::type                  CellOnFacetIterator;
 
-//       CellOnFacetRange    cells = viennagrid::elements(facet, domain);
       CellOnFacetRange    cells = viennagrid::coboundary_elements<FacetType, CellTag>(domain, viennagrid::handle(domain, facet) );
       CellOnFacetIterator cofit = cells.begin();
 

@@ -33,7 +33,7 @@ namespace viennafvm
                       VectorType const & update, numeric_type alpha = 0.3)
   {
     typedef typename viennagrid::result_of::cell_tag<DomainType>::type CellTag;
-    
+
     typedef typename viennagrid::result_of::point<DomainType>::type                  PointType;
     typedef typename viennagrid::result_of::element<DomainType, CellTag>::type    CellType;
 
@@ -51,10 +51,10 @@ namespace viennafvm
     viennamath::function_symbol const & u = pde_system.unknown(pde_index)[0];
     numeric_type l2_update_norm = 0;
 
-    
+
     typename viennadata::result_of::accessor<StorageType, viennafvm::current_iterate_key, double, CellType>::type current_iterate_accessor =
         viennadata::accessor<viennafvm::current_iterate_key, double, CellType>(storage, viennafvm::current_iterate_key(u.id()));
-    
+
     typename viennadata::result_of::accessor<StorageType, BoundaryKeyType, bool, CellType>::type boundary_accessor =
         viennadata::accessor<BoundaryKeyType, bool, CellType>(storage, bnd_key);
 
@@ -66,7 +66,7 @@ namespace viennafvm
 
     typename viennadata::result_of::accessor<StorageType, viennafvm::disable_quantity_key, bool, CellType>::type disable_quantity_accessor =
         viennadata::accessor<viennafvm::disable_quantity_key, bool, CellType>(storage, viennafvm::disable_quantity_key(unknown_id));
-    
+
     CellContainer cells = viennagrid::elements(domain);
 
     // get damping term
@@ -118,30 +118,6 @@ namespace viennafvm
   }
 
 
-  // [JW] do we really need this? it seems we can do the pde_index loop in the calling instance, as we are doing it
-  // with the picard/non-linear approach anyway. that should thus also fly with the linear approach..
-  //
-//  template <typename PDESystemType, typename DomainType, typename VectorType>
-//  void apply_update(PDESystemType const & pde_system, DomainType const & domain, VectorType const & update, numeric_type alpha = 0.5)
-//  {
-//    typedef typename DomainType::config_type              Config;
-//    typedef typename Config::cell_tag                     CellTag;
-
-//    typedef typename viennagrid::result_of::point<Config>::type                  PointType;
-//    typedef typename viennagrid::result_of::ncell<Config, CellTag::dim>::type    CellType;
-
-//    typedef typename viennagrid::result_of::const_ncell_range<DomainType, CellTag::dim>::type   CellContainer;
-//    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
-
-//    typedef typename PDESystemType::mapping_key_type   MappingKeyType;
-//    typedef typename PDESystemType::boundary_key_type  BoundaryKeyType;
-
-//    for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
-//    {
-//      apply_update(pde_system, pde_index, domain, update, alpha);
-//    }
-//  }
-
   template <typename PDESystemType, typename DomainType, typename StorageType, typename VectorType>
   void transfer_to_solution_vector(PDESystemType const & pde_system,
                                    DomainType const & domain,
@@ -159,7 +135,7 @@ namespace viennafvm
     typedef typename PDESystemType::mapping_key_type   MappingKeyType;
     typedef typename PDESystemType::boundary_key_type  BoundaryKeyType;
 
-    
+
     for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
     {
       long unknown_id = pde_system.unknown(pde_index)[0].id();
@@ -169,7 +145,7 @@ namespace viennafvm
 
     typename viennadata::result_of::accessor<StorageType, viennafvm::current_iterate_key, double, CellType>::type current_iterate_accessor =
         viennadata::accessor<viennafvm::current_iterate_key, double, CellType>(storage, viennafvm::current_iterate_key(unknown_id));
-      
+
     typename viennadata::result_of::accessor<StorageType, MappingKeyType, long, CellType>::type cell_mapping_accessor =
         viennadata::accessor<MappingKeyType, long, CellType>(storage, map_key);
 
@@ -268,10 +244,10 @@ namespace viennafvm
                 //std::cout << load_vector << std::endl;
 
                 result_.resize(load_vector.size());
-                
-                
+
+
                 VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
-                
+
                 //std::cout << update << std::endl;
 
                 numeric_type update_norm = apply_update(pde_system, pde_index, domain, storage, update, damping);
@@ -324,13 +300,13 @@ namespace viennafvm
 
       std::size_t get_nonlinear_iterations() { return nonlinear_iterations; }
       void set_nonlinear_iterations(std::size_t max_iters) { nonlinear_iterations = max_iters; }
-      
+
       numeric_type get_nonlinear_breaktol() { return nonlinear_iterations; }
       void set_nonlinear_breaktol(numeric_type value) { nonlinear_breaktol = value; }
 
       std::size_t get_linear_iterations() { return linear_iterations; }
-      void set_linear_iterations(std::size_t max_iters) { linear_iterations = max_iters; }            
-      
+      void set_linear_iterations(std::size_t max_iters) { linear_iterations = max_iters; }
+
       numeric_type get_linear_breaktol() { return linear_iterations; }
       void set_linear_breaktol(numeric_type value) { linear_breaktol = value; }
 

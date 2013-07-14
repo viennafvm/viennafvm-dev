@@ -49,7 +49,7 @@ namespace viennafvm
     double value_inner = cell_value_accessor(inner_cell);
     double value_outer = cell_value_accessor(outer_cell);
     double distance    = facet_distance_accessor(facet);
-    
+
     facet_value_accessor(facet) = (value_outer - value_inner) / distance;
   }
 
@@ -122,8 +122,6 @@ namespace viennafvm
         typedef typename expr_type::interface_type            interface_type;
         typedef typename expr_type::numeric_type              numeric_type;
 
-//         typedef typename SegmentT::config_type              Config;
-//         typedef typename Config::cell_tag                   CellTag;
         typedef typename viennagrid::result_of::cell_tag<SegmentT>::type CellTag;
 
         std::size_t map_index = viennafvm::create_mapping(pde_system, pde_index, segment, storage);
@@ -169,7 +167,7 @@ namespace viennafvm
 
         typedef typename viennagrid::result_of::cell_tag<SegmentT>::type CellTag;
         typedef typename viennagrid::result_of::facet_tag<CellTag>::type FacetTag;
-        
+
         typedef typename viennagrid::result_of::element<SegmentT, FacetTag>::type                FacetType;
         typedef typename viennagrid::result_of::element<SegmentT, CellTag  >::type                CellType;
 
@@ -237,7 +235,7 @@ namespace viennafvm
 
         typename viennadata::result_of::accessor<StorageType, viennafvm::current_iterate_key, double, CellType>::type current_iterate_accessor =
             viennadata::accessor<viennafvm::current_iterate_key, double, CellType>(storage, viennafvm::current_iterate_key(u.id()));
-            
+
         //
         // Actual assembly:
         //
@@ -260,7 +258,7 @@ namespace viennafvm
 
           typename viennadata::result_of::accessor<StorageType, facet_distance_key, double, FacetType>::type facet_distance_accessor =
               viennadata::accessor<facet_distance_key, double, FacetType>(storage, facet_distance_key());
-          
+
           //
           // Boundary integral terms:
           //
@@ -336,7 +334,7 @@ namespace viennafvm
 
         typedef typename viennagrid::result_of::cell_tag<SegmentT>::type CellTag;
         typedef typename viennagrid::result_of::facet_tag<CellTag>::type FacetTag;
-        
+
         typedef typename viennagrid::result_of::point<SegmentT>::type                  PointType;
         typedef typename viennagrid::result_of::element<SegmentT, FacetTag>::type  FacetType;
         typedef typename viennagrid::result_of::element<SegmentT, CellTag  >::type  CellType;
@@ -356,7 +354,7 @@ namespace viennafvm
         typename viennadata::result_of::accessor<StorageType, viennafvm::facet_distance_key, double, FacetType>::type facet_distance_accessor =
             viennadata::accessor<viennafvm::facet_distance_key, double, FacetType>(storage, viennafvm::facet_distance_key());
 
-        
+
         FacetContainer facets = viennagrid::elements(segment);
         for (FacetIterator fit  = facets.begin();
                            fit != facets.end();

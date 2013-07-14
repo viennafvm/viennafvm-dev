@@ -68,13 +68,11 @@ namespace viennafvm
         numeric_type eval(CellType const & cell, numeric_type /*v*/) const
         {
           return accessor(cell);
-//           return viennadata::access<KeyType, DataType>(key_)(cell);
         }
 
         numeric_type eval(CellType const & cell, std::vector<numeric_type> const & /*v*/) const
         {
           return accessor(cell);
-//           return viennadata::access<KeyType, DataType>(key_)(cell);
         }
 
         ncell_quantity_interface<CellType> * clone() const { return new self_type(accessor); }
@@ -290,12 +288,6 @@ namespace viennafvm
   // quantity region:
   //
 
-//   template <typename KeyType, typename CellType>
-//   void set_quantity_region(KeyType const & key, CellType const & c, bool b)
-//   {
-//     viennadata::access<KeyType, bool >(key)(c) = b;
-//   }
-
   namespace detail
   {
     template <typename DomainSegmentType, typename AccessorType>
@@ -304,7 +296,7 @@ namespace viennafvm
                                   bool b)
     {
       typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
-      
+
       typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag>::type               CellType;
       typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type  CellContainer;
       typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
@@ -337,26 +329,11 @@ namespace viennafvm
     typedef typename viennagrid::result_of::cell<DomainSegmentType>::type CellType;
     set_quantity_region(domseg, viennadata::accessor<KeyType, bool, CellType>(storage, key), b);
   }
-  
-
-//   template <typename AccessorType, typename ConfigType>
-//   void set_quantity_region(AccessorType accessor,
-//                            viennagrid::domain_t<ConfigType> const & dom,
-//                            bool b)
-//   {
-//     detail::set_quantity_region_impl(accessor, dom, b);
-//   }
 
 
   //
   // quantity value:
   //
-
-//   template <typename AccessorType, typename CellType>
-//   void set_quantity_value(AccessorType accessor, CellType const & c, numeric_type val)
-//   {
-//     accessor(c) = val;
-//   }
 
   namespace detail
   {
@@ -399,22 +376,6 @@ namespace viennafvm
     typedef typename viennagrid::result_of::cell<DomainSegmentType>::type CellType;
     set_quantity_value(domseg, viennadata::accessor<KeyType, numeric_type, CellType>(storage, key), val);
   }
-  
-//   template <typename AccessorType, typename ConfigType>
-//   void set_quantity_value(AccessorType accessor,
-//                           viennagrid::segment_t<ConfigType> const & seg,
-//                           numeric_type val)
-//   {
-//     detail::set_quantity_value_impl(accessor, seg, val);
-//   }
-// 
-//   template <typename AccessorType, typename ConfigType>
-//   void set_quantity_value(AccessorType accessor,
-//                           viennagrid::domain_t<ConfigType> const & dom,
-//                           numeric_type val)
-//   {
-//     detail::set_quantity_value_impl(accessor, dom, val);
-//   }
 
 }
 
