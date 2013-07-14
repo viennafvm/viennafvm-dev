@@ -28,7 +28,7 @@
 
 // ViennaGrid includes:
 #include "viennagrid/domain/domain.hpp"
-#include <viennagrid/config/default_configs.hpp>
+#include "viennagrid/config/default_configs.hpp"
 #include "viennagrid/io/netgen_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
 #include "viennagrid/algorithm/voronoi.hpp"

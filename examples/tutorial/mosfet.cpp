@@ -29,7 +29,7 @@
 
 // ViennaGrid includes:
 #include "viennagrid/domain/domain.hpp"
-#include <viennagrid/config/default_configs.hpp>
+#include "viennagrid/config/default_configs.hpp"
 #include "viennagrid/io/netgen_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
 #include "viennagrid/algorithm/voronoi.hpp"
@@ -102,8 +102,8 @@ void init_quantities(SegmentationType const & segmentation, StorageType & storag
   // Init permittivity
   //
   viennafvm::set_quantity_region(segmentation.domain(), storage, permittivity_key(), true);               // permittivity is (for simplicity) defined everywhere
-  viennafvm::set_quantity_value(segmentation.domain(), storage, permittivity_key(), 11.7 * 8.854e-12);                // permittivity of silicon
-  viennafvm::set_quantity_value(segmentation(3), storage, permittivity_key(), 15.6 * 8.854e-12);  // permittivty of HfO2
+  viennafvm::set_quantity_value(segmentation.domain(),  storage, permittivity_key(), 11.7 * 8.854e-12);   // permittivity of silicon
+  viennafvm::set_quantity_value(segmentation(3),        storage, permittivity_key(), 15.6 * 8.854e-12);   // permittivty of HfO2
 
   //
   // Initialize doping
@@ -152,7 +152,7 @@ void scale_domain(DomainType & domain, double factor)
   typedef typename viennagrid::result_of::iterator<VertexContainer>::type VertexIterator;
 
   typename viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(domain);
-  
+
   VertexContainer vertices = viennagrid::elements(domain);
   for ( VertexIterator vit = vertices.begin();
         vit != vertices.end();
@@ -166,18 +166,17 @@ int main()
 {
   typedef double   numeric_type;
 
-  typedef viennagrid::triangular_2d_domain   DomainType;
-  typedef viennagrid::result_of::segmentation<DomainType>::type SegmentationType;
+  typedef viennagrid::triangular_2d_domain                         DomainType;
+  typedef viennagrid::result_of::segmentation<DomainType>::type    SegmentationType;
 
-  typedef viennagrid::result_of::cell_tag<DomainType>::type CellTag;
-
-  typedef viennagrid::result_of::element<DomainType, CellTag>::type        CellType;
+  typedef viennagrid::result_of::cell_tag<DomainType>::type            CellTag;
+  typedef viennagrid::result_of::element<DomainType, CellTag>::type    CellType;
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
 
-  typedef viennadata::storage<> StorageType;
-  
+  typedef viennadata::storage<>         StorageType;
+
   //
   // Create a domain from file
   //
@@ -265,8 +264,8 @@ int main()
   // Specify PDEs:
   //
 
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( storage, permittivity_key() );
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  donator_doping; donator_doping.wrap_constant( storage, donator_doping_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity;       permittivity.wrap_constant( storage, permittivity_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  donator_doping;   donator_doping.wrap_constant( storage, donator_doping_key() );
   viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  acceptor_doping; acceptor_doping.wrap_constant( storage, acceptor_doping_key() );
 
   double q  = 1.6e-19;

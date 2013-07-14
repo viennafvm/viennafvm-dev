@@ -29,7 +29,7 @@
 
 // ViennaGrid includes:
 #include "viennagrid/domain/domain.hpp"
-#include <viennagrid/config/default_configs.hpp>
+#include "viennagrid/config/default_configs.hpp"
 #include "viennagrid/io/netgen_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
 #include "viennagrid/algorithm/voronoi.hpp"
@@ -99,12 +99,12 @@ template <typename SegmentationType, typename StorageType>
 void init_quantities(SegmentationType const & segmentation, StorageType & storage, double n_plus, double p_plus)
 {
   typedef typename viennagrid::result_of::cell<SegmentationType>::type CellType;
-  
+
   //
   // Init permittivity
   //
   viennafvm::set_quantity_region( segmentation.domain(), storage, permittivity_key(), true );               // permittivity is (for simplicity) defined everywhere
-  viennafvm::set_quantity_value( segmentation.domain(), storage, permittivity_key(), 11.7 * 8.854e-12 );                // relative permittivity of silicon
+  viennafvm::set_quantity_value(  segmentation.domain(), storage, permittivity_key(), 11.7 * 8.854e-12 );   // relative permittivity of silicon
 
   //
   // Initialize doping
@@ -221,11 +221,11 @@ int main()
   viennafvm::set_initial_guess(domain, storage, psi, builtin_potential_key());
   //viennafvm::smooth_initial_guess(domain, psi, viennafvm::arithmetic_mean_smoother());
   //viennafvm::smooth_initial_guess(domain, psi, viennafvm::arithmetic_mean_smoother());
-      
+
   viennafvm::set_initial_guess(domain, storage, n, donator_doping_key());
   //viennafvm::smooth_initial_guess(domain, n, viennafvm::geometric_mean_smoother());
   //viennafvm::smooth_initial_guess(domain, n, viennafvm::geometric_mean_smoother());
-  
+
   viennafvm::set_initial_guess(domain, storage, p, acceptor_doping_key());
   //viennafvm::smooth_initial_guess(domain, p, viennafvm::geometric_mean_smoother());
   //viennafvm::smooth_initial_guess(domain, p, viennafvm::geometric_mean_smoother());
@@ -236,8 +236,8 @@ int main()
   // Specify PDEs:
   //
 
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( storage, permittivity_key() );
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  donator_doping; donator_doping.wrap_constant( storage, donator_doping_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity;       permittivity.wrap_constant( storage, permittivity_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  donator_doping;   donator_doping.wrap_constant( storage, donator_doping_key() );
   viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  acceptor_doping; acceptor_doping.wrap_constant( storage, acceptor_doping_key() );
 
   double q  = 1.6e-19;

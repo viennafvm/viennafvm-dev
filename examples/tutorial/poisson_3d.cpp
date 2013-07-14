@@ -27,7 +27,7 @@
 
 // ViennaGrid includes:
 #include "viennagrid/domain/domain.hpp"
-#include <viennagrid/config/default_configs.hpp>
+#include "viennagrid/config/default_configs.hpp"
 #include "viennagrid/io/netgen_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
 #include "viennagrid/algorithm/voronoi.hpp"
@@ -108,13 +108,13 @@ int main()
   //setting some boundary flags:
 
   viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(domain);
-  
+
   viennadata::result_of::accessor<StorageType, permittivity_key, double, CellType>::type permittivity_accessor =
       viennadata::accessor<permittivity_key, double, CellType>(storage, permittivity_key());
 
   viennadata::result_of::accessor<StorageType, BoundaryKey, bool, CellType>::type boundary_accessor =
       viennadata::accessor<BoundaryKey, bool, CellType>(storage, BoundaryKey( u.id() ));
-  
+
   CellContainer cells = viennagrid::elements(domain);
   for (CellIterator cit  = cells.begin();
                     cit != cells.end();
