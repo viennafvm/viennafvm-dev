@@ -6,16 +6,18 @@ cmake_minimum_required(VERSION 2.6)
 #if you don't want the full compiler output, remove the following line
 SET(CMAKE_VERBOSE_MAKEFILE ON)
 
-#specify include directory
-INCLUDE_DIRECTORIES("..")
-INCLUDE_DIRECTORIES("../../ViennaData/")
-INCLUDE_DIRECTORIES("../../ViennaGrid/")
-INCLUDE_DIRECTORIES("../../ViennaMath/")
-INCLUDE_DIRECTORIES("../../ViennaCL/")
-
 #add definitions, compiler switches, etc.
 ADD_DEFINITIONS(-Wall -pedantic -O3)
 #ADD_DEFINITIONS(-Wall -pedantic -O0 -g)
+
+#specify include directory
+INCLUDE_DIRECTORIES("..")
+INCLUDE_DIRECTORIES($ENV{VIENNAMATH})
+INCLUDE_DIRECTORIES($ENV{VIENNAGRID})
+INCLUDE_DIRECTORIES($ENV{VIENNACL})
+INCLUDE_DIRECTORIES($ENV{VIENNADATA})
+
+
 
 
 #-----------------------------------------------------------------------------
