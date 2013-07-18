@@ -24,8 +24,8 @@
 #include "viennafvm/ncell_quantity.hpp"
 
 // ViennaGrid includes:
-#include "viennagrid/domain.hpp"
-#include <viennagrid/config/simplex.hpp>
+#include "viennagrid/domain/domain.hpp"
+#include <viennagrid/config/default_configs.hpp>
 #include "viennagrid/io/netgen_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
 #include "viennagrid/algorithm/voronoi.hpp"
@@ -107,33 +107,41 @@ int main()
 {
   typedef double   numeric_type;
 
-  typedef viennagrid::config::tetrahedral_3d                ConfigType;
-  typedef viennagrid::result_of::domain<ConfigType>::type   DomainType;
-  typedef typename ConfigType::cell_tag                     CellTag;
+  typedef viennagrid::tetrahedral_3d_domain   DomainType;
+  typedef viennagrid::result_of::segmentation<DomainType>::type SegmentationType;
 
-  typedef viennagrid::result_of::ncell<ConfigType, CellTag::dim>::type        CellType;
-  typedef viennagrid::result_of::ncell_range<DomainType, CellTag::dim>::type  CellContainer;
+  typedef viennagrid::result_of::cell_tag<DomainType>::type CellTag;
+
+  typedef viennagrid::result_of::element<DomainType, CellTag>::type        CellType;
+
+  typedef viennadata::storage<> StorageType;
+
+
+  typedef viennagrid::result_of::element_range<DomainType, CellTag>::type  CellContainer;
   typedef viennagrid::result_of::iterator<CellContainer>::type                CellIterator;
-  typedef viennagrid::result_of::ncell_range<CellType, 0>::type               VertexOnCellContainer;
+  typedef viennagrid::result_of::vertex_range<CellType>::type               VertexOnCellContainer;
   typedef viennagrid::result_of::iterator<VertexOnCellContainer>::type        VertexOnCellIterator;
-
-  typedef boost::numeric::ublas::compressed_matrix<numeric_type>  MatrixType;
-  typedef boost::numeric::ublas::vector<numeric_type>             VectorType;
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
+
+
+  typedef boost::numeric::ublas::compressed_matrix<numeric_type>  MatrixType;
+  typedef boost::numeric::ublas::vector<numeric_type>             VectorType;
 
   typedef viennafvm::boundary_key      BoundaryKey;
 
   //
   // Create a domain from file
   //
-  DomainType my_domain;
+  DomainType domain;
+  SegmentationType segmentation(domain);
+  StorageType storage;
 
   try
   {
     viennagrid::io::netgen_reader my_netgen_reader;
-    my_netgen_reader(my_domain, "../examples/data/cube3072.mesh");
+    my_netgen_reader(domain, segmentation, "../data/cube3072.mesh");
   }
   catch (...)
   {
@@ -152,28 +160,35 @@ int main()
   // Setting boundary information on domain (this should come from device specification)
   //
   //setting some boundary flags:
-  CellContainer cells = viennagrid::ncells(my_domain);
+
+  viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(domain);
+
+  viennadata::result_of::accessor<StorageType, BoundaryKey, bool, CellType>::type boundary_accessor =
+      viennadata::accessor<BoundaryKey, bool, CellType>(storage, BoundaryKey( u.id() ));
+
+  CellContainer cells = viennagrid::elements(domain);
   for (CellIterator cit  = cells.begin();
                     cit != cells.end();
                   ++cit)
   {
     bool cell_on_boundary = false;
 
-    VertexOnCellContainer vertices = viennagrid::ncells<0>(*cit);
+    VertexOnCellContainer vertices = viennagrid::elements(*cit);
     for (VertexOnCellIterator vit  = vertices.begin();
                               vit != vertices.end();
                             ++vit)
     {
       //boundary for first equation: Homogeneous Dirichlet everywhere
-      if (vit->point()[0] == 0.0 || vit->point()[0] == 1.0
-        || vit->point()[2] == 0.0 || vit->point()[2] == 1.0 )
+      if (point_accessor(*vit)[0] == 0.0 || point_accessor(*vit)[0] == 1.0
+        || point_accessor(*vit)[2] == 0.0 || point_accessor(*vit)[2] == 1.0 )
       {
         cell_on_boundary = true;
         break;
       }
     }
-    viennadata::access<BoundaryKey, bool>(BoundaryKey(0))(*cit) = cell_on_boundary;
+    boundary_accessor(*cit) = cell_on_boundary;
   }
+
 
 
   //
@@ -186,7 +201,8 @@ int main()
   // Assemble system
   //
   fvm_assembler(viennafvm::make_linear_pde_system(poisson_eq, u),  // PDE with associated unknown
-                my_domain,
+                domain,
+                storage,
                 system_matrix,
                 load_vector
                );
@@ -202,7 +218,7 @@ int main()
   //
   // Writing solution back to domain (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_result, "poisson_3d", my_domain, 0);
+  viennafvm::io::write_solution_to_VTK_file(pde_result, "poisson_3d", domain, segmentation, storage, 0);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;
