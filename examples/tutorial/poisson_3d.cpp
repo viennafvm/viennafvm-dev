@@ -62,9 +62,6 @@ int main()
 
   typedef viennagrid::result_of::element<DomainType, CellTag>::type        CellType;
 
-  typedef viennamath::function_symbol   FunctionSymbol;
-  typedef viennamath::equation          Equation;
-
   typedef viennadata::storage<> StorageType;
 
 
@@ -83,7 +80,7 @@ int main()
   //
   DomainType domain;
   SegmentationType segmentation(domain);
-  StorageType storage/**/;
+  StorageType storage;
 
   try
   {
