@@ -71,7 +71,7 @@ namespace viennafvm
         typename viennadata::result_of::accessor<const StorageType, viennafvm::mapping_key, long, CellType>::type cell_mapping_accessor =
           viennadata::accessor<viennafvm::mapping_key, long, CellType>(storage, map_key);
         
-        typename viennadata::result_of::accessor<const StorageType, BoundaryKeyType, double, CellType>::type boudnary_accessor =
+        typename viennadata::result_of::accessor<const StorageType, BoundaryKeyType, double, CellType>::type boundary_accessor =
           viennadata::accessor<BoundaryKeyType, double, CellType>(storage, bnd_key);
 
         std::stringstream ss;
@@ -89,7 +89,14 @@ namespace viennafvm
           if (cur_index > -1)
             output_value_accessor(*cit) = result[cur_index];
           else //use Dirichlet boundary data:
-            output_value_accessor(*cit) = boudnary_accessor(*cit);
+          {
+            // TODO if Accessor concept takes care of that -> change!
+            if (boundary_accessor.find(*cit))
+              output_value_accessor(*cit) = boundary_accessor(*cit);
+            else
+              output_value_accessor(*cit) = false;
+          }
+//             output_value_accessor(*cit) = boundary_accessor(*cit);
         }
 
         my_vtk_writer.add_scalar_data_on_cells( output_value_accessor, result_string );
