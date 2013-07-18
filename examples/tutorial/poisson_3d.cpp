@@ -107,10 +107,10 @@ int main()
   viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(domain);
 
   viennadata::result_of::accessor<StorageType, permittivity_key, double, CellType>::type permittivity_accessor =
-      viennadata::accessor<permittivity_key, double, CellType>(storage, permittivity_key());
+      viennadata::make_accessor(storage, permittivity_key());
 
   viennadata::result_of::accessor<StorageType, BoundaryKey, bool, CellType>::type boundary_accessor =
-      viennadata::accessor<BoundaryKey, bool, CellType>(storage, BoundaryKey( u.id() ));
+      viennadata::make_accessor(storage, BoundaryKey( u.id() ));
 
   CellContainer cells = viennagrid::elements(domain);
   for (CellIterator cit  = cells.begin();

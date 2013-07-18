@@ -53,19 +53,19 @@ namespace viennafvm
 
 
     typename viennadata::result_of::accessor<StorageType, viennafvm::current_iterate_key, double, CellType>::type current_iterate_accessor =
-        viennadata::accessor<viennafvm::current_iterate_key, double, CellType>(storage, viennafvm::current_iterate_key(u.id()));
+        viennadata::make_accessor(storage, viennafvm::current_iterate_key(u.id()));
 
     typename viennadata::result_of::accessor<StorageType, BoundaryKeyType, bool, CellType>::type boundary_accessor =
-        viennadata::accessor<BoundaryKeyType, bool, CellType>(storage, bnd_key);
+        viennadata::make_accessor(storage, bnd_key);
 
     typename viennadata::result_of::accessor<StorageType, BoundaryKeyType, numeric_type, CellType>::type boundary_value_accessor =
-        viennadata::accessor<BoundaryKeyType, numeric_type, CellType>(storage, bnd_key);
+        viennadata::make_accessor(storage, bnd_key);
 
     typename viennadata::result_of::accessor<StorageType, viennafvm::mapping_key, long, CellType>::type cell_mapping_accessor =
-        viennadata::accessor<viennafvm::mapping_key, long, CellType>(storage, map_key);
+        viennadata::make_accessor(storage, map_key);
 
     typename viennadata::result_of::accessor<StorageType, viennafvm::disable_quantity_key, bool, CellType>::type disable_quantity_accessor =
-        viennadata::accessor<viennafvm::disable_quantity_key, bool, CellType>(storage, viennafvm::disable_quantity_key(unknown_id));
+        viennadata::make_accessor(storage, viennafvm::disable_quantity_key(unknown_id));
 
     CellContainer cells = viennagrid::elements(domain);
 
@@ -144,16 +144,16 @@ namespace viennafvm
       MappingKeyType  map_key(unknown_id);
 
     typename viennadata::result_of::accessor<StorageType, viennafvm::current_iterate_key, double, CellType>::type current_iterate_accessor =
-        viennadata::accessor<viennafvm::current_iterate_key, double, CellType>(storage, viennafvm::current_iterate_key(unknown_id));
+        viennadata::make_accessor(storage, viennafvm::current_iterate_key(unknown_id));
 
     typename viennadata::result_of::accessor<StorageType, MappingKeyType, long, CellType>::type cell_mapping_accessor =
-        viennadata::accessor<MappingKeyType, long, CellType>(storage, map_key);
+        viennadata::make_accessor(storage, map_key);
 
     typename viennadata::result_of::accessor<StorageType, BoundaryKeyType, bool, CellType>::type boundary_accessor =
-        viennadata::accessor<BoundaryKeyType, bool, CellType>(storage, bnd_key);
+        viennadata::make_accessor(storage, bnd_key);
 
     typename viennadata::result_of::accessor<StorageType, viennafvm::disable_quantity_key, bool, CellType>::type disable_quantity_accessor =
-        viennadata::accessor<viennafvm::disable_quantity_key, bool, CellType>(storage, viennafvm::disable_quantity_key(unknown_id));
+        viennadata::make_accessor(storage, viennafvm::disable_quantity_key(unknown_id));
 
       CellContainer cells = viennagrid::elements(domain);
       for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)

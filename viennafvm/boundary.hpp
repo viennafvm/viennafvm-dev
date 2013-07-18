@@ -66,8 +66,8 @@ namespace viennafvm
   {
     typedef typename viennagrid::result_of::cell< DomainSegmentType >::type CellType;
     set_dirichlet_boundary(domseg,
-                           viennadata::accessor<KeyType, bool, CellType>(storage, key),
-                           viennadata::accessor<KeyType, numeric_type, CellType>(storage, key),
+                           viennadata::make_accessor<KeyType, bool, CellType>(storage, key),
+                           viennadata::make_accessor<KeyType, numeric_type, CellType>(storage, key),
                            value);
   }
 

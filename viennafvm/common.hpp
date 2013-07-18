@@ -57,7 +57,7 @@ namespace viennafvm
                         KeyType const & key)
   {
     typedef typename viennagrid::result_of::cell<DomainSegmentType>::type CellType;
-    disable_quantity(domseg, viennadata::accessor<KeyType, bool, CellType>(storage, key));
+    disable_quantity(domseg, viennadata::make_accessor<KeyType, bool, CellType>(storage, key));
   }
 
   template <typename DomainSegmentType, typename A, typename B, typename InterfaceType>

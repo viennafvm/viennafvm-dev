@@ -225,16 +225,16 @@ namespace viennafvm
 
 
         typename viennadata::result_of::accessor<StorageType, viennafvm::mapping_key, long, CellType>::type cell_mapping_accessor =
-            viennadata::accessor<viennafvm::mapping_key, long, CellType>(storage, map_key);
+            viennadata::make_accessor(storage, map_key);
 
         typename viennadata::result_of::accessor<StorageType, viennafvm::facet_area_key, double, FacetType>::type facet_area_accessor =
-            viennadata::accessor<viennafvm::facet_area_key, double, FacetType>(storage, viennafvm::facet_area_key());
+            viennadata::make_accessor(storage, viennafvm::facet_area_key());
 
         typename viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_accessor =
-            viennadata::accessor<viennafvm::boundary_key, double, CellType>(storage, bnd_key);
+            viennadata::make_accessor(storage, bnd_key);
 
         typename viennadata::result_of::accessor<StorageType, viennafvm::current_iterate_key, double, CellType>::type current_iterate_accessor =
-            viennadata::accessor<viennafvm::current_iterate_key, double, CellType>(storage, viennafvm::current_iterate_key(u.id()));
+            viennadata::make_accessor(storage, viennafvm::current_iterate_key(u.id()));
 
         //
         // Actual assembly:
@@ -257,7 +257,7 @@ namespace viennafvm
 
 
           typename viennadata::result_of::accessor<StorageType, facet_distance_key, double, FacetType>::type facet_distance_accessor =
-              viennadata::accessor<facet_distance_key, double, FacetType>(storage, facet_distance_key());
+              viennadata::make_accessor(storage, facet_distance_key());
 
           //
           // Boundary integral terms:
@@ -276,8 +276,8 @@ namespace viennafvm
 
               for (std::size_t i=0; i<pde_system.size(); ++i)
                 compute_gradients_for_cell(*cit, *focit, *other_cell,
-                                           viennadata::accessor<current_iterate_key, double, CellType>(storage, current_iterate_key(pde_system.unknown(i)[0].id())),
-                                           viennadata::accessor<current_iterate_key, double, FacetType>(storage, current_iterate_key(pde_system.unknown(i)[0].id())),
+                                           viennadata::make_accessor<current_iterate_key, double, CellType>(storage, current_iterate_key(pde_system.unknown(i)[0].id())),
+                                           viennadata::make_accessor<current_iterate_key, double, FacetType>(storage, current_iterate_key(pde_system.unknown(i)[0].id())),
                                            facet_distance_accessor);
 
               if (col_index == viennafvm::DIRICHLET_BOUNDARY)
@@ -349,10 +349,10 @@ namespace viennafvm
 
 
         typename viennadata::result_of::accessor<StorageType, viennafvm::facet_area_key, double, FacetType>::type facet_area_accessor =
-            viennadata::accessor<viennafvm::facet_area_key, double, FacetType>(storage, viennafvm::facet_area_key());
+            viennadata::make_accessor(storage, viennafvm::facet_area_key());
 
         typename viennadata::result_of::accessor<StorageType, viennafvm::facet_distance_key, double, FacetType>::type facet_distance_accessor =
-            viennadata::accessor<viennafvm::facet_distance_key, double, FacetType>(storage, viennafvm::facet_distance_key());
+            viennadata::make_accessor(storage, viennafvm::facet_distance_key());
 
 
         FacetContainer facets = viennagrid::elements(segment);

@@ -110,17 +110,17 @@ int main()
   viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(domain);
 
   viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_u_accessor =
-      viennadata::accessor<viennafvm::boundary_key, bool, CellType>(storage, viennafvm::boundary_key( u.id() ));
+      viennadata::make_accessor(storage, viennafvm::boundary_key( u.id() ));
       
   viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_u_value_accessor =
-      viennadata::accessor<viennafvm::boundary_key, double, CellType>(storage, viennafvm::boundary_key( u.id() ));
+      viennadata::make_accessor(storage, viennafvm::boundary_key( u.id() ));
 
       
   viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_v_accessor =
-      viennadata::accessor<viennafvm::boundary_key, bool, CellType>(storage, viennafvm::boundary_key( v.id() ));
+      viennadata::make_accessor(storage, viennafvm::boundary_key( v.id() ));
 
   viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_v_value_accessor =
-      viennadata::accessor<viennafvm::boundary_key, double, CellType>(storage, viennafvm::boundary_key( v.id() ));
+      viennadata::make_accessor(storage, viennafvm::boundary_key( v.id() ));
 
       
   //setting some boundary flags:

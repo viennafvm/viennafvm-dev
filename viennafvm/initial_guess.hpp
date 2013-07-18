@@ -99,9 +99,9 @@ namespace viennafvm
     typedef typename viennagrid::result_of::cell<DomainSegmentType>::type     CellType;
 
     set_initial_guess(domain,
-                      viennadata::accessor<QuantityDisabledKeyType, bool, CellType>(storage, quantity_disabled_key),
-                      viennadata::accessor<SourceKeyType, numeric_type, CellType>(storage, source_key),
-                      viennadata::accessor<DestinationKeyType, numeric_type, CellType>(storage, destination_key));
+                      viennadata::make_accessor<QuantityDisabledKeyType, bool, CellType>(storage, quantity_disabled_key),
+                      viennadata::make_accessor<SourceKeyType, numeric_type, CellType>(storage, source_key),
+                      viennadata::make_accessor<DestinationKeyType, numeric_type, CellType>(storage, destination_key));
   }
 
 
@@ -208,10 +208,10 @@ namespace viennafvm
         typedef typename viennagrid::result_of::cell<DomainSegmentType>::type     CellType;
 
         smooth_initial_guess(domseg, smoother,
-                      viennadata::accessor<QuantityDisabledKeyType, bool, CellType>(storage, quantity_disabled_key),
-                      viennadata::accessor<BoundaryKeyType, bool, CellType>(storage, boundary_key),
-                      viennadata::accessor<BoundaryKeyType, numeric_type, CellType>(storage, boundary_key),
-                      viennadata::accessor<CurrentIterateKeyType, numeric_type, CellType>(storage, current_iterate_key));
+                      viennadata::make_accessor<QuantityDisabledKeyType, bool, CellType>(storage, quantity_disabled_key),
+                      viennadata::make_accessor<BoundaryKeyType, bool, CellType>(storage, boundary_key),
+                      viennadata::make_accessor<BoundaryKeyType, numeric_type, CellType>(storage, boundary_key),
+                      viennadata::make_accessor<CurrentIterateKeyType, numeric_type, CellType>(storage, current_iterate_key));
     }
 
   template <typename DomainSegmentType, typename A, typename B, typename SmootherType, typename InterfaceType>

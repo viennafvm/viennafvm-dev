@@ -212,7 +212,7 @@ namespace viennafvm
       {
         detail::ncell_quantity_wrapper<CellType, numeric_type> temp(
           new detail::ncell_quantity_constant<CellType, typename viennadata::result_of::accessor<StorageType, KeyType, numeric_type, CellType>::type >(
-            viennadata::accessor<KeyType, numeric_type, CellType>(storage, k)
+            viennadata::make_accessor<KeyType, numeric_type, CellType>(storage, k)
           )
         );
         accessor = temp;
@@ -327,7 +327,7 @@ namespace viennafvm
                            bool b)
   {
     typedef typename viennagrid::result_of::cell<DomainSegmentType>::type CellType;
-    set_quantity_region(domseg, viennadata::accessor<KeyType, bool, CellType>(storage, key), b);
+    set_quantity_region(domseg, viennadata::make_accessor<KeyType, bool, CellType>(storage, key), b);
   }
 
 
@@ -374,7 +374,7 @@ namespace viennafvm
                            numeric_type val)
   {
     typedef typename viennagrid::result_of::cell<DomainSegmentType>::type CellType;
-    set_quantity_value(domseg, viennadata::accessor<KeyType, numeric_type, CellType>(storage, key), val);
+    set_quantity_value(domseg, viennadata::make_accessor<KeyType, numeric_type, CellType>(storage, key), val);
   }
 
 }

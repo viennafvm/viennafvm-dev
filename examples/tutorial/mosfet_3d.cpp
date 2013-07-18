@@ -214,7 +214,7 @@ int main()
   }
 
   for (SegmentationType::iterator it = segmentation.begin(); it != segmentation.end(); ++it)
-    std::cout << it->first << std::endl;
+    std::cout << it->id() << std::endl;
 
   scale_domain(domain, 1e-9); // scale to nanometer
 
