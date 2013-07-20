@@ -20,6 +20,7 @@
 #include <iostream>
 
 // ViennaFVM includes:
+#define VIENNAFVM_TIMER
 #include "viennafvm/forwards.h"
 #include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/io/vtk_writer.hpp"
@@ -180,8 +181,14 @@ void scale_domain(DomainType & domain, double factor)
   }
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+  if(argc != 2)
+  {
+      std::cerr << "Missing parameters - Usage: " << argv[0] << " path/to/trigate.mesh" << std::endl;
+      return -1;
+  }
+
   typedef double   numeric_type;
 
   typedef viennagrid::tetrahedral_3d_domain                       DomainType;
@@ -205,7 +212,7 @@ int main()
   try
   {
     viennagrid::io::netgen_reader my_reader;
-    my_reader(domain, segmentation, "../examples/data/half-trigate-2.mesh");
+    my_reader(domain, segmentation, argv[1]);
   }
   catch (...)
   {
@@ -213,17 +220,11 @@ int main()
     return EXIT_FAILURE;
   }
 
-  for (SegmentationType::iterator it = segmentation.begin(); it != segmentation.end(); ++it)
-    std::cout << it->id() << std::endl;
-
   scale_domain(domain, 1e-9); // scale to nanometer
 
   //
   // Set initial values
   //
-//   double n_plus = 1e24;
-//   double p_plus = 1e20;
-
   init_quantities(segmentation, storage);
 
   //
@@ -239,7 +240,7 @@ int main()
   viennafvm::set_dirichlet_boundary(segmentation(SourceContact), storage, psi, 0.0 + built_in_potential(300, 1e26, 1e6)); // Source contact
   viennafvm::set_dirichlet_boundary(segmentation(DrainContact),  storage, psi, 0.3 + built_in_potential(300, 1e26, 1e6)); // Drain contact
   // using floating body, hence commented:
-  viennafvm::set_dirichlet_boundary(segmentation(BodyContact),   storage, psi, 0.0 + built_in_potential(300, 1e18, 1e14)); // Body contact
+  //viennafvm::set_dirichlet_boundary(segmentation(BodyContact),   storage, psi, 0.0 + built_in_potential(300, 1e18, 1e14)); // Body contact
 
   // electron density
   viennafvm::set_dirichlet_boundary(segmentation(SourceContact), storage, n, 1e26); // Source contact
@@ -319,6 +320,12 @@ int main()
   // Create PDE solver instance and run the solver:
   //
   viennafvm::pde_solver<> pde_solver;
+
+  pde_solver.set_damping(0.4);
+  pde_solver.set_linear_breaktol(1.0E-13);
+  pde_solver.set_linear_iterations(1000);
+  pde_solver.set_nonlinear_iterations(100);
+  pde_solver.set_nonlinear_breaktol(1.0E-1);
 
   pde_solver(pde_system, domain, storage);   // weird math happening in here ;-)
 

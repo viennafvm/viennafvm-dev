@@ -97,12 +97,13 @@ namespace viennafvm
 #ifdef VIENNAFVM_DEBUG
     std::cout << "* solve(): Solving linear system (single-threaded)" << std::endl;
 #endif
-    result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(breaktol,max_iters), preconditioner);
-    //result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(breaktol,max_iters));
+    viennacl::linalg::bicgstab_tag  solver_tag(breaktol, max_iters);
+    //result = viennacl::linalg::solve(system_matrix_2, load_vector_2, solver_tag, preconditioner);
+    result = viennacl::linalg::solve(system_matrix_2, load_vector_2, viennacl::linalg::bicgstab_tag(breaktol,max_iters));
     
     //std::cout << "* linear solver: Residual (rescaled): " << norm_2(prod(system_matrix_2, result) - load_vector_2) / norm_2(load_vector_2) << std::endl;
 #ifdef VIENNAFVM_DEBUG
-    std::cout << "* linear solver: Residual (full): " << norm_2(prod(system_matrix, result) - load_vector) / norm_2(load_vector) << " (" << load_vector.size() << " unknowns)" << std::endl;
+    std::cout << "* linear solver: Residual (full): " << norm_2(prod(system_matrix, result) - load_vector) / norm_2(load_vector) << " after " << solver_tag.iters() " iterations " << std::endl;
 #endif
     return result;
   }

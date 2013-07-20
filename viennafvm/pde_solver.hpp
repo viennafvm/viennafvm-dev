@@ -9,9 +9,10 @@
                              -----------------
 
    authors:    Karl Rupp                          rupp@iue.tuwien.ac.at
+               Josef Weinbub                   weinbub@iue.tuwien.ac.at
                (add your name here)
 
-   license:    To be discussed, see file LICENSE in the ViennaFVM base directory
+   license:    see file LICENSE in the ViennaFVM base directory
 ======================================================================= */
 
 #include <boost/numeric/ublas/io.hpp>
@@ -22,6 +23,9 @@
 #include "viennafvm/forwards.h"
 #include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/linear_solve.hpp"
+#ifdef VIENNAFVM_TIMER
+#include "viennafvm/timer.hpp"
+#endif 
 
 namespace viennafvm
 {
@@ -199,7 +203,7 @@ namespace viennafvm
 
           // do something
           viennafvm::linear_assembler fvm_assembler;
-
+        
           fvm_assembler(pde_system, domain, storage, system_matrix, load_vector);
 
 
@@ -232,27 +236,55 @@ namespace viennafvm
             {
               for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
               {
+              #ifdef VIENNAFVM_TIMER
+                viennafvm::Timer timer;
+                timer.start();
+                std::cout << " * Quantity " << pde_index << " : " << std::endl;
+              #endif 
+
+
                 MatrixType system_matrix;
                 VectorType load_vector;
 
+              #ifdef VIENNAFVM_TIMER
+                viennafvm::Timer subtimer;
+                subtimer.start();
+              #endif 
                 // assemble linearized systems
                 viennafvm::linear_assembler fvm_assembler;
-
                 fvm_assembler(pde_system, pde_index, domain, storage, system_matrix, load_vector);
-
-                //std::cout << system_matrix << std::endl;
-                //std::cout << load_vector << std::endl;
-
                 result_.resize(load_vector.size());
+              #ifdef VIENNAFVM_TIMER
+                subtimer.get();
+                std::cout << "   Assembly time : " << subtimer.get() << " s" << std::endl;
+              #endif 
 
-
+              #ifdef VIENNAFVM_TIMER
+                subtimer.start();
+              #endif 
                 VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
+              #ifdef VIENNAFVM_TIMER
+                subtimer.get();
+                std::cout << "   Solver time   : " << subtimer.get() << " s" << std::endl;
+              #endif 
 
-                //std::cout << update << std::endl;
-
+              #ifdef VIENNAFVM_TIMER
+                subtimer.start();
+              #endif 
                 numeric_type update_norm = apply_update(pde_system, pde_index, domain, storage, update, damping);
-                std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;
+              #ifdef VIENNAFVM_TIMER
+                subtimer.get();
+                std::cout << "   Update time   : " << subtimer.get() << " s" << std::endl;
+              #endif 
 
+              #ifdef VIENNAFVM_TIMER
+                timer.get(); 
+                std::cout << "   -------------------------------------" << std::endl;
+                std::cout << "   Total time    : " << timer.get() << " s" << std::endl;
+              #endif 
+
+                std::cout << "   Update norm   : "  << update_norm << std::endl;
+                std::cout << std::endl;
                 if(pde_index == 0) // check if the potential update has converged ..
                 {
                     if(update_norm <= nonlinear_breaktol) converged = true;
