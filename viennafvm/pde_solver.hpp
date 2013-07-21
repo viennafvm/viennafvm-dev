@@ -22,10 +22,11 @@
 
 #include "viennafvm/forwards.h"
 #include "viennafvm/linear_assembler.hpp"
-#include "viennafvm/linear_solve.hpp"
+#include "viennafvm/linear_solvers/viennacl.hpp"
 #ifdef VIENNAFVM_TIMER
 #include "viennafvm/timer.hpp"
 #endif 
+
 
 namespace viennafvm
 {
@@ -175,8 +176,8 @@ namespace viennafvm
   }
 
 
-  template <typename MatrixType = boost::numeric::ublas::compressed_matrix<viennafvm::numeric_type>,
-            typename VectorType = boost::numeric::ublas::vector<viennafvm::numeric_type> >
+  template<typename MatrixType = boost::numeric::ublas::compressed_matrix<viennafvm::numeric_type>,
+           typename VectorType = boost::numeric::ublas::vector<viennafvm::numeric_type> >
   class pde_solver
   {
     public:
@@ -185,14 +186,13 @@ namespace viennafvm
 
       pde_solver()
       {
-        nonlinear_iterations = 40;
-        linear_iterations = 500;
-        linear_breaktol = 1e-14;
-        damping = 1.0;
+        nonlinear_iterations  = 100;
+        nonlinear_breaktol    = 1.0e-3;
+        damping               = 1.0;
       }
 
-      template <typename PDESystemType, typename DomainType, typename StorageType>
-      void operator()(PDESystemType const & pde_system, DomainType const & domain, StorageType & storage)
+      template<typename PDESystemT, typename DomainT, typename StorageT, typename LinearSolverT>
+      void operator()(PDESystemT const & pde_system, DomainT const & domain, StorageT & storage, LinearSolverT& linear_solver, std::size_t break_pde = 0)
       {
         bool is_linear = pde_system.is_linear(); //TODO: Replace with an automatic detection
 
@@ -211,7 +211,9 @@ namespace viennafvm
           //std::cout << load_vector << std::endl;
 
           result_.resize(load_vector.size());
-          VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
+          //VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
+          VectorType update;
+          linear_solver(system_matrix, load_vector, update);
           //std::cout << update << std::endl;
 
           for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
@@ -219,6 +221,9 @@ namespace viennafvm
             numeric_type update_norm = apply_update(pde_system, pde_index, domain, storage, update, damping);
             std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;
           }
+          std::size_t map_index = create_mapping(pde_system, domain, storage);
+          result_.resize(map_index);
+
           transfer_to_solution_vector(pde_system, domain, storage, result_);
         }
         else // nonlinear
@@ -262,7 +267,8 @@ namespace viennafvm
               #ifdef VIENNAFVM_TIMER
                 subtimer.start();
               #endif 
-                VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
+                VectorType update;
+                typename LinearSolverT::return_type solver_stats = linear_solver(system_matrix, load_vector, update);
               #ifdef VIENNAFVM_TIMER
                 subtimer.get();
                 std::cout << "   Solver time   : " << subtimer.get() << " s" << std::endl;
@@ -283,9 +289,20 @@ namespace viennafvm
                 std::cout << "   Total time    : " << timer.get() << " s" << std::endl;
               #endif 
 
-                std::cout << "   Update norm   : "  << update_norm << std::endl;
+                std::cout << "   Solver iters  : " << solver_stats.first;
+                if(solver_stats.first == linear_solver.max_iterations())
+                  std::cout << " ( not converged ) " << std::endl;
+                else std::cout << std::endl;
+
+                std::cout << "   Solver error  : " << solver_stats.second << std::endl;
+                std::cout << "   Update norm   : "  << update_norm;
+                if(pde_index == break_pde)
+                  std::cout << " ( < ------- )" << std::endl;
+                else
+                  std::cout << std::endl;
+    
                 std::cout << std::endl;
-                if(pde_index == 0) // check if the potential update has converged ..
+                if(pde_index == break_pde) // check if the potential update has converged ..
                 {
                     if(update_norm <= nonlinear_breaktol) converged = true;
                 }
@@ -336,23 +353,15 @@ namespace viennafvm
       numeric_type get_nonlinear_breaktol() { return nonlinear_iterations; }
       void set_nonlinear_breaktol(numeric_type value) { nonlinear_breaktol = value; }
 
-      std::size_t get_linear_iterations() { return linear_iterations; }
-      void set_linear_iterations(std::size_t max_iters) { linear_iterations = max_iters; }
-
-      numeric_type get_linear_breaktol() { return linear_iterations; }
-      void set_linear_breaktol(numeric_type value) { linear_breaktol = value; }
-
       numeric_type get_damping() { return damping; }
       void set_damping(numeric_type value) { damping = value; }
 
     private:
       VectorType result_;
       bool picard_iteration_;
-      std::size_t nonlinear_iterations;
-      std::size_t linear_iterations;
-      numeric_type      linear_breaktol;
-      numeric_type      nonlinear_breaktol;
-      numeric_type      damping;
+      std::size_t     nonlinear_iterations;
+      numeric_type    nonlinear_breaktol;
+      numeric_type    damping;
   };
 
 }
