@@ -20,13 +20,12 @@
 #include <boost/numeric/ublas/operation.hpp>
 #include <boost/numeric/ublas/operation_sparse.hpp>
 
+#ifdef VIENNAFVM_VERBOSE
+#include "viennafvm/timer.hpp"
+#endif 
 #include "viennafvm/forwards.h"
 #include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/linear_solvers/viennacl.hpp"
-#ifdef VIENNAFVM_TIMER
-#include "viennafvm/timer.hpp"
-#endif 
-
 
 namespace viennafvm
 {
@@ -194,32 +193,72 @@ namespace viennafvm
       template<typename PDESystemT, typename DomainT, typename StorageT, typename LinearSolverT>
       void operator()(PDESystemT const & pde_system, DomainT const & domain, StorageT & storage, LinearSolverT& linear_solver, std::size_t break_pde = 0)
       {
+      #ifdef VIENNAFVM_VERBOSE
+        std::streamsize cout_precision = std::cout.precision();
+      #endif
+
         bool is_linear = pde_system.is_linear(); //TODO: Replace with an automatic detection
 
         if (is_linear)
         {
-          MatrixType system_matrix;
-          VectorType load_vector;
-
-          // do something
-          viennafvm::linear_assembler fvm_assembler;
-        
-          fvm_assembler(pde_system, domain, storage, system_matrix, load_vector);
-
-
-          //std::cout << system_matrix << std::endl;
-          //std::cout << load_vector << std::endl;
-
-          result_.resize(load_vector.size());
-          //VectorType update = viennafvm::solve(system_matrix, load_vector, linear_iterations, linear_breaktol);
-          VectorType update;
-          linear_solver(system_matrix, load_vector, update);
-          //std::cout << update << std::endl;
-
           for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
           {
+          #ifdef VIENNAFVM_VERBOSE
+            viennafvm::Timer timer;
+            timer.start();
+            std::cout << " * Quantity " << pde_index << " : " << std::endl;
+            std::cout << " ------------------------------------------" << std::endl;
+          #endif 
+
+            MatrixType system_matrix;
+            VectorType load_vector;
+
+          #ifdef VIENNAFVM_VERBOSE
+            viennafvm::Timer subtimer;
+            subtimer.start();
+          #endif 
+            viennafvm::linear_assembler fvm_assembler;
+            fvm_assembler(pde_system, domain, storage, system_matrix, load_vector);
+          #ifdef VIENNAFVM_VERBOSE
+            std::cout.precision(3);
+            subtimer.get();
+            std::cout << "   Assembly time : " << std::fixed << subtimer.get() << " s" << std::endl;
+          #endif 
+
+            VectorType update;
+            linear_solver(system_matrix, load_vector, update);
+          #ifdef VIENNAFVM_VERBOSE
+            std::cout << "   Precond time  : " << std::fixed << linear_solver.last_pc_time() << " s" << std::endl;
+            std::cout << "   Solver time   : " << std::fixed << linear_solver.last_solver_time() << " s" << std::endl;
+          #endif 
+
+          #ifdef VIENNAFVM_VERBOSE
+            subtimer.start();
+          #endif 
             numeric_type update_norm = apply_update(pde_system, pde_index, domain, storage, update, damping);
-            std::cout << "* Update norm for quantity " << pde_index << ": " << update_norm << std::endl;
+          #ifdef VIENNAFVM_VERBOSE
+            subtimer.get();
+            std::cout << "   Update time   : " << std::fixed << subtimer.get() << " s" << std::endl;
+          #endif 
+
+          #ifdef VIENNAFVM_VERBOSE
+            timer.get(); 
+            std::cout << "   Total time    : " << std::fixed << timer.get() << " s" << std::endl;
+
+            std::cout.precision(cout_precision);
+            std::cout.unsetf(std::ios_base::floatfield);
+
+            std::cout << "   Solver iters  : " << linear_solver.last_iterations();
+            if(linear_solver.last_iterations() == linear_solver.max_iterations())
+              std::cout << " ( not converged ) " << std::endl;
+            else std::cout << std::endl;
+
+            std::cout << "   Solver error  : " << linear_solver.last_error() << std::endl;
+
+            std::cout << "   Update norm   : "  << update_norm << std::endl;
+
+            std::cout << std::endl;
+          #endif 
           }
           std::size_t map_index = create_mapping(pde_system, domain, storage);
           result_.resize(map_index);
@@ -230,78 +269,103 @@ namespace viennafvm
         {
           picard_iteration_ = true;
 
+        #ifdef VIENNAFVM_VERBOSE
+          std::vector<double> previous_update_norms(pde_system.size());
+        #endif
+
           bool converged = false;
           std::size_t required_nonlinear_iterations = 0;
           for (std::size_t iter=0; iter < nonlinear_iterations; ++iter)
           {
             required_nonlinear_iterations++;
-            std::cout << " --- Iteration " << iter << " --- " << std::endl;
-
+          #ifdef VIENNAFVM_VERBOSE
+            std::cout << " --- Nonlinear iteration " << iter << " --- " << std::endl;
+          #endif
             if (picard_iteration_)
             {
               for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)
               {
-              #ifdef VIENNAFVM_TIMER
+              #ifdef VIENNAFVM_VERBOSE
                 viennafvm::Timer timer;
                 timer.start();
                 std::cout << " * Quantity " << pde_index << " : " << std::endl;
+                std::cout << " ------------------------------------------" << std::endl;
               #endif 
 
 
                 MatrixType system_matrix;
                 VectorType load_vector;
 
-              #ifdef VIENNAFVM_TIMER
+              #ifdef VIENNAFVM_VERBOSE
                 viennafvm::Timer subtimer;
                 subtimer.start();
               #endif 
                 // assemble linearized systems
                 viennafvm::linear_assembler fvm_assembler;
                 fvm_assembler(pde_system, pde_index, domain, storage, system_matrix, load_vector);
-                result_.resize(load_vector.size());
-              #ifdef VIENNAFVM_TIMER
+              #ifdef VIENNAFVM_VERBOSE
+                std::cout.precision(3);
                 subtimer.get();
-                std::cout << "   Assembly time : " << subtimer.get() << " s" << std::endl;
+                std::cout << "   Assembly time : " << std::fixed << subtimer.get() << " s" << std::endl;
               #endif 
 
-              #ifdef VIENNAFVM_TIMER
-                subtimer.start();
-              #endif 
                 VectorType update;
-                typename LinearSolverT::return_type solver_stats = linear_solver(system_matrix, load_vector, update);
-              #ifdef VIENNAFVM_TIMER
-                subtimer.get();
-                std::cout << "   Solver time   : " << subtimer.get() << " s" << std::endl;
+                linear_solver(system_matrix, load_vector, update);
+              #ifdef VIENNAFVM_VERBOSE
+                std::cout << "   Precond time  : " << std::fixed << linear_solver.last_pc_time() << " s" << std::endl;
+                std::cout << "   Solver time   : " << std::fixed << linear_solver.last_solver_time() << " s" << std::endl;
               #endif 
 
-              #ifdef VIENNAFVM_TIMER
+              #ifdef VIENNAFVM_VERBOSE
                 subtimer.start();
               #endif 
                 numeric_type update_norm = apply_update(pde_system, pde_index, domain, storage, update, damping);
-              #ifdef VIENNAFVM_TIMER
+              #ifdef VIENNAFVM_VERBOSE
                 subtimer.get();
-                std::cout << "   Update time   : " << subtimer.get() << " s" << std::endl;
+                std::cout << "   Update time   : " << std::fixed << subtimer.get() << " s" << std::endl;
               #endif 
 
-              #ifdef VIENNAFVM_TIMER
+              #ifdef VIENNAFVM_VERBOSE
                 timer.get(); 
-                std::cout << "   -------------------------------------" << std::endl;
-                std::cout << "   Total time    : " << timer.get() << " s" << std::endl;
-              #endif 
+                std::cout << "   Total time    : " << std::fixed << timer.get() << " s" << std::endl;
 
-                std::cout << "   Solver iters  : " << solver_stats.first;
-                if(solver_stats.first == linear_solver.max_iterations())
+                std::cout.precision(cout_precision);
+                std::cout.unsetf(std::ios_base::floatfield);
+
+                std::cout << "   Solver iters  : " << linear_solver.last_iterations();
+                if(linear_solver.last_iterations() == linear_solver.max_iterations())
                   std::cout << " ( not converged ) " << std::endl;
                 else std::cout << std::endl;
 
-                std::cout << "   Solver error  : " << solver_stats.second << std::endl;
-                std::cout << "   Update norm   : "  << update_norm;
+                std::cout << "   Solver error  : " << linear_solver.last_error() << std::endl;
+
+                std::string norm_tendency_indicator;
+                if(iter == 0)
+                {
+                  previous_update_norms[pde_index] = update_norm;
+                  norm_tendency_indicator = "";
+                }
+                else
+                {
+                  if(update_norm > previous_update_norms[pde_index])
+                    norm_tendency_indicator = "<up>";
+                  else 
+                  if(update_norm < previous_update_norms[pde_index])
+                    norm_tendency_indicator = "<down>";
+                  else
+                    norm_tendency_indicator = "<=>";
+                  previous_update_norms[pde_index] = update_norm;
+                }
+
+                std::cout << "   Update norm   : "  << update_norm << " " << norm_tendency_indicator;
                 if(pde_index == break_pde)
-                  std::cout << " ( < ------- )" << std::endl;
+                  std::cout << " ( **** )" << std::endl;
                 else
                   std::cout << std::endl;
     
                 std::cout << std::endl;
+              #endif 
+
                 if(pde_index == break_pde) // check if the potential update has converged ..
                 {
                     if(update_norm <= nonlinear_breaktol) converged = true;
@@ -312,11 +376,14 @@ namespace viennafvm
             {
               throw "not implemented!";
             }
+          #ifdef VIENNAFVM_VERBOSE
             std::cout << std::endl;
+          #endif
             if(converged) break; // .. the nonlinear for-loop
 
           } // nonlinear for-loop
 
+        #ifdef VIENNAFVM_VERBOSE
           if(converged)
           {
               std::cout << std::endl;
@@ -335,7 +402,7 @@ namespace viennafvm
                         << " in " << nonlinear_iterations << " iterations" << std::endl;
               std::cout << "--------" << std::endl;
           }
-
+        #endif
 
           // need to pack all approximations into a single vector:
           std::size_t map_index = create_mapping(pde_system, domain, storage);
@@ -367,3 +434,4 @@ namespace viennafvm
 }
 
 #endif // VIENNAFVM_PDE_SOLVER_HPP
+

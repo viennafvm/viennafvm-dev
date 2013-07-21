@@ -30,6 +30,7 @@
 #include "viennacl/linalg/ilu.hpp"
 #include "viennacl/linalg/jacobi_precond.hpp"
 #include "viennacl/linalg/row_scaling.hpp"
+#include "viennafvm/timer.hpp"
 
 namespace viennafvm {
 
@@ -37,8 +38,6 @@ namespace linsolv {
 
 struct viennacl
 {
-  typedef std::pair<std::size_t, double>    ReturnType;
-  typedef ReturnType                        return_type;
 
   struct preconditioner_ids
   {
@@ -65,7 +64,7 @@ struct viennacl
 
   viennacl() : pc_id_(viennafvm::linsolv::viennacl::preconditioner_ids::ilu0), 
                solver_id_(viennafvm::linsolv::viennacl::solver_ids::bicgstab), 
-               break_tolerance_(1.0e-13),
+               break_tolerance_(1.0e-14),
                max_iterations_(1000)
   {
   }
@@ -75,10 +74,15 @@ struct viennacl
   double&       break_tolerance()   { return break_tolerance_; }
   std::size_t&  max_iterations()    { return max_iterations_;  }
 
+  std::size_t   last_iterations()   { return last_iterations_; }
+  double        last_error()        { return last_error_;      }
+  float         last_pc_time()      { return last_pc_time_;    }
+  float         last_solver_time()  { return last_solver_time_;}
+
   template <typename MatrixT, typename VectorT>
-  ReturnType operator()(MatrixT& A, VectorT& b, VectorT& x)
+  void operator()(MatrixT& A, VectorT& b, VectorT& x)
   {
-    row_normalize_system(A, b); // [JW] shouldn't this be taken care of by the PCs?
+    row_normalize_system(A, b); 
 
     //
     // Determine the linear solver kernel and forward to an internal solve method
@@ -88,38 +92,42 @@ struct viennacl
     {
 //      std::cout << "using solver: bicgstab .. " << std::endl;
       ::viennacl::linalg::bicgstab_tag  solver_tag(break_tolerance_, max_iterations_);
-      return solve_intern(A, b, x, solver_tag);
+      solve_intern(A, b, x, solver_tag);
     }
     else
     if(solver_id_ == viennafvm::linsolv::viennacl::solver_ids::gmres)
     {
 //      std::cout << "using solver: gmres .. " << std::endl;
       ::viennacl::linalg::gmres_tag     solver_tag(break_tolerance_, max_iterations_);
-      return solve_intern(A, b, x, solver_tag);
+      solve_intern(A, b, x, solver_tag);
     }
     else
     if(solver_id_ == viennafvm::linsolv::viennacl::solver_ids::cg)
     {
 //      std::cout << "using solver: cg .. " << std::endl;
       ::viennacl::linalg::cg_tag        solver_tag(break_tolerance_, max_iterations_);
-      return solve_intern(A, b, x, solver_tag);
+      solve_intern(A, b, x, solver_tag);
     }
     else
     {
       std::cerr << "[ERROR] ViennaFVM::LinearSolver: solver not supported .. " << std::endl;
-      return std::make_pair(0, 0.0);
     }
   }
 
 private:
 
   template <typename MatrixT, typename VectorT, typename LinerSolverT>
-  ReturnType solve_intern(MatrixT& A, VectorT& b, VectorT& x, LinerSolverT& linear_solver)
+  void solve_intern(MatrixT& A, VectorT& b, VectorT& x, LinerSolverT& linear_solver)
   {
+    viennafvm::Timer timer;
+
     if(pc_id_ == viennafvm::linsolv::viennacl::preconditioner_ids::none)
     {
 //      std::cout << "using pc: none .. " << std::endl;
+      last_pc_time_ = 0.0;
+      timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver);
+      last_solver_time_ = timer.get();
     }
     else
     if(pc_id_ == viennafvm::linsolv::viennacl::preconditioner_ids::ilu0)
@@ -128,9 +136,13 @@ private:
       ::viennacl::linalg::ilu0_tag pc_config;
       pc_config.use_level_scheduling(false);
 
+      timer.start();
       ::viennacl::linalg::ilu0_precond<MatrixT>    preconditioner(A, pc_config);
+      last_pc_time_ = timer.get();
 
+      timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver, preconditioner);
+      last_solver_time_ = timer.get();
     }
     else
     if(pc_id_ == viennafvm::linsolv::viennacl::preconditioner_ids::ilut)
@@ -141,9 +153,13 @@ private:
       pc_config.set_entries_per_row(40);
       pc_config.use_level_scheduling(false);
 
+      timer.start();
       ::viennacl::linalg::ilut_precond<MatrixT>    preconditioner(A, pc_config);
+      last_pc_time_ = timer.get();
 
+      timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver, preconditioner);
+      last_solver_time_ = timer.get();
     }
     else
     if(pc_id_ == viennafvm::linsolv::viennacl::preconditioner_ids::block_ilu)
@@ -152,32 +168,45 @@ private:
       ::viennacl::linalg::ilu0_tag pc_config;
       pc_config.use_level_scheduling(false);
 
+      timer.start();
       ::viennacl::linalg::block_ilu_precond<MatrixT, ::viennacl::linalg::ilu0_tag>    preconditioner(A, pc_config);
+      last_pc_time_ = timer.get();
 
+      timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver, preconditioner);
+      last_solver_time_ = timer.get();
     }
     else
     if(pc_id_ == viennafvm::linsolv::viennacl::preconditioner_ids::jacobi)
     {
 //      std::cout << "using pc: jacobi .. " << std::endl;
+      timer.start();
       ::viennacl::linalg::jacobi_precond<MatrixT>    preconditioner(A, ::viennacl::linalg::jacobi_tag());
+      last_pc_time_ = timer.get();
 
+      timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver, preconditioner);
+      last_solver_time_ = timer.get();
     }
     else
     if(pc_id_ == viennafvm::linsolv::viennacl::preconditioner_ids::row_scaling)
     {
 //      std::cout << "using pc: row_scaling .. " << std::endl;
+      timer.start();
       ::viennacl::linalg::row_scaling<MatrixT>    preconditioner(A, ::viennacl::linalg::row_scaling_tag());
+      last_pc_time_ = timer.get();
 
+      timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver, preconditioner);
+      last_solver_time_ = timer.get();
     }
     else
     {
       std::cerr << "[ERROR] ViennaFVM::LinearSolver: preconditioner not supported .. " << std::endl;
-      return std::make_pair(0, 0.0);
+      return;
     }
-    return std::make_pair(linear_solver.iters(), linear_solver.error());
+    last_iterations_ = linear_solver.iters();
+    last_error_      = linear_solver.error();
   }
 
 
@@ -222,6 +251,11 @@ private:
   long        solver_id_;
   double      break_tolerance_;
   std::size_t max_iterations_;
+
+  std::size_t last_iterations_;
+  double      last_error_;
+  float       last_pc_time_;
+  float       last_solver_time_;
 
 };
 

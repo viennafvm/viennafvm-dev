@@ -20,6 +20,7 @@
 #include <iostream>
 
 // ViennaFVM includes:
+#define VIENNAFVM_VERBOSE
 #include "viennafvm/forwards.h"
 #include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/io/vtk_writer.hpp"
