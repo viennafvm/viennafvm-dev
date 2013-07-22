@@ -132,8 +132,8 @@ void init_quantities(SegmentationType const & segmentation, StorageType & storag
   viennafvm::set_quantity_region(segmentation(BodyContact), storage, donator_doping_key(), true);   // body contact (floating body)
   viennafvm::set_quantity_region(segmentation(Channel),     storage, donator_doping_key(), true);   // channel
 
-  viennafvm::set_quantity_value(segmentation(Source),      storage, donator_doping_key(), 1e26);    // source
-  viennafvm::set_quantity_value(segmentation(Drain),       storage, donator_doping_key(), 1e26);    // drain
+  viennafvm::set_quantity_value(segmentation(Source),      storage, donator_doping_key(), 1e24);    // source
+  viennafvm::set_quantity_value(segmentation(Drain),       storage, donator_doping_key(), 1e24);    // drain
   viennafvm::set_quantity_value(segmentation(Body),        storage, donator_doping_key(), 1e18);    // body
   viennafvm::set_quantity_value(segmentation(BodyContact), storage, donator_doping_key(), 1e18);    // body contact (floating body)
   viennafvm::set_quantity_value(segmentation(Channel),     storage, donator_doping_key(), 1e18);    // channel
@@ -145,8 +145,8 @@ void init_quantities(SegmentationType const & segmentation, StorageType & storag
   viennafvm::set_quantity_region(segmentation(BodyContact), storage, acceptor_doping_key(), true);  // body contact (floating body)
   viennafvm::set_quantity_region(segmentation(Channel),     storage, acceptor_doping_key(), true);  // channel
 
-  viennafvm::set_quantity_value(segmentation(Source),      storage, acceptor_doping_key(),  1e6);   // source
-  viennafvm::set_quantity_value(segmentation(Drain),       storage, acceptor_doping_key(),  1e6);   // drain
+  viennafvm::set_quantity_value(segmentation(Source),      storage, acceptor_doping_key(),  1e8);   // source
+  viennafvm::set_quantity_value(segmentation(Drain),       storage, acceptor_doping_key(),  1e8);   // drain
   viennafvm::set_quantity_value(segmentation(Body),        storage, acceptor_doping_key(),  1e14);  // body
   viennafvm::set_quantity_value(segmentation(BodyContact), storage, acceptor_doping_key(),  1e14);  // body contact (floating body)
   viennafvm::set_quantity_value(segmentation(Channel),     storage, acceptor_doping_key(),  1e14);  // channel
@@ -154,12 +154,12 @@ void init_quantities(SegmentationType const & segmentation, StorageType & storag
   // built-in potential:
   viennafvm::set_quantity_region(segmentation.domain(), storage, builtin_potential_key(), true);   // defined everywhere
 
-  viennafvm::set_quantity_value(segmentation(Gate),          storage, builtin_potential_key(), built_in_potential(300, 1e26, 1e6)); // gate
-  viennafvm::set_quantity_value(segmentation(SourceContact), storage, builtin_potential_key(), built_in_potential(300, 1e26, 1e6)); // source contact
-  viennafvm::set_quantity_value(segmentation(Oxide),         storage, builtin_potential_key(), built_in_potential(300, 1e26, 1e6)); // oxide (for simplicity set to same as gate)
-  viennafvm::set_quantity_value(segmentation(DrainContact),  storage, builtin_potential_key(), built_in_potential(300, 1e26, 1e6)); // drain contact
-  viennafvm::set_quantity_value(segmentation(Source),        storage, builtin_potential_key(), built_in_potential(300, 1e26, 1e6)); // source
-  viennafvm::set_quantity_value(segmentation(Drain),         storage, builtin_potential_key(), built_in_potential(300, 1e26, 1e6)); // drain
+  viennafvm::set_quantity_value(segmentation(Gate),          storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // gate
+  viennafvm::set_quantity_value(segmentation(SourceContact), storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // source contact
+  viennafvm::set_quantity_value(segmentation(Oxide),         storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // oxide (for simplicity set to same as gate)
+  viennafvm::set_quantity_value(segmentation(DrainContact),  storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // drain contact
+  viennafvm::set_quantity_value(segmentation(Source),        storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // source
+  viennafvm::set_quantity_value(segmentation(Drain),         storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // drain
   viennafvm::set_quantity_value(segmentation(Channel),       storage, builtin_potential_key(), built_in_potential(300, 1e18, 1e14)); // channel
   viennafvm::set_quantity_value(segmentation(Body),          storage, builtin_potential_key(), built_in_potential(300, 1e18, 1e14)); // body
   viennafvm::set_quantity_value(segmentation(BodyContact),   storage, builtin_potential_key(), built_in_potential(300, 1e18, 1e14)); // body contact (floating body)
@@ -277,19 +277,19 @@ int main(int argc, char* argv[])
 
   // potential:
 //   double built_in_pot = built_in_potential(300, n_plus, 1e32/n_plus); // should match specification in init_quantities()!
-  viennafvm::set_dirichlet_boundary(segmentation(Gate),          storage, psi, 0.8 + built_in_potential(300, 1e26, 1e6)); // Gate contact
-  viennafvm::set_dirichlet_boundary(segmentation(SourceContact), storage, psi, 0.0 + built_in_potential(300, 1e26, 1e6)); // Source contact
-  viennafvm::set_dirichlet_boundary(segmentation(DrainContact),  storage, psi, 0.3 + built_in_potential(300, 1e26, 1e6)); // Drain contact
+  viennafvm::set_dirichlet_boundary(segmentation(Gate),          storage, psi, 0.2 + built_in_potential(300, 1e24, 1e8)); // Gate contact
+  viennafvm::set_dirichlet_boundary(segmentation(SourceContact), storage, psi, 0.0 + built_in_potential(300, 1e24, 1e8)); // Source contact
+  viennafvm::set_dirichlet_boundary(segmentation(DrainContact),  storage, psi, 0.2 + built_in_potential(300, 1e24, 1e8)); // Drain contact
   viennafvm::set_dirichlet_boundary(segmentation(BodyContact),   storage, psi, 0.0 + built_in_potential(300, 1e18, 1e14)); // Body contact
 
   // electron density
-  viennafvm::set_dirichlet_boundary(segmentation(SourceContact), storage, n, 1e26); // Source contact
-  viennafvm::set_dirichlet_boundary(segmentation(DrainContact),  storage, n, 1e26); // Drain contact
+  viennafvm::set_dirichlet_boundary(segmentation(SourceContact), storage, n, 1e24); // Source contact
+  viennafvm::set_dirichlet_boundary(segmentation(DrainContact),  storage, n, 1e24); // Drain contact
   viennafvm::set_dirichlet_boundary(segmentation(BodyContact),   storage, n, 1e18); // Body contact
 
   // hole density
-  viennafvm::set_dirichlet_boundary(segmentation(SourceContact), storage, p, 1e6);  // Source contact
-  viennafvm::set_dirichlet_boundary(segmentation(DrainContact),  storage, p, 1e6);  // Drain contact
+  viennafvm::set_dirichlet_boundary(segmentation(SourceContact), storage, p, 1e8);  // Source contact
+  viennafvm::set_dirichlet_boundary(segmentation(DrainContact),  storage, p, 1e8);  // Drain contact
   viennafvm::set_dirichlet_boundary(segmentation(BodyContact),   storage, p, 1e14); // Body contact
 
 
@@ -375,7 +375,7 @@ int main(int argc, char* argv[])
   //
   viennafvm::pde_solver<> pde_solver;
 
-  pde_solver.set_damping(0.4);
+  pde_solver.set_damping(1.0);
   pde_solver.set_nonlinear_iterations(100);
   pde_solver.set_nonlinear_breaktol(1.0E-2);
 
