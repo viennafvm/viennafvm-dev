@@ -20,6 +20,7 @@
 #include <iostream>
 
 // ViennaFVM includes:
+#define VIENNAFVM_VERBOSE
 #include "viennafvm/forwards.h"
 #include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/io/vtk_writer.hpp"
@@ -145,6 +146,59 @@ void init_quantities(SegmentationType const & segmentation, StorageType & storag
   viennafvm::set_quantity_value(segmentation(8), storage, builtin_potential_key(), built_in_potential(300, 1e32/p_plus, p_plus)); // body contact (floating body)
 }
 
+template<typename DomainT, typename SegmentationT, typename StorageT>
+void write_device_doping(DomainT& domain, SegmentationT& segments, StorageT& storage)
+{
+  typedef typename viennagrid::result_of::cell_tag<DomainT>::type            CellTag;
+  typedef typename viennagrid::result_of::element<DomainT, CellTag>::type    CellType;
+
+  typedef typename viennadata::result_of::accessor<StorageT, donator_doping_key, double, CellType>::type  DonatorAccessor;
+  typedef typename viennadata::result_of::accessor<StorageT, acceptor_doping_key, double, CellType>::type AcceptorAccessor;
+
+  DonatorAccessor  donator_acc  = viennadata::make_accessor(storage, donator_doping_key());
+  AcceptorAccessor acceptor_acc = viennadata::make_accessor(storage, acceptor_doping_key());
+
+  viennagrid::io::vtk_writer<DomainT> my_vtk_writer;
+  my_vtk_writer.add_scalar_data_on_cells( donator_acc , "donators" );
+  my_vtk_writer.add_scalar_data_on_cells( acceptor_acc , "acceptors" );
+  my_vtk_writer(domain, segments, "mosfet_doping");
+}
+
+template<typename DomainT, typename SegmentationT, typename StorageT>
+void write_device_initial_guesses(DomainT& domain, SegmentationT& segments, StorageT& storage)
+{
+  typedef viennafvm::boundary_key                                                                         BoundaryKey;
+  typedef viennafvm::current_iterate_key                                                                  IterateKey;
+
+  typedef typename viennagrid::result_of::cell_tag<DomainT>::type                                         CellTag;
+  typedef typename viennagrid::result_of::element<DomainT, CellTag>::type                                 CellType;
+
+  typedef typename viennadata::result_of::accessor<StorageT, BoundaryKey, double, CellType>::type         BoundaryAccessor;
+  typedef typename viennadata::result_of::accessor<StorageT, IterateKey, double, CellType>::type          InitGuessAccessor;
+
+  BoundaryAccessor  bnd_pot_acc  = viennadata::make_accessor(storage, BoundaryKey(0));
+  InitGuessAccessor init_pot_acc = viennadata::make_accessor(storage, IterateKey(0));
+
+  BoundaryAccessor  bnd_n_acc  = viennadata::make_accessor(storage, BoundaryKey(1));
+  InitGuessAccessor init_n_acc = viennadata::make_accessor(storage, IterateKey(1));
+
+  BoundaryAccessor  bnd_p_acc  = viennadata::make_accessor(storage, BoundaryKey(2));
+  InitGuessAccessor init_p_acc = viennadata::make_accessor(storage, IterateKey(2));
+
+  viennagrid::io::vtk_writer<DomainT> bnd_vtk_writer;
+  bnd_vtk_writer.add_scalar_data_on_cells( bnd_pot_acc , "potential" );
+  bnd_vtk_writer.add_scalar_data_on_cells( bnd_n_acc ,   "electrons" );
+  bnd_vtk_writer.add_scalar_data_on_cells( bnd_p_acc ,   "holes" );
+  bnd_vtk_writer(domain, segments, "mosfet_boundary_conditions");
+
+  viennagrid::io::vtk_writer<DomainT> init_vtk_writer;
+  init_vtk_writer.add_scalar_data_on_cells( init_pot_acc , "potential" );
+  init_vtk_writer.add_scalar_data_on_cells( init_n_acc ,   "electrons" );
+  init_vtk_writer.add_scalar_data_on_cells( init_p_acc ,   "holes" );
+  init_vtk_writer(domain, segments, "mosfet_initial_conditions");
+}
+
+
 /** @brief Scales the entire simulation domain (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
 template <typename DomainType>
 void scale_domain(DomainType & domain, double factor)
@@ -258,6 +312,13 @@ int main()
   viennafvm::set_initial_guess(domain, storage, p, acceptor_doping_key());
   //viennafvm::smooth_initial_guess(domain, p, viennafvm::geometric_mean_smoother());
   //viennafvm::smooth_initial_guess(domain, p, viennafvm::geometric_mean_smoother());
+
+
+  //
+  // Write Doping and initial guesses/boundary conditions to VTK output files for inspection
+  //
+  write_device_doping(domain, segmentation, storage);
+  write_device_initial_guesses(domain, segmentation, storage);
 
 
 
