@@ -35,6 +35,7 @@
 #include "viennagrid/io/netgen_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
 #include "viennagrid/algorithm/voronoi.hpp"
+#include "viennagrid/algorithm/scale.hpp"
 
 // ViennaData includes:
 #include "viennadata/api.hpp"
@@ -199,24 +200,6 @@ void write_device_initial_guesses(DomainT& domain, SegmentationT& segments, Stor
 }
 
 
-/** @brief Scales the entire simulation domain (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
-template <typename DomainType>
-void scale_domain(DomainType & domain, double factor)
-{
-  typedef typename viennagrid::result_of::vertex_range<DomainType> ::type VertexContainer;
-  typedef typename viennagrid::result_of::iterator<VertexContainer>::type VertexIterator;
-
-  typename viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(domain);
-
-  VertexContainer vertices = viennagrid::elements(domain);
-  for ( VertexIterator vit = vertices.begin();
-        vit != vertices.end();
-        ++vit )
-  {
-    point_accessor(*vit) *= factor; // scale
-  }
-}
-
 int main()
 {
   typedef double   numeric_type;
@@ -250,7 +233,7 @@ int main()
     return EXIT_FAILURE;
   }
 
-  scale_domain(domain, 1e-9); // scale to nanometer
+  viennagrid::scale(domain, 1e-9); // scale to nanometer
 
   //
   // Set initial values
