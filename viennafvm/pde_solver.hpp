@@ -234,8 +234,11 @@ namespace viennafvm
 
           #ifdef VIENNAFVM_VERBOSE
             subtimer.start();
-          #endif 
             numeric_type update_norm = apply_update(pde_system, pde_index, domain, storage, update, damping);
+          #else 
+            apply_update(pde_system, pde_index, domain, storage, update, damping);
+          #endif 
+
           #ifdef VIENNAFVM_VERBOSE
             subtimer.get();
             std::cout << "   Update time   : " << std::fixed << subtimer.get() << " s" << std::endl;
