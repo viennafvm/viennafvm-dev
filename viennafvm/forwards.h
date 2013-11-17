@@ -103,6 +103,15 @@ namespace viennafvm
     QUANTITY_DISABLED  = -2,
     DIRICHLET_BOUNDARY = -1
   };
+
+  enum boundary_type_id
+  {
+    BOUNDARY_NONE = 0,
+    BOUNDARY_DIRICHLET//,       //     u = beta
+    //BOUNDARY_NEUMANN,         // du/dn = beta
+    //BOUNDARY_ROBIN            // du/dn = beta - alpha * u
+  };
+
 }
 
 
