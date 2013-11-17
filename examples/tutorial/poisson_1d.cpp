@@ -51,12 +51,12 @@ int main()
 {
   typedef double   numeric_type;
 
-  typedef viennagrid::line_1d_mesh   DomainType;
-  typedef viennagrid::result_of::segmentation<DomainType>::type SegmentationType;
+  typedef viennagrid::line_1d_mesh   MeshType;
+  typedef viennagrid::result_of::segmentation<MeshType>::type SegmentationType;
 
-  typedef viennagrid::result_of::cell_tag<DomainType>::type CellTag;
+  typedef viennagrid::result_of::cell_tag<MeshType>::type CellTag;
 
-  typedef viennagrid::result_of::element<DomainType, CellTag>::type        CellType;
+  typedef viennagrid::result_of::element<MeshType, CellTag>::type        CellType;
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
@@ -68,7 +68,7 @@ int main()
   //
   // Create a domain from file
   //
-  DomainType domain;
+  MeshType domain;
   SegmentationType segmentation(domain);
   StorageType storage;
 

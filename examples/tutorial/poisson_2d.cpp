@@ -48,12 +48,12 @@ int main()
 {
   typedef double   numeric_type;
 
-  typedef viennagrid::triangular_2d_mesh   DomainType;
-  typedef viennagrid::result_of::segmentation<DomainType>::type SegmentationType;
+  typedef viennagrid::triangular_2d_mesh   MeshType;
+  typedef viennagrid::result_of::segmentation<MeshType>::type SegmentationType;
 
-  typedef viennagrid::result_of::cell_tag<DomainType>::type CellTag;
+  typedef viennagrid::result_of::cell_tag<MeshType>::type CellTag;
 
-  typedef viennagrid::result_of::element<DomainType, CellTag>::type        CellType;
+  typedef viennagrid::result_of::element<MeshType, CellTag>::type        CellType;
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
@@ -63,7 +63,7 @@ int main()
 
 
 
-  typedef viennagrid::result_of::element_range<DomainType, CellTag>::type     CellContainer;
+  typedef viennagrid::result_of::element_range<MeshType, CellTag>::type     CellContainer;
   typedef viennagrid::result_of::iterator<CellContainer>::type                CellIterator;
   typedef viennagrid::result_of::vertex_range<CellType>::type                 VertexOnCellContainer;
   typedef viennagrid::result_of::iterator<VertexOnCellContainer>::type        VertexOnCellIterator;
@@ -77,7 +77,7 @@ int main()
   //
   // Create a domain from file
   //
-  DomainType domain;
+  MeshType domain;
   SegmentationType segmentation(domain);
   StorageType storage;
 
@@ -100,14 +100,11 @@ int main()
   Equation poisson_equ_1 = viennamath::make_equation( viennamath::laplace(u), -1);
   Equation poisson_equ_2 = viennamath::make_equation( viennamath::laplace(v), 0);
 
-  MatrixType system_matrix_1, system_matrix_2;
-  VectorType load_vector_1, load_vector_2;
-
   //
   // Setting boundary information on domain (this should come from device specification)
   //
 
-  viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(domain);
+  viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(domain);
 
   viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_u_accessor =
       viennadata::make_accessor(storage, viennafvm::boundary_key( u.id() ));

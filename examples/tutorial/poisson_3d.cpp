@@ -55,17 +55,17 @@ int main()
 {
   typedef double   numeric_type;
 
-  typedef viennagrid::tetrahedral_3d_mesh   DomainType;
-  typedef viennagrid::result_of::segmentation<DomainType>::type SegmentationType;
+  typedef viennagrid::tetrahedral_3d_mesh   MeshType;
+  typedef viennagrid::result_of::segmentation<MeshType>::type SegmentationType;
 
-  typedef viennagrid::result_of::cell_tag<DomainType>::type CellTag;
+  typedef viennagrid::result_of::cell_tag<MeshType>::type CellTag;
 
-  typedef viennagrid::result_of::element<DomainType, CellTag>::type        CellType;
+  typedef viennagrid::result_of::element<MeshType, CellTag>::type        CellType;
 
   typedef viennadata::storage<> StorageType;
 
 
-  typedef viennagrid::result_of::element_range<DomainType, CellTag>::type  CellContainer;
+  typedef viennagrid::result_of::element_range<MeshType, CellTag>::type  CellContainer;
   typedef viennagrid::result_of::iterator<CellContainer>::type                CellIterator;
   typedef viennagrid::result_of::vertex_range<CellType>::type               VertexOnCellContainer;
   typedef viennagrid::result_of::iterator<VertexOnCellContainer>::type        VertexOnCellIterator;
@@ -78,7 +78,7 @@ int main()
   //
   // Create a domain from file
   //
-  DomainType domain;
+  MeshType domain;
   SegmentationType segmentation(domain);
   StorageType storage;
 
@@ -104,7 +104,7 @@ int main()
   //
   //setting some boundary flags:
 
-  viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(domain);
+  viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(domain);
 
   viennadata::result_of::accessor<StorageType, permittivity_key, double, CellType>::type permittivity_accessor =
       viennadata::make_accessor(storage, permittivity_key());

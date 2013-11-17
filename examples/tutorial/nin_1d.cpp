@@ -134,13 +134,13 @@ void init_quantities(SegmentationType const & segmentation, StorageType & storag
 }
 
 /** @brief Scales the entire simulation domain (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
-template <typename DomainType>
-void scale_domain(DomainType & domain, double factor)
+template <typename MeshType>
+void scale_domain(MeshType & domain, double factor)
 {
-  typedef typename viennagrid::result_of::vertex_range<DomainType> ::type VertexContainer;
+  typedef typename viennagrid::result_of::vertex_range<MeshType> ::type VertexContainer;
   typedef typename viennagrid::result_of::iterator<VertexContainer>::type VertexIterator;
 
-  typename viennagrid::result_of::default_point_accessor<DomainType>::type point_accessor = viennagrid::default_point_accessor(domain);
+  typename viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(domain);
 
   VertexContainer vertices(domain);
   for ( VertexIterator vit = vertices.begin();
@@ -155,12 +155,12 @@ int main()
 {
   typedef double   numeric_type;
 
-  typedef viennagrid::line_1d_mesh   DomainType;
-  typedef viennagrid::result_of::segmentation<DomainType>::type SegmentationType;
+  typedef viennagrid::line_1d_mesh   MeshType;
+  typedef viennagrid::result_of::segmentation<MeshType>::type SegmentationType;
 
-  typedef viennagrid::result_of::cell_tag<DomainType>::type CellTag;
+  typedef viennagrid::result_of::cell_tag<MeshType>::type CellTag;
 
-  typedef viennagrid::result_of::element<DomainType, CellTag>::type        CellType;
+  typedef viennagrid::result_of::element<MeshType, CellTag>::type        CellType;
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
@@ -170,7 +170,7 @@ int main()
   //
   // Create a domain from file
   //
-  DomainType domain;
+  MeshType domain;
   SegmentationType segmentation(domain);
   StorageType storage;
 
