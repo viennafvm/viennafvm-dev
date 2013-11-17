@@ -175,23 +175,30 @@ namespace viennafvm
   }
 
 
-  template<typename MatrixType = boost::numeric::ublas::compressed_matrix<viennafvm::numeric_type>,
-           typename VectorType = boost::numeric::ublas::vector<viennafvm::numeric_type> >
+  template<typename MeshT>
   class pde_solver
   {
+      typedef boost::numeric::ublas::compressed_matrix<viennafvm::numeric_type>    MatrixType;
+      typedef boost::numeric::ublas::vector<viennafvm::numeric_type>               VectorType;
     public:
+      typedef viennadata::storage<>         StorageType;
+      typedef StorageType                   storage_type;
+
+      typedef MeshT        MeshType;
+      typedef MeshType     mesh_type;
+
 
       typedef viennafvm::numeric_type numeric_type;
 
-      pde_solver()
+      pde_solver(MeshT const & mesh) : mesh_(mesh)
       {
         nonlinear_iterations  = 100;
         nonlinear_breaktol    = 1.0e-3;
         damping               = 1.0;
       }
 
-      template<typename PDESystemT, typename DomainT, typename StorageT, typename LinearSolverT>
-      void operator()(PDESystemT const & pde_system, DomainT const & domain, StorageT & storage, LinearSolverT& linear_solver, std::size_t break_pde = 0)
+      template<typename PDESystemT, typename LinearSolverT>
+      void operator()(PDESystemT const & pde_system, LinearSolverT& linear_solver, std::size_t break_pde = 0)
       {
       #ifdef VIENNAFVM_VERBOSE
         std::streamsize cout_precision = std::cout.precision();
@@ -218,7 +225,7 @@ namespace viennafvm
             subtimer.start();
           #endif
             viennafvm::linear_assembler fvm_assembler;
-            fvm_assembler(pde_system, domain, storage, system_matrix, load_vector);
+            fvm_assembler(pde_system, mesh_, storage_, system_matrix, load_vector);
           #ifdef VIENNAFVM_VERBOSE
             std::cout.precision(3);
             subtimer.get();
@@ -234,9 +241,9 @@ namespace viennafvm
 
           #ifdef VIENNAFVM_VERBOSE
             subtimer.start();
-            numeric_type update_norm = apply_update(pde_system, pde_index, domain, storage, update, damping);
+            numeric_type update_norm = apply_update(pde_system, pde_index, mesh_, storage_, update, damping);
           #else
-            apply_update(pde_system, pde_index, domain, storage, update, damping);
+            apply_update(pde_system, pde_index, mesh_, storage_, update, damping);
           #endif
 
           #ifdef VIENNAFVM_VERBOSE
@@ -263,10 +270,10 @@ namespace viennafvm
             std::cout << std::endl;
           #endif
           }
-          std::size_t map_index = create_mapping(pde_system, domain, storage);
+          std::size_t map_index = create_mapping(pde_system, mesh_, storage_);
           result_.resize(map_index);
 
-          transfer_to_solution_vector(pde_system, domain, storage, result_);
+          transfer_to_solution_vector(pde_system, mesh_, storage_, result_);
         }
         else // nonlinear
         {
@@ -305,7 +312,7 @@ namespace viennafvm
               #endif
                 // assemble linearized systems
                 viennafvm::linear_assembler fvm_assembler;
-                fvm_assembler(pde_system, pde_index, domain, storage, system_matrix, load_vector);
+                fvm_assembler(pde_system, pde_index, mesh_, storage_, system_matrix, load_vector);
               #ifdef VIENNAFVM_VERBOSE
                 std::cout.precision(3);
                 subtimer.get();
@@ -322,7 +329,7 @@ namespace viennafvm
               #ifdef VIENNAFVM_VERBOSE
                 subtimer.start();
               #endif
-                numeric_type update_norm = apply_update(pde_system, pde_index, domain, storage, update, damping);
+                numeric_type update_norm = apply_update(pde_system, pde_index, mesh_, storage_, update, damping);
               #ifdef VIENNAFVM_VERBOSE
                 subtimer.get();
                 std::cout << "   Update time   : " << std::fixed << subtimer.get() << " s" << std::endl;
@@ -408,12 +415,15 @@ namespace viennafvm
         #endif
 
           // need to pack all approximations into a single vector:
-          std::size_t map_index = create_mapping(pde_system, domain, storage);
+          std::size_t map_index = create_mapping(pde_system, mesh_, storage_);
           result_.resize(map_index);
-          transfer_to_solution_vector(pde_system, domain, storage, result_);
+          transfer_to_solution_vector(pde_system, mesh_, storage_, result_);
         }
 
       }
+
+      StorageType const & storage() const { return storage_; }
+      StorageType       & storage()       { return storage_; }
 
       VectorType const & result() { return result_; }
 
@@ -427,6 +437,10 @@ namespace viennafvm
       void set_damping(numeric_type value) { damping = value; }
 
     private:
+      MeshType const & mesh_;
+      StorageType      storage_;
+
+
       VectorType result_;
       bool picard_iteration_;
       std::size_t     nonlinear_iterations;

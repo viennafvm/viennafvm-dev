@@ -133,16 +133,16 @@ void init_quantities(SegmentationType const & segmentation, StorageType & storag
   viennafvm::set_quantity_value( segmentation(5), storage, builtin_potential_key(), built_in_potential(300, n_plus, 1e32/n_plus) );
 }
 
-/** @brief Scales the entire simulation domain (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
+/** @brief Scales the entire simulation mesh (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
 template <typename MeshType>
-void scale_domain(MeshType & domain, double factor)
+void scale_mesh(MeshType & mesh, double factor)
 {
   typedef typename viennagrid::result_of::vertex_range<MeshType> ::type VertexContainer;
   typedef typename viennagrid::result_of::iterator<VertexContainer>::type VertexIterator;
 
-  typename viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(domain);
+  typename viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(mesh);
 
-  VertexContainer vertices(domain);
+  VertexContainer vertices(mesh);
   for ( VertexIterator vit = vertices.begin();
         vit != vertices.end();
         ++vit )
@@ -165,19 +165,16 @@ int main()
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
 
-  typedef viennadata::storage<> StorageType;
-
   //
-  // Create a domain from file
+  // Create a mesh from file
   //
-  MeshType domain;
-  SegmentationType segmentation(domain);
-  StorageType storage;
+  MeshType mesh;
+  SegmentationType segmentation(mesh);
 
   try
   {
     viennagrid::io::netgen_reader my_reader;
-    my_reader(domain, segmentation, "../examples/data/line23.mesh");
+    my_reader(mesh, segmentation, "../examples/data/line23.mesh");
   }
   catch (...)
   {
@@ -185,7 +182,12 @@ int main()
     return EXIT_FAILURE;
   }
 
-  scale_domain(domain, 1e-7);
+  scale_mesh(mesh, 1e-7);
+
+  //
+  // Create PDE solver instance:
+  //
+  viennafvm::pde_solver<MeshType> pde_solver(mesh);
 
   //
   // Set initial values
@@ -193,10 +195,10 @@ int main()
   double n_plus = 1e24;
   double p_plus = 1e10;
 
-  init_quantities(segmentation, storage, n_plus, p_plus);
+  init_quantities(segmentation, pde_solver.storage(), n_plus, p_plus);
 
   //
-  // Setting boundary information on domain (see mosfet.in2d for segment indices)
+  // Setting boundary information on mesh (see mosfet.in2d for segment indices)
   //
   FunctionSymbol psi(0);   // potential, using id=0
   FunctionSymbol n(1);     // electron concentration, using id=1
@@ -204,32 +206,32 @@ int main()
 
   // potential:
   double built_in_pot = built_in_potential(300, n_plus, 1e32/n_plus); // should match specification in init_quantities()!
-  viennafvm::set_dirichlet_boundary(segmentation(1), storage, psi, 0.0 + built_in_pot); // Gate contact
-  viennafvm::set_dirichlet_boundary(segmentation(5), storage, psi, 0.0 + built_in_pot); // Source contact
+  viennafvm::set_dirichlet_boundary(segmentation(1), pde_solver.storage(), psi, 0.0 + built_in_pot); // Gate contact
+  viennafvm::set_dirichlet_boundary(segmentation(5), pde_solver.storage(), psi, 0.0 + built_in_pot); // Source contact
 
   // electron density
-  viennafvm::set_dirichlet_boundary(segmentation(1), storage, n, n_plus); // Source contact
-  viennafvm::set_dirichlet_boundary(segmentation(5), storage, n, n_plus); // Drain contact
+  viennafvm::set_dirichlet_boundary(segmentation(1), pde_solver.storage(), n, n_plus); // Source contact
+  viennafvm::set_dirichlet_boundary(segmentation(5), pde_solver.storage(), n, n_plus); // Drain contact
 
   // hole density
-  viennafvm::set_dirichlet_boundary(segmentation(1), storage, p, 1e32/n_plus); // Source contact
-  viennafvm::set_dirichlet_boundary(segmentation(5), storage, p, 1e32/n_plus); // Drain contact
+  viennafvm::set_dirichlet_boundary(segmentation(1), pde_solver.storage(), p, 1e32/n_plus); // Source contact
+  viennafvm::set_dirichlet_boundary(segmentation(5), pde_solver.storage(), p, 1e32/n_plus); // Drain contact
 
   //
   // Initial conditions (required for nonlinear problems)
   //
 
-  viennafvm::set_initial_guess(domain, storage, psi, builtin_potential_key());
-  //viennafvm::smooth_initial_guess(domain, psi, viennafvm::arithmetic_mean_smoother());
-  //viennafvm::smooth_initial_guess(domain, psi, viennafvm::arithmetic_mean_smoother());
+  viennafvm::set_initial_guess(mesh, pde_solver.storage(), psi, builtin_potential_key());
+  //viennafvm::smooth_initial_guess(mesh, psi, viennafvm::arithmetic_mean_smoother());
+  //viennafvm::smooth_initial_guess(mesh, psi, viennafvm::arithmetic_mean_smoother());
 
-  viennafvm::set_initial_guess(domain, storage, n, donator_doping_key());
-  //viennafvm::smooth_initial_guess(domain, n, viennafvm::geometric_mean_smoother());
-  //viennafvm::smooth_initial_guess(domain, n, viennafvm::geometric_mean_smoother());
+  viennafvm::set_initial_guess(mesh, pde_solver.storage(), n, donator_doping_key());
+  //viennafvm::smooth_initial_guess(mesh, n, viennafvm::geometric_mean_smoother());
+  //viennafvm::smooth_initial_guess(mesh, n, viennafvm::geometric_mean_smoother());
 
-  viennafvm::set_initial_guess(domain, storage, p, acceptor_doping_key());
-  //viennafvm::smooth_initial_guess(domain, p, viennafvm::geometric_mean_smoother());
-  //viennafvm::smooth_initial_guess(domain, p, viennafvm::geometric_mean_smoother());
+  viennafvm::set_initial_guess(mesh, pde_solver.storage(), p, acceptor_doping_key());
+  //viennafvm::smooth_initial_guess(mesh, p, viennafvm::geometric_mean_smoother());
+  //viennafvm::smooth_initial_guess(mesh, p, viennafvm::geometric_mean_smoother());
 
 
 
@@ -237,9 +239,9 @@ int main()
   // Specify PDEs:
   //
 
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity;       permittivity.wrap_constant( storage, permittivity_key() );
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  donator_doping;   donator_doping.wrap_constant( storage, donator_doping_key() );
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  acceptor_doping; acceptor_doping.wrap_constant( storage, acceptor_doping_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity;       permittivity.wrap_constant( pde_solver.storage(), permittivity_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  donator_doping;   donator_doping.wrap_constant( pde_solver.storage(), donator_doping_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  acceptor_doping; acceptor_doping.wrap_constant( pde_solver.storage(), acceptor_doping_key() );
 
   double q  = 1.6e-19;
   double kB = 1.38e-23; // Boltzmann constant
@@ -249,7 +251,7 @@ int main()
   double D  = mu * VT;  //diffusion constant
 
   // here is all the fun: specify DD system
-  Equation laplace_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(psi)),                     /* = */ 0);
+  //Equation laplace_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(psi)),                     /* = */ 0);
   Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(psi)),                     /* = */ q * ((n - donator_doping) - (p - acceptor_doping)));
   Equation cont_eq_n  = viennamath::make_equation( viennamath::div(D * viennamath::grad(n) - mu * viennamath::grad(psi) * n), /* = */ 0);
   Equation cont_eq_p  = viennamath::make_equation( viennamath::div(D * viennamath::grad(p) + mu * viennamath::grad(psi) * p), /* = */ 0);
@@ -258,7 +260,7 @@ int main()
   //viennafvm::linear_pde_system<> pde_system_init;
   //pde_system_init.add_pde(poisson_eq, psi); // equation and associated quantity
   //viennafvm::pde_solver<> pde_solver_init;
-  //pde_solver_init(pde_system_init, domain);   // weird math happening in here ;-)
+  //pde_solver_init(pde_system_init, mesh);   // weird math happening in here ;-)
 
   // actual DD system
   viennafvm::linear_pde_system<> pde_system;
@@ -278,21 +280,19 @@ int main()
   viennafvm::linsolv::viennacl  linear_solver;
 
   //
-  // Create PDE solver instance and run the solver:
+  // Run the solver:
   //
-  viennafvm::pde_solver<> pde_solver;
-
-  pde_solver(pde_system, domain, storage, linear_solver);   // weird math happening in here ;-)
+  pde_solver(pde_system, linear_solver);   // weird math happening in here ;-)
 
 
   //
-  // Writing all solution variables back to domain
+  // Writing all solution variables back to mesh
   //
   std::vector<long> result_ids(pde_system.size());
   for (std::size_t i=0; i<pde_system.size(); ++i)
     result_ids[i] = pde_system.unknown(i)[0].id();
 
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "nin_1d", domain, segmentation, storage, result_ids);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "nin_1d", mesh, segmentation, pde_solver.storage(), result_ids);
 
   std::cout << "********************************************" << std::endl;
   std::cout << "* MOSFET simulation finished successfully! *" << std::endl;

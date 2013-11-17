@@ -66,16 +66,15 @@ int main()
   typedef viennafvm::boundary_key      BoundaryKey;
 
   //
-  // Create a domain from file
+  // Create a mesh from file
   //
-  MeshType domain;
-  SegmentationType segmentation(domain);
-  StorageType storage;
+  MeshType mesh;
+  SegmentationType segmentation(mesh);
 
   try
   {
     viennagrid::io::netgen_reader my_netgen_reader;
-    my_netgen_reader(domain, segmentation, "../examples/data/line23.mesh");
+    my_netgen_reader(mesh, segmentation, "../examples/data/line23.mesh");
   }
   catch (...)
   {
@@ -83,23 +82,29 @@ int main()
     return EXIT_FAILURE;
   }
 
+  //
+  // Create PDE solver instance
+  //
+  viennafvm::pde_solver<MeshType> pde_solver(mesh);
+
+
   // Specify Poisson equation:
-  viennafvm::ncell_quantity<CellType>  permittivity; permittivity.wrap_constant( storage, permittivity_key() );
+  viennafvm::ncell_quantity<CellType>  permittivity; permittivity.wrap_constant( pde_solver.storage(), permittivity_key() );
   std::cout << "No. of segments: " << segmentation.size() << std::endl;
-  viennafvm::set_quantity_region( domain, storage, permittivity_key(), true);
-  viennafvm::set_quantity_value( domain, storage, permittivity_key(), 3);
-  viennafvm::set_quantity_value( segmentation(3), storage, permittivity_key(), 1);
-  viennafvm::set_quantity_value( segmentation(4), storage, permittivity_key(), 1);
-  viennafvm::set_quantity_value( segmentation(5), storage, permittivity_key(), 1);
+  viennafvm::set_quantity_region( mesh, pde_solver.storage(), permittivity_key(), true);
+  viennafvm::set_quantity_value( mesh, pde_solver.storage(), permittivity_key(), 3);
+  viennafvm::set_quantity_value( segmentation(3), pde_solver.storage(), permittivity_key(), 1);
+  viennafvm::set_quantity_value( segmentation(4), pde_solver.storage(), permittivity_key(), 1);
+  viennafvm::set_quantity_value( segmentation(5), pde_solver.storage(), permittivity_key(), 1);
 
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
   Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(u)), 0);  // \Delta u = 0
 
   //
-  // Setting boundary information on domain (this should come from device specification)
+  // Setting boundary information on mesh (this should come from device specification)
   //
-  viennafvm::set_dirichlet_boundary(segmentation(1), storage, u, 0.0);
-  viennafvm::set_dirichlet_boundary(segmentation(5), storage, u, 1.0);
+  viennafvm::set_dirichlet_boundary(segmentation(1), pde_solver.storage(), u, 0.0);
+  viennafvm::set_dirichlet_boundary(segmentation(5), pde_solver.storage(), u, 1.0);
 
   //
   // Setup Linear Solver
@@ -107,21 +112,15 @@ int main()
   viennafvm::linsolv::viennacl  linear_solver;
 
   //
-  // Create PDE solver instance
-  //
-  viennafvm::pde_solver<> pde_solver;
-
-  //
   // Pass system to solver:
   //
   pde_solver(viennafvm::make_linear_pde_system(poisson_eq, u),  // PDE with associated unknown
-             domain,
-             storage, linear_solver);
+             linear_solver);
 
   //
-  // Writing solution back to domain (discussion about proper way of returning a solution required...)
+  // Writing solution back to mesh (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_1d", domain, segmentation, storage, 0);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_1d", mesh, segmentation, pde_solver.storage(), 0);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;

@@ -75,22 +75,26 @@ int main()
   typedef viennamath::equation          Equation;
 
   //
-  // Create a domain from file
+  // Create a mesh from file
   //
-  MeshType domain;
-  SegmentationType segmentation(domain);
-  StorageType storage;
+  MeshType mesh;
+  SegmentationType segmentation(mesh);
 
   try
   {
     viennagrid::io::netgen_reader my_reader;
-    my_reader(domain, segmentation, "../examples/data/square128.mesh");
+    my_reader(mesh, segmentation, "../examples/data/square128.mesh");
   }
   catch (...)
   {
     std::cerr << "File-Reader failed. Aborting program..." << std::endl;
     return EXIT_FAILURE;
   }
+
+  //
+  // Create PDE solver instance:
+  //
+  viennafvm::pde_solver<MeshType> pde_solver(mesh);
 
   //
   // Specify two PDEs:
@@ -101,27 +105,27 @@ int main()
   Equation poisson_equ_2 = viennamath::make_equation( viennamath::laplace(v), 0);
 
   //
-  // Setting boundary information on domain (this should come from device specification)
+  // Setting boundary information on mesh (this should come from device specification)
   //
 
-  viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(domain);
+  viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(mesh);
 
   viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_u_accessor =
-      viennadata::make_accessor(storage, viennafvm::boundary_key( u.id() ));
+      viennadata::make_accessor(pde_solver.storage(), viennafvm::boundary_key( u.id() ));
 
   viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_u_value_accessor =
-      viennadata::make_accessor(storage, viennafvm::boundary_key( u.id() ));
+      viennadata::make_accessor(pde_solver.storage(), viennafvm::boundary_key( u.id() ));
 
 
   viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_v_accessor =
-      viennadata::make_accessor(storage, viennafvm::boundary_key( v.id() ));
+      viennadata::make_accessor(pde_solver.storage(), viennafvm::boundary_key( v.id() ));
 
   viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_v_value_accessor =
-      viennadata::make_accessor(storage, viennafvm::boundary_key( v.id() ));
+      viennadata::make_accessor(pde_solver.storage(), viennafvm::boundary_key( v.id() ));
 
 
   //setting some boundary flags:
-  CellContainer cells(domain);
+  CellContainer cells(mesh);
   for (CellIterator cit  = cells.begin();
                     cit != cells.end();
                   ++cit)
@@ -161,27 +165,20 @@ int main()
   viennafvm::linsolv::viennacl  linear_solver;
 
   //
-  // Create PDE solver instance
-  //
-  viennafvm::pde_solver<> pde_solver;
-
-  //
   // Pass system to solver:
   //
   pde_solver(viennafvm::make_linear_pde_system(poisson_equ_1, u),  // PDE with associated unknown
-             domain,
-             storage, linear_solver);
+             linear_solver);
 
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_2d_1", domain, segmentation, storage, 0);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_2d_1", mesh, segmentation, pde_solver.storage(), 0);
 
   pde_solver(viennafvm::make_linear_pde_system(poisson_equ_2, v, viennafvm::make_linear_pde_options(1, 1)),  // PDE with associated unknown
-             domain,
-             storage, linear_solver);
+             linear_solver);
 
   //
-  // Writing solution back to domain (discussion about proper way of returning a solution required...)
+  // Writing solution back to mesh (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_2d_2", domain, segmentation, storage, 1);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_2d_2", mesh, segmentation, pde_solver.storage(), 1);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;

@@ -104,16 +104,16 @@ void init_quantities( SegmentationType const & segmentation, StorageType & stora
   viennafvm::set_quantity_region( segmentation(5), storage, permittivity_key(), false);
 }
 
-/** @brief Scales the entire simulation domain (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
+/** @brief Scales the entire simulation mesh (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
 template <typename MeshType>
-void scale_domain(MeshType & domain, double factor)
+void scale_mesh(MeshType & mesh, double factor)
 {
   typedef typename viennagrid::result_of::vertex_range<MeshType> ::type VertexContainer;
   typedef typename viennagrid::result_of::iterator<VertexContainer>::type VertexIterator;
 
-  typename viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(domain);
+  typename viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(mesh);
 
-  VertexContainer vertices(domain);
+  VertexContainer vertices(mesh);
   for ( VertexIterator vit = vertices.begin();
         vit != vertices.end();
         ++vit )
@@ -137,16 +137,15 @@ int main()
   typedef viennamath::equation          Equation;
 
   //
-  // Create a domain from file
+  // Create a mesh from file
   //
-  MeshType domain;
-  SegmentationType segmentation(domain);
-  viennadata::storage<> storage;
+  MeshType mesh;
+  SegmentationType segmentation(mesh);
 
   try
   {
     viennagrid::io::netgen_reader my_reader;
-    my_reader(domain, segmentation, "../examples/data/nin2d.mesh");
+    my_reader(mesh, segmentation, "../examples/data/nin2d.mesh");
   }
   catch (...)
   {
@@ -157,27 +156,32 @@ int main()
 //   for (int i = 0; i < 10; ++i)
 //     std::cout << "Segment " << i << " - " << segmentation.segment_present(i) << std::endl;
 
-  scale_domain(domain, 1e-9);
+  scale_mesh(mesh, 1e-9);
+
+  //
+  // Create PDE solver instance:
+  //
+  viennafvm::pde_solver<MeshType> pde_solver(mesh);
 
   //
   // Assign doping and set initial values
   //
-  init_quantities(segmentation, storage);
+  init_quantities(segmentation, pde_solver.storage());
 
   //
-  // Setting boundary information on domain (see mosfet.in2d for segment indices)
+  // Setting boundary information on mesh (see mosfet.in2d for segment indices)
   //
   FunctionSymbol psi(0);   // potential, using id=0
 
   // potential:
-  viennafvm::set_dirichlet_boundary( segmentation(1), storage, psi, 0.0);
-  viennafvm::set_dirichlet_boundary( segmentation(5), storage, psi, 0.8);
+  viennafvm::set_dirichlet_boundary( segmentation(1), pde_solver.storage(), psi, 0.0);
+  viennafvm::set_dirichlet_boundary( segmentation(5), pde_solver.storage(), psi, 0.8);
 
   //
   // Specify PDEs:
   //
 
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( storage, permittivity_key() );
+  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( pde_solver.storage(), permittivity_key() );
 
 
   // here is all the fun: specify DD system
@@ -195,21 +199,20 @@ int main()
   viennafvm::linsolv::viennacl  linear_solver;
 
   //
-  // Create PDE solver instance and run the solver:
+  // Run the solver:
   //
-  viennafvm::pde_solver<> pde_solver;
 
-  pde_solver(pde_system, domain, storage, linear_solver);   // weird math happening in here ;-)
+  pde_solver(pde_system, linear_solver);   // weird math happening in here ;-)
 
 
   //
-  // Writing all solution variables back to domain
+  // Writing all solution variables back to mesh
   //
   std::vector<long> result_ids(pde_system.size());
   for (std::size_t i=0; i<pde_system.size(); ++i)
     result_ids[i] = pde_system.unknown(i)[0].id();
 
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "nin_2d_laplace", domain, segmentation, storage, result_ids);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "nin_2d_laplace", mesh, segmentation, pde_solver.storage(), result_ids);
 
   std::cout << "*************************************" << std::endl;
   std::cout << "* Simulation finished successfully! *" << std::endl;
