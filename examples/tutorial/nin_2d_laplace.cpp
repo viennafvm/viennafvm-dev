@@ -33,7 +33,7 @@
 #include "viennagrid/config/default_configs.hpp"
 #include "viennagrid/io/netgen_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
-#include "viennagrid/algorithm/voronoi.hpp"
+#include "viennagrid/algorithm/scale.hpp"
 
 // ViennaData includes:
 #include "viennadata/api.hpp"
@@ -46,21 +46,16 @@
 #include <boost/numeric/ublas/operation.hpp>
 #include <boost/numeric/ublas/operation_sparse.hpp>
 
-//
-// Defining a bunch of accessor keys for physical quantities.
-// These should be part of a semiconductor application based on ViennaFVM, not of ViennaFVM itself
-// (which is just a generic finite volume solver and agnostic with respect to the actual physics).
-//
 
-struct permittivity_key
+namespace names
 {
-  // Operator< is required for compatibility with std::map
-  bool operator<(permittivity_key const & /*other*/) const { return false; }
-};
-
-
-
-
+  std::string permittivity()     { return "Permittivity"; }
+  std::string donator_doping()   { return "N_D"; }
+  std::string acceptor_doping()  { return "N_A"; }
+  std::string potential()        { return "Potential"; }
+  std::string electron_density() { return "Electron Density"; }
+  std::string hole_density()     { return "Hole Density"; }
+}
 
 double built_in_potential(double /*temperature*/, double doping_n, double doping_p)
 {
@@ -76,51 +71,34 @@ double built_in_potential(double /*temperature*/, double doping_n, double doping
   return bpot;
 }
 
-template <typename SegmentationType, typename StorageType>
-void init_quantities( SegmentationType const & segmentation, StorageType & storage )
+template <typename SegmentationType, typename ProblemDescriptionT>
+void init_quantities( SegmentationType const & segmentation, ProblemDescriptionT & problem_description )
 {
-  typedef typename viennagrid::result_of::cell<SegmentationType>::type CellType;
+  typedef typename ProblemDescriptionT::quantity_type    QuantityType;
+
+  std::size_t cell_num = viennagrid::cells(segmentation.mesh()).size();
+
+  //
+  // Electrostatic potential
+  //
+  QuantityType potential(names::potential(), cell_num);
+
+  viennafvm::set_dirichlet_boundary(potential, segmentation(1), 0.0); // Left contact
+  viennafvm::set_dirichlet_boundary(potential, segmentation(5), 0.2); // Right contact
+
+  viennafvm::set_unknown(potential, segmentation(2));
+  viennafvm::set_unknown(potential, segmentation(3));
+  viennafvm::set_unknown(potential, segmentation(4));
+
+  problem_description.add_quantity(potential);
 
   //
   // Init permittivity
   //
-  double eps0 = 8.854e-12;
-  double epsr_silicon = 11.7; // silicon!
-  double eps_silicon = eps0 * epsr_silicon;
-
-
-  // donator doping
-  viennafvm::set_quantity_region( segmentation(1), storage, permittivity_key(), false);
-
-  viennafvm::set_quantity_region( segmentation(2), storage, permittivity_key(), true);
-  viennafvm::set_quantity_value( segmentation(2),  storage, permittivity_key(), eps_silicon);
-
-  viennafvm::set_quantity_region( segmentation(3), storage, permittivity_key(), true);
-  viennafvm::set_quantity_value( segmentation(3),  storage, permittivity_key(), eps_silicon);
-
-  viennafvm::set_quantity_region( segmentation(4), storage, permittivity_key(), true);
-  viennafvm::set_quantity_value( segmentation(4),  storage, permittivity_key(), eps_silicon);
-
-  viennafvm::set_quantity_region( segmentation(5), storage, permittivity_key(), false);
+  QuantityType permittivity(names::permittivity(), cell_num, 11.7 * 8.854e-12);   // initialize with permittivity of silicon
+  problem_description.add_quantity(permittivity);
 }
 
-/** @brief Scales the entire simulation mesh (device) by the provided factor. This is accomplished by multiplying all point coordinates with this factor. */
-template <typename MeshType>
-void scale_mesh(MeshType & mesh, double factor)
-{
-  typedef typename viennagrid::result_of::vertex_range<MeshType> ::type VertexContainer;
-  typedef typename viennagrid::result_of::iterator<VertexContainer>::type VertexIterator;
-
-  typename viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(mesh);
-
-  VertexContainer vertices(mesh);
-  for ( VertexIterator vit = vertices.begin();
-        vit != vertices.end();
-        ++vit )
-  {
-    point_accessor(*vit) *= factor; // scale
-  }
-}
 
 int main()
 {
@@ -156,7 +134,7 @@ int main()
 //   for (int i = 0; i < 10; ++i)
 //     std::cout << "Segment " << i << " - " << segmentation.segment_present(i) << std::endl;
 
-  scale_mesh(mesh, 1e-9);
+  viennagrid::scale(mesh, 1e-9); // scale to nanometer
 
   //
   // Create PDE solver instance:
@@ -166,30 +144,23 @@ int main()
   //
   // Assign doping and set initial values
   //
-  init_quantities(segmentation, pde_solver.storage());
+  init_quantities(segmentation, pde_solver);
 
   //
   // Setting boundary information on mesh (see mosfet.in2d for segment indices)
   //
   FunctionSymbol psi(0);   // potential, using id=0
-
-  // potential:
-  viennafvm::set_dirichlet_boundary( segmentation(1), pde_solver.storage(), psi, 0.0);
-  viennafvm::set_dirichlet_boundary( segmentation(5), pde_solver.storage(), psi, 0.8);
+  FunctionSymbol permittivity(1);   // potential, using id=0
 
   //
   // Specify PDEs:
   //
-
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( pde_solver.storage(), permittivity_key() );
-
 
   // here is all the fun: specify DD system
   Equation laplace_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(psi)),                     /* = */ 0);
 
   viennafvm::linear_pde_system<> pde_system;
   pde_system.add_pde(laplace_eq, psi); // equation and associated quantity
-
   pde_system.is_linear(true);
 
 
@@ -208,11 +179,7 @@ int main()
   //
   // Writing all solution variables back to mesh
   //
-  std::vector<long> result_ids(pde_system.size());
-  for (std::size_t i=0; i<pde_system.size(); ++i)
-    result_ids[i] = pde_system.unknown(i)[0].id();
-
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "nin_2d_laplace", mesh, segmentation, pde_solver.storage(), result_ids);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.quantities(), "nin_2d_laplace", mesh, segmentation);
 
   std::cout << "*************************************" << std::endl;
   std::cout << "* Simulation finished successfully! *" << std::endl;

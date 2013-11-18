@@ -48,40 +48,15 @@
 #include <boost/numeric/ublas/operation.hpp>
 #include <boost/numeric/ublas/operation_sparse.hpp>
 
-//
-// Defining a bunch of accessor keys for physical quantities.
-// These should be part of a semiconductor application based on ViennaFVM, not of ViennaFVM itself
-// (which is just a generic finite volume solver and agnostic with respect to the actual physics).
-//
-
-struct permittivity_key
+namespace names
 {
-  // Operator< is required for compatibility with std::map
-  bool operator<(permittivity_key const & other) const { return false; }
-};
-
-struct builtin_potential_key
-{
-  // Operator< is required for compatibility with std::map
-  bool operator<(builtin_potential_key const & other) const { return false; }
-};
-
-// N_D
-struct donator_doping_key
-{
-  // Operator< is required for compatibility with std::map
-  bool operator<(donator_doping_key const & other) const { return false; }
-};
-
-// N_A
-struct acceptor_doping_key
-{
-  // Operator< is required for compatibility with std::map
-  bool operator<(acceptor_doping_key const & other) const { return false; }
-};
-
-
-
+  std::string permittivity()     { return "Permittivity"; }
+  std::string donator_doping()   { return "N_D"; }
+  std::string acceptor_doping()  { return "N_A"; }
+  std::string potential()        { return "Potential"; }
+  std::string electron_density() { return "Electron Density"; }
+  std::string hole_density()     { return "Hole Density"; }
+}
 
 
 double built_in_potential(double temperature, double doping_n, double doping_p)
@@ -111,60 +86,123 @@ const unsigned int DrainContact = 9;
 
 
 
-template <typename SegmentationType, typename StorageType>
-void init_quantities(SegmentationType const & segmentation, StorageType & storage)
+template <typename SegmentationType, typename ProblemDescriptionT>
+void init_quantities(SegmentationType const & segmentation, ProblemDescriptionT & problem_description)
 {
+  typedef typename ProblemDescriptionT::quantity_type    QuantityType;
+
+  std::size_t cell_num = viennagrid::cells(segmentation.mesh()).size();
+
+  //
+  // Electrostatic potential
+  //
+  QuantityType potential(names::potential(), cell_num);
+  viennafvm::set_initial_value(potential, segmentation(Gate),          built_in_potential(300, 1e24, 1e8)); // gate
+  viennafvm::set_initial_value(potential, segmentation(SourceContact), built_in_potential(300, 1e24, 1e8)); // source contact
+  viennafvm::set_initial_value(potential, segmentation(Oxide),         built_in_potential(300, 1e24, 1e8)); // oxide (for simplicity set to same as gate)
+  viennafvm::set_initial_value(potential, segmentation(DrainContact),  built_in_potential(300, 1e24, 1e8)); // drain contact
+  viennafvm::set_initial_value(potential, segmentation(Source),        built_in_potential(300, 1e24, 1e8)); // source
+  viennafvm::set_initial_value(potential, segmentation(Drain),         built_in_potential(300, 1e24, 1e8)); // drain
+  viennafvm::set_initial_value(potential, segmentation(Channel),       built_in_potential(300, 1e8,  1e8)); // Channel
+  viennafvm::set_initial_value(potential, segmentation(Body),          built_in_potential(300, 1e8,  1e8)); // body
+  viennafvm::set_initial_value(potential, segmentation(BodyContact),   built_in_potential(300, 1e8,  1e8)); // body contact (floating body)
+
+  viennafvm::set_dirichlet_boundary(potential, segmentation(Gate),          0.2 + built_in_potential(300, 1e24, 1e8)); // Gate contact
+  viennafvm::set_dirichlet_boundary(potential, segmentation(SourceContact), 0.0 + built_in_potential(300, 1e24, 1e8)); // Source contact
+  viennafvm::set_dirichlet_boundary(potential, segmentation(DrainContact),  0.2 + built_in_potential(300, 1e24, 1e8)); // Drain contact
+  viennafvm::set_dirichlet_boundary(potential, segmentation(BodyContact),   0.0 + built_in_potential(300, 1e8,  1e24)); // Body contact
+
+  viennafvm::set_unknown(potential, segmentation(Oxide));
+  viennafvm::set_unknown(potential, segmentation(Source));
+  viennafvm::set_unknown(potential, segmentation(Drain));
+  viennafvm::set_unknown(potential, segmentation(Channel));
+  viennafvm::set_unknown(potential, segmentation(Body));
+
+  problem_description.add_quantity(potential);
+
+
+  //
+  // Electron Density
+  //
+  QuantityType electron_density(names::electron_density(), cell_num, 1e16);   // initialize with intrinsic concentration
+  viennafvm::set_initial_value(electron_density, segmentation(Source),        1e24);  // source
+  viennafvm::set_initial_value(electron_density, segmentation(SourceContact), 1e24);  // source contact
+  viennafvm::set_initial_value(electron_density, segmentation(Drain),         1e24);  // drain
+  viennafvm::set_initial_value(electron_density, segmentation(DrainContact),  1e24);  // drain contact
+  viennafvm::set_initial_value(electron_density, segmentation(Channel),       1e8);   // channel
+  viennafvm::set_initial_value(electron_density, segmentation(Oxide),         1e8);   // oxide (this is for averaging purposes)
+  viennafvm::set_initial_value(electron_density, segmentation(Body),          1e8);   // body
+  viennafvm::set_initial_value(electron_density, segmentation(BodyContact),   1e8);   // body contact (floating body)
+
+  viennafvm::set_dirichlet_boundary(electron_density, segmentation(SourceContact), 1e24);   // Source contact
+  viennafvm::set_dirichlet_boundary(electron_density, segmentation(DrainContact),  1e24);   // Drain contact
+  viennafvm::set_dirichlet_boundary(electron_density, segmentation(BodyContact),   1e8);    // Body contact
+
+  viennafvm::set_unknown(electron_density, segmentation(Source));
+  viennafvm::set_unknown(electron_density, segmentation(Drain));
+  viennafvm::set_unknown(electron_density, segmentation(Channel));
+  viennafvm::set_unknown(electron_density, segmentation(Body));
+
+  problem_description.add_quantity(electron_density);
+
+
+  //
+  // Hole Density
+  //
+  QuantityType hole_density(names::hole_density(), cell_num, 1e16);   // initialize with intrinsic concentration
+
+  viennafvm::set_initial_value(hole_density, segmentation(Source),        1e8);  // source
+  viennafvm::set_initial_value(hole_density, segmentation(SourceContact), 1e8);  // source
+  viennafvm::set_initial_value(hole_density, segmentation(Drain),         1e8);  // drain
+  viennafvm::set_initial_value(hole_density, segmentation(DrainContact),  1e8);  // drain
+  viennafvm::set_initial_value(hole_density, segmentation(Channel),       1e24); // channel
+  viennafvm::set_initial_value(hole_density, segmentation(Oxide),         1e24); // oxide (this is for averaging purposes)
+  viennafvm::set_initial_value(hole_density, segmentation(Body),          1e24); // body
+  viennafvm::set_initial_value(hole_density, segmentation(BodyContact),   1e24); // body contact (floating body)
+
+  viennafvm::set_dirichlet_boundary(hole_density, segmentation(SourceContact), 1e8);   // Source contact
+  viennafvm::set_dirichlet_boundary(hole_density, segmentation(DrainContact),  1e8);   // Drain contact
+  viennafvm::set_dirichlet_boundary(hole_density, segmentation(BodyContact),   1e24);    // Body contact
+
+  viennafvm::set_unknown(hole_density, segmentation(Source));
+  viennafvm::set_unknown(hole_density, segmentation(Drain));
+  viennafvm::set_unknown(hole_density, segmentation(Channel));
+  viennafvm::set_unknown(hole_density, segmentation(Body));
+
+  problem_description.add_quantity(hole_density);
+
   //
   // Init permittivity
   //
-  viennafvm::set_quantity_region(segmentation.mesh(), storage, permittivity_key(), true);               // permittivity is (for simplicity) defined everywhere
-  viennafvm::set_quantity_value(segmentation.mesh(),  storage, permittivity_key(), 11.7 * 8.854e-12);   // permittivity of silicon
-  viennafvm::set_quantity_value(segmentation(Oxide),    storage, permittivity_key(), 15.6 * 8.854e-12);   // permittivty of HfO2
+  QuantityType permittivity(names::permittivity(), cell_num, 11.7 * 8.854e-12);   // initialize with permittivity of silicon
+  viennafvm::set_initial_value(permittivity, segmentation(Oxide), 15.6 * 8.854e-12);   // permittivty of HfO2
+  problem_description.add_quantity(permittivity);
 
   //
   // Initialize doping
   //
 
   // donator doping
-  viennafvm::set_quantity_region(segmentation(Source),      storage, donator_doping_key(), true);   // source
-  viennafvm::set_quantity_region(segmentation(Drain),       storage, donator_doping_key(), true);   // drain
-  viennafvm::set_quantity_region(segmentation(Body),        storage, donator_doping_key(), true);   // body
-  viennafvm::set_quantity_region(segmentation(BodyContact), storage, donator_doping_key(), true);   // body contact (floating body)
-  viennafvm::set_quantity_region(segmentation(Channel),     storage, donator_doping_key(), true);   // channel
-
-  viennafvm::set_quantity_value(segmentation(Source),      storage, donator_doping_key(), 1e24);    // source
-  viennafvm::set_quantity_value(segmentation(Drain),       storage, donator_doping_key(), 1e24);    // drain
-  viennafvm::set_quantity_value(segmentation(Body),        storage, donator_doping_key(), 1e18);    // body
-  viennafvm::set_quantity_value(segmentation(BodyContact), storage, donator_doping_key(), 1e18);    // body contact (floating body)
-  viennafvm::set_quantity_value(segmentation(Channel),     storage, donator_doping_key(), 1e18);    // channel
+  QuantityType donator_doping(names::donator_doping(), cell_num, 1e16);   // initialize with intrinsic concentration
+  viennafvm::set_initial_value(donator_doping, segmentation(Source),      1e24); // source
+  viennafvm::set_initial_value(donator_doping, segmentation(Drain),       1e24); // drain
+  viennafvm::set_initial_value(donator_doping, segmentation(Body),        1e18); // body
+  viennafvm::set_initial_value(donator_doping, segmentation(BodyContact), 1e18); // body contact (floating body)
+  viennafvm::set_initial_value(donator_doping, segmentation(Channel),     1e18); // channel
+  problem_description.add_quantity(donator_doping);
 
   // acceptor doping
-  viennafvm::set_quantity_region(segmentation(Source),      storage, acceptor_doping_key(), true);  // source
-  viennafvm::set_quantity_region(segmentation(Drain),       storage, acceptor_doping_key(), true);  // drain
-  viennafvm::set_quantity_region(segmentation(Body),        storage, acceptor_doping_key(), true);  // body
-  viennafvm::set_quantity_region(segmentation(BodyContact), storage, acceptor_doping_key(), true);  // body contact (floating body)
-  viennafvm::set_quantity_region(segmentation(Channel),     storage, acceptor_doping_key(), true);  // channel
+  QuantityType acceptor_doping(names::acceptor_doping(), cell_num, 1e16);   // initialize with intrinsic concentration
+  viennafvm::set_initial_value(acceptor_doping, segmentation(Source),      1e8); // source
+  viennafvm::set_initial_value(acceptor_doping, segmentation(Drain),       1e8); // drain
+  viennafvm::set_initial_value(acceptor_doping, segmentation(Body),        1e14);      // body
+  viennafvm::set_initial_value(acceptor_doping, segmentation(BodyContact), 1e14);      // body contact (floating body)
+  viennafvm::set_initial_value(acceptor_doping, segmentation(Channel),     1e14);      // body contact (floating body)
+  problem_description.add_quantity(acceptor_doping);
 
-  viennafvm::set_quantity_value(segmentation(Source),      storage, acceptor_doping_key(),  1e8);   // source
-  viennafvm::set_quantity_value(segmentation(Drain),       storage, acceptor_doping_key(),  1e8);   // drain
-  viennafvm::set_quantity_value(segmentation(Body),        storage, acceptor_doping_key(),  1e14);  // body
-  viennafvm::set_quantity_value(segmentation(BodyContact), storage, acceptor_doping_key(),  1e14);  // body contact (floating body)
-  viennafvm::set_quantity_value(segmentation(Channel),     storage, acceptor_doping_key(),  1e14);  // channel
-
-  // built-in potential:
-  viennafvm::set_quantity_region(segmentation.mesh(), storage, builtin_potential_key(), true);   // defined everywhere
-
-  viennafvm::set_quantity_value(segmentation(Gate),          storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // gate
-  viennafvm::set_quantity_value(segmentation(SourceContact), storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // source contact
-  viennafvm::set_quantity_value(segmentation(Oxide),         storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // oxide (for simplicity set to same as gate)
-  viennafvm::set_quantity_value(segmentation(DrainContact),  storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // drain contact
-  viennafvm::set_quantity_value(segmentation(Source),        storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // source
-  viennafvm::set_quantity_value(segmentation(Drain),         storage, builtin_potential_key(), built_in_potential(300, 1e24, 1e8)); // drain
-  viennafvm::set_quantity_value(segmentation(Channel),       storage, builtin_potential_key(), built_in_potential(300, 1e18, 1e14)); // channel
-  viennafvm::set_quantity_value(segmentation(Body),          storage, builtin_potential_key(), built_in_potential(300, 1e18, 1e14)); // body
-  viennafvm::set_quantity_value(segmentation(BodyContact),   storage, builtin_potential_key(), built_in_potential(300, 1e18, 1e14)); // body contact (floating body)
 }
 
+/*
 template<typename MeshT, typename SegmentationT, typename StorageT>
 void write_device_doping(MeshT& mesh, SegmentationT& segments, StorageT& storage)
 {
@@ -216,10 +254,8 @@ void write_device_initial_guesses(MeshT& mesh, SegmentationT& segments, StorageT
   init_vtk_writer.add_scalar_data_on_cells( init_p_acc ,   "holes" );
   init_vtk_writer(mesh, segments, "mosfet_3d_initial_conditions");
 }
+*/
 
-void setup_device()
-{
-}
 
 
 int main(int argc, char* argv[])
@@ -266,7 +302,7 @@ int main(int argc, char* argv[])
   //
   // Set initial values
   //
-  init_quantities(segmentation, pde_solver.storage());
+  init_quantities(segmentation, pde_solver);
 
   //
   // Setting boundary information on mesh (see mosfet.in2d for segment indices)
@@ -274,44 +310,9 @@ int main(int argc, char* argv[])
   FunctionSymbol psi(0);   // potential, using id=0
   FunctionSymbol n(1);     // electron concentration, using id=1
   FunctionSymbol p(2);     // hole concentration, using id=2
-
-  // potential:
-//   double built_in_pot = built_in_potential(300, n_plus, 1e32/n_plus); // should match specification in init_quantities()!
-  viennafvm::set_dirichlet_boundary(segmentation(Gate),          pde_solver.storage(), psi, 0.2 + built_in_potential(300, 1e24, 1e8)); // Gate contact
-  viennafvm::set_dirichlet_boundary(segmentation(SourceContact), pde_solver.storage(), psi, 0.0 + built_in_potential(300, 1e24, 1e8)); // Source contact
-  viennafvm::set_dirichlet_boundary(segmentation(DrainContact),  pde_solver.storage(), psi, 0.2 + built_in_potential(300, 1e24, 1e8)); // Drain contact
-  viennafvm::set_dirichlet_boundary(segmentation(BodyContact),   pde_solver.storage(), psi, 0.0 + built_in_potential(300, 1e18, 1e14)); // Body contact
-
-  // electron density
-  viennafvm::set_dirichlet_boundary(segmentation(SourceContact), pde_solver.storage(), n, 1e24); // Source contact
-  viennafvm::set_dirichlet_boundary(segmentation(DrainContact),  pde_solver.storage(), n, 1e24); // Drain contact
-  viennafvm::set_dirichlet_boundary(segmentation(BodyContact),   pde_solver.storage(), n, 1e18); // Body contact
-
-  // hole density
-  viennafvm::set_dirichlet_boundary(segmentation(SourceContact), pde_solver.storage(), p, 1e8);  // Source contact
-  viennafvm::set_dirichlet_boundary(segmentation(DrainContact),  pde_solver.storage(), p, 1e8);  // Drain contact
-  viennafvm::set_dirichlet_boundary(segmentation(BodyContact),   pde_solver.storage(), p, 1e14); // Body contact
-
-
-  //
-  // Set quantity mask: By default, a quantity is defined on the entire mesh.
-  //                    Boundary equations are already specified above.
-  //                    All that is left is to specify regions where a quantity 'does not make sense'
-  //                    Here, we need to disable {n,p} in the gate oxide and the gate
-  //
-
-  viennafvm::disable_quantity(segmentation(Gate), pde_solver.storage(), n); // Gate contact
-  viennafvm::disable_quantity(segmentation(Oxide), pde_solver.storage(), n); // Gate oxide
-
-  viennafvm::disable_quantity(segmentation(Gate), pde_solver.storage(), p); // Gate contact
-  viennafvm::disable_quantity(segmentation(Oxide), pde_solver.storage(), p); // Gate oxide
-
-  //
-  // Initial conditions (required for nonlinear problems)
-  //
-  viennafvm::set_initial_guess(mesh, pde_solver.storage(), psi, builtin_potential_key());
-  viennafvm::set_initial_guess(mesh, pde_solver.storage(), n,   donator_doping_key());
-  viennafvm::set_initial_guess(mesh, pde_solver.storage(), p,   acceptor_doping_key());
+  FunctionSymbol permittivity(3);    // permittivity
+  FunctionSymbol donator_doping(4);  // donator doping
+  FunctionSymbol acceptor_doping(5); // acceptor doping
 
 
   //
@@ -319,26 +320,20 @@ int main(int argc, char* argv[])
   //
   for(int si = 0; si < 5; si++)
   {
-    viennafvm::smooth_initial_guess(mesh, pde_solver.storage(), viennafvm::arithmetic_mean_smoother(), psi);
-//    viennafvm::smooth_initial_guess(mesh, pde_solver.storage(), viennafvm::geometric_mean_smoother(), n); // counterproductive ..
-//    viennafvm::smooth_initial_guess(mesh, pde_solver.storage(), viennafvm::geometric_mean_smoother(), p); // counterproductive ..
-    viennafvm::smooth_initial_guess(mesh, pde_solver.storage(), viennafvm::arithmetic_mean_smoother(), n);
-    viennafvm::smooth_initial_guess(mesh, pde_solver.storage(), viennafvm::arithmetic_mean_smoother(), p);
+    viennafvm::smooth_initial_guess(mesh, pde_solver.quantities().at(psi.id()), viennafvm::arithmetic_mean_smoother());
+    viennafvm::smooth_initial_guess(mesh, pde_solver.quantities().at(n.id()),   viennafvm::geometric_mean_smoother());
+    viennafvm::smooth_initial_guess(mesh, pde_solver.quantities().at(p.id()),   viennafvm::geometric_mean_smoother());
   }
 
   //
   // Write Doping and initial guesses/boundary conditions to VTK output files for inspection
   //
-  write_device_doping(mesh, segmentation, pde_solver.storage());
-  write_device_initial_guesses(mesh, segmentation, pde_solver.storage());
+  //write_device_doping(mesh, segmentation, pde_solver.storage());
+  //write_device_initial_guesses(mesh, segmentation, pde_solver.storage());
 
   //
   // Specify PDEs:
   //
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity;       permittivity.wrap_constant( pde_solver.storage(), permittivity_key() );
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  donator_doping;   donator_doping.wrap_constant( pde_solver.storage(), donator_doping_key() );
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  acceptor_doping; acceptor_doping.wrap_constant( pde_solver.storage(), acceptor_doping_key() );
-
   double q  = 1.6e-19;
   double kB = 1.38e-23; // Boltzmann constant
   double mu = 1;        // mobility (constant is fine for the moment)
@@ -383,11 +378,7 @@ int main(int argc, char* argv[])
   //
   // Writing all solution variables back to mesh
   //
-  std::vector<long> result_ids(pde_system.size());
-  for (std::size_t i=0; i<pde_system.size(); ++i)
-    result_ids[i] = pde_system.unknown(i)[0].id();
-
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "mosfet_3d", mesh, segmentation, pde_solver.storage(), result_ids);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.quantities(), "mosfet_3d", mesh, segmentation);
 
   std::cout << "********************************************" << std::endl;
   std::cout << "* MOSFET simulation finished successfully! *" << std::endl;

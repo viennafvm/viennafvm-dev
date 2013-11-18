@@ -44,13 +44,6 @@
 #include <boost/numeric/ublas/operation_sparse.hpp>
 
 
-struct permittivity_key
-{
-  // Operator< is required for compatibility with std::map
-  bool operator<(permittivity_key const & /*other*/) const { return false; }
-};
-
-
 int main()
 {
   typedef double   numeric_type;
@@ -94,25 +87,15 @@ int main()
   //
   viennafvm::pde_solver<MeshType> pde_solver(mesh);
 
-  // Specify Poisson equation:
-  viennafvm::ncell_quantity<CellType, viennamath::expr::interface_type>  permittivity; permittivity.wrap_constant( pde_solver.storage(), permittivity_key() );
-
-  FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
-  Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(u)), -1);  // \Delta u = -1
+  // Initialize unknowns:
+  typedef viennafvm::pde_solver<MeshType>::quantity_type   QuantityType;
+  QuantityType quan("u", cells(mesh).size());
 
   //
   // Setting boundary information on mesh (this should come from device specification)
   //
   //setting some boundary flags:
-  typedef viennafvm::pde_solver<MeshType>::storage_type   StorageType;
-
   viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(mesh);
-
-  viennadata::result_of::accessor<StorageType, permittivity_key, double, CellType>::type permittivity_accessor =
-      viennadata::make_accessor(pde_solver.storage(), permittivity_key());
-
-  viennadata::result_of::accessor<StorageType, BoundaryKey, bool, CellType>::type boundary_accessor =
-      viennadata::make_accessor(pde_solver.storage(), BoundaryKey( u.id() ));
 
   CellContainer cells(mesh);
   for (CellIterator cit  = cells.begin();
@@ -120,9 +103,6 @@ int main()
                   ++cit)
   {
     bool cell_on_boundary = false;
-
-    // write dummy permittivity to cells:
-    permittivity_accessor(*cit) = 1.0;
 
     VertexOnCellContainer vertices(*cit);
     for (VertexOnCellIterator vit  = vertices.begin();
@@ -137,8 +117,24 @@ int main()
         break;
       }
     }
-    boundary_accessor(*cit) = cell_on_boundary;
+    if (cell_on_boundary)
+    {
+      quan.set_boundary_type(*cit, viennafvm::BOUNDARY_DIRICHLET);
+      quan.set_boundary_value(*cit, 0.0);
+    }
+    else
+      quan.set_unknown_mask(*cit, true);
   }
+
+  pde_solver.add_quantity(quan);
+
+  QuantityType quan_permittivity("permittivity", cells.size(), 1.0);
+  pde_solver.add_quantity(quan_permittivity);
+
+  // Specify Poisson equation:
+  FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
+  FunctionSymbol permittivity(1);
+  Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(u)), -1);  // \Delta u = -1
 
   //
   // Setup Linear Solver
@@ -154,7 +150,7 @@ int main()
   //
   // Writing solution back to mesh (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_3d", mesh, segmentation, pde_solver.storage(), 0);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.quantities(), "poisson_3d", mesh, segmentation);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;

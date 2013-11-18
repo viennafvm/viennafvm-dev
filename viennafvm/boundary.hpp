@@ -32,11 +32,10 @@
 namespace viennafvm
 {
 
-  template <typename DomainSegmentType, typename BoundaryAccessorType, typename BoundaryValueAccessorType>
-  void set_dirichlet_boundary(DomainSegmentType const & seg,
-                              BoundaryAccessorType boundary_accessor,
-                              BoundaryValueAccessorType boundary_value_accessor,
-                              numeric_type const & value)
+  template <typename QuantityType, typename DomainSegmentType>
+  void set_dirichlet_boundary(QuantityType & quan,
+                              DomainSegmentType const & seg,
+                              double value)
   {
     typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
 
@@ -49,36 +48,50 @@ namespace viennafvm
                       cit != cells.end();
                     ++cit)
     {
-      //set flag:
-      boundary_accessor(*cit) = true;
-
-      //set data:
-      boundary_value_accessor(*cit) = value;
+      quan.set_boundary_value(*cit, value);
+      quan.set_boundary_type(*cit, viennafvm::BOUNDARY_DIRICHLET);
     }
   }
 
 
-  template <typename DomainSegmentType, typename A, typename B, typename KeyType>
-  void set_dirichlet_boundary(DomainSegmentType const & domseg,
-                              viennadata::storage<A,B> & storage,
-                              KeyType const & key,
-                              numeric_type const & value)
+  template <typename QuantityType, typename DomainSegmentType>
+  void set_initial_value(QuantityType & quan,
+                         DomainSegmentType const & seg,
+                         double value)
   {
-    typedef typename viennagrid::result_of::cell< DomainSegmentType >::type CellType;
-    set_dirichlet_boundary(domseg,
-                           viennadata::make_accessor<KeyType, bool, CellType>(storage, key),
-                           viennadata::make_accessor<KeyType, numeric_type, CellType>(storage, key),
-                           value);
+    typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
+
+    typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag>::type               CellType;
+    typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type  CellContainer;
+    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
+
+    CellContainer cells(seg);
+    for (CellIterator cit  = cells.begin();
+                      cit != cells.end();
+                    ++cit)
+    {
+      quan.set_value(*cit, value);
+    }
   }
 
-
-  template <typename DomainSegmentType, typename A, typename B, typename InterfaceType>
-  void set_dirichlet_boundary(DomainSegmentType const & domseg,
-                              viennadata::storage<A,B> & storage,
-                              viennamath::rt_function_symbol<InterfaceType> const & func_symbol,
-                              numeric_type const & value)
+  template <typename QuantityType, typename DomainSegmentType>
+  void set_unknown(QuantityType & quan,
+                   DomainSegmentType const & seg,
+                   bool set_to = true)
   {
-    set_dirichlet_boundary( domseg, storage, viennafvm::boundary_key(func_symbol.id()), value );
+    typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
+
+    typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag>::type               CellType;
+    typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type  CellContainer;
+    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
+
+    CellContainer cells(seg);
+    for (CellIterator cit  = cells.begin();
+                      cit != cells.end();
+                    ++cit)
+    {
+      quan.set_unknown_mask(*cit, set_to);
+    }
   }
 
 

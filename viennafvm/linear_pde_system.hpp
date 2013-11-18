@@ -24,7 +24,6 @@
 
 // *** vienna includes:
 #include "viennamath/forwards.h"
-#include "viennadata/api.hpp"
 #include "viennagrid/mesh/mesh.hpp"
 
 namespace viennafvm
@@ -33,24 +32,19 @@ namespace viennafvm
   struct linear_pde_system
   {
       typedef InterfaceType                                 interface_type;
-      typedef viennafvm::mapping_key                        mapping_key_type;
-      typedef viennafvm::boundary_key                       boundary_key_type;
       typedef viennamath::equation                          equation_type;
       typedef viennamath::function_symbol                   unknown_type;
       typedef std::vector< unknown_type >                   unknown_cont_type;
-      typedef std::vector< std::string >                    key_cont_type;
       typedef viennafvm::linear_pde_options                 option_type;
 
       linear_pde_system() : is_linear_(true) {}
 
       void add_pde(equation_type      const & pde,
                    unknown_cont_type  const & unknowns,
-                   key_cont_type      const & keys,
                    option_type        const & option)
       {
         pdes_.push_back(pde);
         unknowns_.push_back(unknowns);
-        keys_.push_back(keys);
         options_.push_back(option);
       }
 
@@ -61,9 +55,6 @@ namespace viennafvm
 
         pdes_.push_back(pde);
         unknowns_.push_back(unknowns);
-
-        key_cont_type key(1); key[0] = "dummy";
-        keys_.push_back(key);
         options_.push_back(option_type(current_id));
       }
 
@@ -77,18 +68,13 @@ namespace viennafvm
         unknown_cont_type new_unknown(1); new_unknown[0] = unknown;
         unknowns_.push_back(new_unknown);
 
-        key_cont_type key(1);
-        key[0] = "dummy";
-        keys_.push_back(key);
         options_.push_back(option_type(current_id));
       }
 
       equation_type const &      pde(size_t index)       const { return pdes_[index]; }
       unknown_cont_type const &  unknown(size_t index)   const { return unknowns_[index]; }
-      key_cont_type const &      keys(size_t index)      const { return keys_[index]; }
       option_type const &        option(size_t index)    const { return options_[index]; }
-
-      option_type &              option(size_t index)          { return options_[index]; }
+      option_type       &        option(size_t index)          { return options_[index]; }
 
       bool is_linear() const { return is_linear_; }
       void is_linear(bool b) { is_linear_ = b; }
@@ -98,7 +84,6 @@ namespace viennafvm
     private:
       std::vector< equation_type >        pdes_;
       std::vector< unknown_cont_type >    unknowns_;
-      std::vector< key_cont_type >        keys_;
       std::vector< option_type >          options_;
       bool is_linear_;
   };
@@ -107,7 +92,6 @@ namespace viennafvm
    template <typename InterfaceType>
    linear_pde_system<InterfaceType> make_linear_pde_system(viennamath::equation             equ_1,
                                                            viennamath::function_symbol      unknown_1,
-                                                           std::string                      key_1,
                                                            viennafvm::linear_pde_options    option_1)
    {
       typedef viennafvm::linear_pde_system<InterfaceType>   linear_pde_sys_type;
@@ -117,10 +101,7 @@ namespace viennafvm
       typename linear_pde_sys_type::unknown_cont_type unknown_vec_1(1);
       unknown_vec_1[0] = unknown_1;
 
-      typename linear_pde_sys_type::key_cont_type     key_vec_1(1);
-      key_vec_1[0] = key_1;
-
-      ret.add_pde(equ_1, unknown_vec_1, key_vec_1, option_1);
+      ret.add_pde(equ_1, unknown_vec_1, option_1);
       return ret;
    }
 
@@ -137,10 +118,7 @@ namespace viennafvm
       typename linear_pde_sys_type::unknown_cont_type unknown_vec_1(1);
       unknown_vec_1[0] = unknown_1;
 
-      typename linear_pde_sys_type::key_cont_type     key_vec_1(1);
-      key_vec_1[0] = "dummy";
-
-      ret.add_pde(equ_1, unknown_vec_1, key_vec_1, option_1);
+      ret.add_pde(equ_1, unknown_vec_1, option_1);
       return ret;
    }
 
@@ -157,10 +135,7 @@ namespace viennafvm
       typename linear_pde_sys_type::unknown_cont_type unknown_vec_1(1);
       unknown_vec_1[0] = unknown_1;
 
-      typename linear_pde_sys_type::key_cont_type     key_vec_1(1);
-      key_vec_1[0] = "dummy";
-
-      ret.add_pde(equ_1, unknown_vec_1, key_vec_1, option_1);
+      ret.add_pde(equ_1, unknown_vec_1, option_1);
       return ret;
    }
 

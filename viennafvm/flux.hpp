@@ -464,7 +464,8 @@ namespace viennafvm
     struct ncell_updater : public viennamath::rt_traversal_interface<>
     {
       public:
-        ncell_updater(NCellType const & ncell) : nc_(ncell) {}
+        ncell_updater(NCellType const & ncell) : nc_(&ncell), other_cell_(NULL) {}
+        ncell_updater(NCellType const & c1, NCellType const & c2) : nc_(&c1), other_cell_(&c2) {}
 
         void operator()(InterfaceType const * e) const
         {
@@ -474,22 +475,28 @@ namespace viennafvm
 
         void operator()(viennafvm::ncell_quantity<NCellType, InterfaceType> const & cq) const
         {
-          cq.update(nc_);
+          if (other_cell_ != NULL)
+            cq.update(*nc_, *other_cell_);
+          else
+            cq.update(*nc_);
           //std::cout << "cell_quan updated!" << std::endl;
         }
 
       private:
-        NCellType const & nc_;
+        NCellType const * nc_;
+        NCellType const * other_cell_;
     };
 
   } //namespace detail
 
 
-  template <typename StorageType, typename CellType, typename FacetType, typename InterfaceType>
+  template <typename QuantityContainerT, typename CellType, typename FacetType, typename InterfaceType>
   class flux_handler
   {
     public:
-      flux_handler(StorageType & storage_, viennamath::rt_expr<InterfaceType> const & integrand, viennamath::rt_function_symbol<InterfaceType> const & u) : storage(storage_), has_advection_(false)
+      flux_handler(QuantityContainerT const & quantities,
+                   viennamath::rt_expr<InterfaceType> const & integrand,
+                   viennamath::rt_function_symbol<InterfaceType> const & u) : quantities_(quantities), has_advection_(false)
       {
         detail::gradient_scanner<InterfaceType> gradient_scanner(u);
         detail::func_symbol_scanner<InterfaceType> fsymbol_scanner(u);
@@ -526,15 +533,11 @@ namespace viennafvm
 #endif
         // Instantiate residual accessor for nonlinear terms:
         viennafvm::ncell_quantity<CellType, InterfaceType> current_iterate;
-        current_iterate.wrap_constant(storage, viennafvm::current_iterate_key(u.id()));
+        current_iterate.wrap_constant(quantities.at(u.id()), true);
 
         viennamath::rt_expr<InterfaceType> replaced_gradient_prefactor = viennamath::substitute(u,
                                                                                                 viennamath::rt_expr<InterfaceType>(current_iterate.clone()),
                                                                                                 gradient_prefactor); // Note: requires additional thoughts on whether this makes sense
-
-        // accessor for distance between barycenters:
-        viennafvm::ncell_quantity<FacetType, InterfaceType> distance;
-        distance.wrap_constant(storage, viennafvm::facet_distance_key());
 
 
         if (gradient_scanner.found() && fsymbol_scanner.found()) //advection-diffusion
@@ -585,8 +588,9 @@ namespace viennafvm
           // Todo: Deeper thought about stabilization in nonlinear case.
           //
           viennamath::rt_expr<InterfaceType> modified_gradient = viennamath::substitute(u,
-                                                                                        viennamath::rt_expr<InterfaceType>(current_iterate.clone()),
-                                                                                        viennamath::diff(gradient_argument, u)) / distance;
+                                                                                        viennamath::rt_constant<double, InterfaceType>(1.0),
+                                                                                        //viennamath::diff(gradient_argument, u)) / distance;
+                                                                                        gradient_argument);
 
           in_integrand_  = modified_gradient;
           out_integrand_ = modified_gradient;
@@ -600,14 +604,13 @@ namespace viennafvm
 
       }
 
-      template<typename AccessorType>
-      double in(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell, AccessorType const facet_distance_accessor) const
+      double in(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell, double distance) const
       {
         std::vector<double> p(3); //dummy point
 
         viennamath::rt_traversal_wrapper<InterfaceType> cell_updater_inner( new detail::ncell_updater<CellType, InterfaceType>(inner_cell) );
         viennamath::rt_traversal_wrapper<InterfaceType> cell_updater_outer( new detail::ncell_updater<CellType, InterfaceType>(outer_cell) );
-        viennamath::rt_traversal_wrapper<InterfaceType> facet_updater( new detail::ncell_updater<FacetType, InterfaceType>(facet) );
+        viennamath::rt_traversal_wrapper<InterfaceType> facet_updater( new detail::ncell_updater<CellType, InterfaceType>(inner_cell, outer_cell) );
 
         if (has_advection_)
         {
@@ -618,13 +621,12 @@ namespace viennafvm
 
           double val_A = viennamath::eval(A_, p);
           double val_B = viennamath::eval(B_, p);
-          double d     = facet_distance_accessor(facet); //viennadata::access<viennafvm::facet_distance_key, double>()(facet);
-          double exponent = val_B / (val_A / d);
+          double exponent = val_B / (val_A / distance);
 
           if ( std::abs(exponent) > 0.01) // Actual tolerance is not critical - this is for stabilization purposes only
             return val_B / (std::exp(exponent) - 1);
           else
-            return val_A / d;  // Note: Can be obtained from tailor expansion of the equation above
+            return val_A / distance;  // Note: Can be obtained from tailor expansion of the equation above
         }
 
         // pure diffusion:
@@ -637,18 +639,16 @@ namespace viennafvm
         integrand_prefactor_.get()->recursive_traversal(cell_updater_outer);
         double eps_outer = viennamath::eval(integrand_prefactor_, p);
 
-        return viennamath::eval(in_integrand_, p) * 2.0 * eps_inner * eps_outer / (eps_inner + eps_outer);
-
+        return viennamath::eval(in_integrand_, p) / distance * 2.0 * eps_inner * eps_outer / (eps_inner + eps_outer);
       }
 
-      template<typename AccessorType>
-      double out(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell, AccessorType const facet_distance_accessor) const
+      double out(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell, double distance) const
       {
         std::vector<double> p(3); //dummy point
 
         viennamath::rt_traversal_wrapper<InterfaceType> cell_updater_inner( new detail::ncell_updater<CellType, InterfaceType>(inner_cell) );
         viennamath::rt_traversal_wrapper<InterfaceType> cell_updater_outer( new detail::ncell_updater<CellType, InterfaceType>(outer_cell) );
-        viennamath::rt_traversal_wrapper<InterfaceType> facet_updater( new detail::ncell_updater<FacetType, InterfaceType>(facet) );
+        viennamath::rt_traversal_wrapper<InterfaceType> facet_updater( new detail::ncell_updater<CellType, InterfaceType>(inner_cell, outer_cell) );
 
         if (has_advection_)
         {
@@ -659,13 +659,12 @@ namespace viennafvm
 
           double val_A = viennamath::eval(A_, p);
           double val_B = viennamath::eval(B_, p);
-          double d     = facet_distance_accessor(facet); //viennadata::access<viennafvm::facet_distance_key, double>()(facet);
-          double exponent = val_B / (val_A / d);
+          double exponent = val_B / (val_A / distance);
 
           if ( std::abs(exponent) > 0.01) // Actual tolerance is not critical - this is for stabilization purposes only
             return val_B / (1.0 - std::exp(-exponent));
           else
-            return val_A / d;  // Note: Can be obtained from tailor expansion of the equation above
+            return val_A / distance;  // Note: Can be obtained from tailor expansion of the equation above
         }
 
         // pure diffusion:
@@ -678,13 +677,13 @@ namespace viennafvm
         integrand_prefactor_.get()->recursive_traversal(cell_updater_outer);
         double eps_outer = viennamath::eval(integrand_prefactor_, p);
 
-        return viennamath::eval(out_integrand_, p) * 2.0 * eps_inner * eps_outer / (eps_inner + eps_outer);
+        return viennamath::eval(out_integrand_, p) / distance * 2.0 * eps_inner * eps_outer / (eps_inner + eps_outer);
       }
 
     private:
 
-      StorageType & storage;
-      
+      QuantityContainerT const & quantities_;
+
       bool has_advection_;
 
       // diffusive case:

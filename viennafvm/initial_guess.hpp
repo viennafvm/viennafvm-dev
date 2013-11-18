@@ -120,22 +120,15 @@ namespace viennafvm
 
 
 
-  template <typename DomainSegmentType, typename SmootherType,
-            typename QuantityDisabledAccessorType,
-            typename BoundaryAccessorType,
-            typename BoundaryValueAcccessorType,
-            typename CurrentIterateAccessorType>
-  void smooth_initial_guess(DomainSegmentType const & domseg, SmootherType const & smoother,
-                            QuantityDisabledAccessorType const quantity_disabled_accessor,
-                            BoundaryAccessorType const boundary_accessor,
-                            BoundaryValueAcccessorType const boundary_value_accessor,
-                            CurrentIterateAccessorType current_iterate_accessor)
+  template <typename DomainSegmentType, typename QuantityType, typename SmootherType>
+  void smooth_initial_guess(DomainSegmentType const & domseg,
+                            QuantityType & quan,
+                            SmootherType const & smoother)
   {
     typedef viennafvm::current_iterate_key              IterateKey;
 
     typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type     CellTag;
     typedef typename viennagrid::result_of::facet_tag<CellTag>::type     FacetTag;
-
 
     typedef typename viennagrid::result_of::element<DomainSegmentType, FacetTag>::type                FacetType;
     typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag >::type                CellType;
@@ -154,12 +147,9 @@ namespace viennafvm
     CellContainer cells(domseg);
     for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
     {
-      if (quantity_disabled_accessor(*cit))
-        continue;
+      cell_neighbor_values[&(*cit)].push_back(quan.get_value(*cit));
 
-      cell_neighbor_values[&(*cit)].push_back(current_iterate_accessor(*cit));
-
-      if (boundary_accessor(*cit)) // Dirichlet boundaries should not be smoothed
+      if (quan.get_boundary_type(*cit) == viennafvm::BOUNDARY_DIRICHLET) // Dirichlet boundaries should not be smoothed
         continue;
 
       FacetOnCellContainer facets_on_cell(*cit);
@@ -170,16 +160,7 @@ namespace viennafvm
         CellType const * other_cell = util::other_cell_of_facet(*focit, *cit, domseg);
 
         if (other_cell)
-        {
-          if (quantity_disabled_accessor(*other_cell))
-            continue;
-
-          numeric_type other_value = boundary_accessor(*other_cell)
-              ? boundary_value_accessor(*other_cell)
-              : current_iterate_accessor(*other_cell);
-
-          cell_neighbor_values[&(*cit)].push_back(other_value);
-        }
+          cell_neighbor_values[&(*cit)].push_back(quan.get_value(*other_cell));
       }
     }
 
@@ -188,43 +169,10 @@ namespace viennafvm
     //
     for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
     {
-      if (quantity_disabled_accessor(*cit))
-        continue;
-
-        current_iterate_accessor(*cit) = smoother(cell_neighbor_values[&(*cit)]);
+      quan.set_value(*cit, smoother(cell_neighbor_values[&(*cit)]));
     }
   }
 
-
-  template <typename DomainSegmentType, typename A, typename B, typename SmootherType,
-            typename QuantityDisabledKeyType,
-            typename BoundaryKeyType,
-            typename CurrentIterateKeyType>
-  void smooth_initial_guess(DomainSegmentType const & domseg, viennadata::storage<A,B> & storage, SmootherType const & smoother,
-                            QuantityDisabledKeyType const & quantity_disabled_key,
-                            BoundaryKeyType const & boundary_key,
-                            CurrentIterateKeyType const & current_iterate_key)
-    {
-        typedef typename viennagrid::result_of::cell<DomainSegmentType>::type     CellType;
-
-        smooth_initial_guess(domseg, smoother,
-                      viennadata::make_accessor<QuantityDisabledKeyType, bool, CellType>(storage, quantity_disabled_key),
-                      viennadata::make_accessor<BoundaryKeyType, bool, CellType>(storage, boundary_key),
-                      viennadata::make_accessor<BoundaryKeyType, numeric_type, CellType>(storage, boundary_key),
-                      viennadata::make_accessor<CurrentIterateKeyType, numeric_type, CellType>(storage, current_iterate_key));
-    }
-
-  template <typename DomainSegmentType, typename A, typename B, typename SmootherType, typename InterfaceType>
-  void smooth_initial_guess(DomainSegmentType const & domseg, viennadata::storage<A,B> & storage, SmootherType const & smoother,
-                            viennamath::rt_function_symbol<InterfaceType> const & func_symbol)
-    {
-        typedef typename viennagrid::result_of::cell<DomainSegmentType>::type     CellType;
-
-        smooth_initial_guess(domseg, storage, smoother,
-                      viennafvm::disable_quantity_key(func_symbol.id()),
-                      viennafvm::boundary_key(func_symbol.id()),
-                      viennafvm::current_iterate_key(func_symbol.id()));
-    }
 
 }
 

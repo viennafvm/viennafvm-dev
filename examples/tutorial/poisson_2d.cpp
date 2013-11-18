@@ -48,22 +48,14 @@ int main()
 {
   typedef double   numeric_type;
 
-  typedef viennagrid::triangular_2d_mesh   MeshType;
-  typedef viennagrid::result_of::segmentation<MeshType>::type SegmentationType;
+  typedef viennagrid::triangular_2d_mesh                        MeshType;
+  typedef viennagrid::result_of::segmentation<MeshType>::type   SegmentationType;
 
   typedef viennagrid::result_of::cell_tag<MeshType>::type CellTag;
 
   typedef viennagrid::result_of::element<MeshType, CellTag>::type        CellType;
 
-  typedef viennamath::function_symbol   FunctionSymbol;
-  typedef viennamath::equation          Equation;
-
-  typedef viennadata::storage<> StorageType;
-
-
-
-
-  typedef viennagrid::result_of::element_range<MeshType, CellTag>::type     CellContainer;
+  typedef viennagrid::result_of::element_range<MeshType, CellTag>::type       CellContainer;
   typedef viennagrid::result_of::iterator<CellContainer>::type                CellIterator;
   typedef viennagrid::result_of::vertex_range<CellType>::type                 VertexOnCellContainer;
   typedef viennagrid::result_of::iterator<VertexOnCellContainer>::type        VertexOnCellIterator;
@@ -96,13 +88,10 @@ int main()
   //
   viennafvm::pde_solver<MeshType> pde_solver(mesh);
 
-  //
-  // Specify two PDEs:
-  //
-  FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
-  FunctionSymbol v(1, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
-  Equation poisson_equ_1 = viennamath::make_equation( viennamath::laplace(u), -1);
-  Equation poisson_equ_2 = viennamath::make_equation( viennamath::laplace(v), 0);
+  // Initialize unknowns:
+  typedef viennafvm::pde_solver<MeshType>::quantity_type   QuantityType;
+  QuantityType quan_u("u", cells(mesh).size());
+  QuantityType quan_v("v", cells(mesh).size());
 
   //
   // Setting boundary information on mesh (this should come from device specification)
@@ -110,21 +99,6 @@ int main()
 
   viennagrid::result_of::default_point_accessor<MeshType>::type point_accessor = viennagrid::default_point_accessor(mesh);
 
-  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_u_accessor =
-      viennadata::make_accessor(pde_solver.storage(), viennafvm::boundary_key( u.id() ));
-
-  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_u_value_accessor =
-      viennadata::make_accessor(pde_solver.storage(), viennafvm::boundary_key( u.id() ));
-
-
-  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, bool, CellType>::type boundary_v_accessor =
-      viennadata::make_accessor(pde_solver.storage(), viennafvm::boundary_key( v.id() ));
-
-  viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_v_value_accessor =
-      viennadata::make_accessor(pde_solver.storage(), viennafvm::boundary_key( v.id() ));
-
-
-  //setting some boundary flags:
   CellContainer cells(mesh);
   for (CellIterator cit  = cells.begin();
                     cit != cells.end();
@@ -140,24 +114,39 @@ int main()
            || point_accessor(*vit)[1] == 0.0 || point_accessor(*vit)[1] == 1.0 )
       {
         //simulation with ID 0 uses homogeneous boundary data
-        boundary_u_accessor(*cit) = true;
-        boundary_u_value_accessor(*cit) = 0.0;
+        quan_u.set_boundary_type(*cit, viennafvm::BOUNDARY_DIRICHLET);
+        quan_u.set_boundary_value(*cit, 0.0);
       }
+      else
+        quan_u.set_unknown_mask(*cit, true);
 
       //boundary for second equation (ID 1): 0 at left boundary, 1 at right boundary
       if ( point_accessor(*vit)[0] == 0.0)
       {
-        boundary_v_accessor(*cit) = true;
-        boundary_v_value_accessor(*cit) = 0.0;
+        quan_v.set_boundary_type(*cit, viennafvm::BOUNDARY_DIRICHLET);
+        quan_v.set_boundary_value(*cit, 0.0);
       }
-
       else if ( point_accessor(*vit)[0] == 1.0)
       {
-        boundary_v_accessor(*cit) = true;
-        boundary_v_value_accessor(*cit) = 1.0;
+        quan_v.set_boundary_type(*cit, viennafvm::BOUNDARY_DIRICHLET);
+        quan_v.set_boundary_value(*cit, 1.0);
       }
+      else
+        quan_v.set_unknown_mask(*cit, true);
     }
   }
+
+  pde_solver.add_quantity(quan_u);
+  pde_solver.add_quantity(quan_v);
+
+
+  //
+  // Specify two PDEs:
+  //
+  FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
+  FunctionSymbol v(1, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
+  Equation poisson_equ_1 = viennamath::make_equation( viennamath::laplace(u), -1);
+  Equation poisson_equ_2 = viennamath::make_equation( viennamath::laplace(v), 0);
 
   //
   // Setup Linear Solver
@@ -170,15 +159,14 @@ int main()
   pde_solver(viennafvm::make_linear_pde_system(poisson_equ_1, u),  // PDE with associated unknown
              linear_solver);
 
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_2d_1", mesh, segmentation, pde_solver.storage(), 0);
-
   pde_solver(viennafvm::make_linear_pde_system(poisson_equ_2, v, viennafvm::make_linear_pde_options(1, 1)),  // PDE with associated unknown
              linear_solver);
 
+
   //
-  // Writing solution back to mesh (discussion about proper way of returning a solution required...)
+  // Writing solution back to mesh
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_2d_2", mesh, segmentation, pde_solver.storage(), 1);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.quantities(), "poisson_2d", mesh, segmentation);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;

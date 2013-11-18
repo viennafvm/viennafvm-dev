@@ -35,7 +35,7 @@ SET(CMAKE_CXX_FLAGS_RELEASE "-O3")
 SET(CMAKE_CXX_FLAGS_DEBUG  "-O0 -g")
 
 #list all source files here
-IF(BUILD_EXAMPLES)
+#IF(BUILD_EXAMPLES)
   ADD_EXECUTABLE(poisson_1d     examples/tutorial/poisson_1d.cpp)
   ADD_EXECUTABLE(poisson_2d     examples/tutorial/poisson_2d.cpp)
   ADD_EXECUTABLE(poisson_3d     examples/tutorial/poisson_3d.cpp)
@@ -43,7 +43,7 @@ IF(BUILD_EXAMPLES)
   ADD_EXECUTABLE(nin_2d_laplace examples/tutorial/nin_2d_laplace.cpp)
   ADD_EXECUTABLE(mosfet         examples/tutorial/mosfet.cpp)
   ADD_EXECUTABLE(mosfet_3d      examples/tutorial/mosfet_3d.cpp)
-ENDIF(BUILD_EXAMPLES)
+#ENDIF(BUILD_EXAMPLES)
 
 ##Compatibility with Qt-Creator
 file( GLOB_RECURSE QtCreatorCompatibility_SRC

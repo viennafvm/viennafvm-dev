@@ -23,6 +23,7 @@
 
 #include "viennagrid/forwards.hpp"
 #include "viennagrid/mesh/segmentation.hpp"
+#include "viennagrid/algorithm/centroid.hpp"
 
 /** @file  ncell_quantity.hpp
     @brief Defines ViennaMath extensions: Piecewise constants (constants on each cell) and flux evaluators on interfaces
@@ -44,8 +45,8 @@ namespace viennafvm
         typedef NumericT          numeric_type;
 
       public:
-        virtual numeric_type eval(CellType const & cell, numeric_type v) const = 0;
-        virtual numeric_type eval(CellType const & cell, std::vector<numeric_type> const & v) const = 0;
+        virtual numeric_type eval(CellType const & cell, CellType const * outer_cell, numeric_type v) const = 0;
+        virtual numeric_type eval(CellType const & cell, CellType const * outer_cell, std::vector<numeric_type> const & v) const = 0;
 
         virtual ncell_quantity_interface<CellType, NumericT> * clone() const = 0;
     };
@@ -56,29 +57,34 @@ namespace viennafvm
     * @param KeyType     The key type to be used with ViennaData
     * @param DataType    The data type to be used with ViennaData
     */
-    template <typename CellType, typename AccessorType>
+    template <typename CellType, typename QuantityT>
     class ncell_quantity_constant : public ncell_quantity_interface<CellType>
     {
-        typedef ncell_quantity_constant<CellType, AccessorType>        self_type;
+        typedef ncell_quantity_constant<CellType, QuantityT>        self_type;
         typedef typename ncell_quantity_interface<CellType>::numeric_type    numeric_type;
 
       public:
-        ncell_quantity_constant(AccessorType const & accessor_) : accessor(accessor_) {}
+        ncell_quantity_constant(QuantityT const & quan, bool is_gradient) : quan_(quan), is_gradient_(is_gradient) {}
 
-        numeric_type eval(CellType const & cell, numeric_type /*v*/) const
+        numeric_type eval(CellType const & cell, CellType const * outer_cell, numeric_type /*v*/) const
         {
-          return accessor(cell);
+          if (is_gradient_)
+            return (quan_.get_value(*outer_cell) - quan_.get_value(cell)) / viennagrid::norm(viennagrid::centroid(*outer_cell) - viennagrid::centroid(cell));
+          return quan_.get_value(cell);
         }
 
-        numeric_type eval(CellType const & cell, std::vector<numeric_type> const & /*v*/) const
+        numeric_type eval(CellType const & cell, CellType const * outer_cell, std::vector<numeric_type> const & /*v*/) const
         {
-          return accessor(cell);
+          if (is_gradient_)
+            return (quan_.get_value(*outer_cell) - quan_.get_value(cell)) / viennagrid::norm(viennagrid::centroid(*outer_cell) - viennagrid::centroid(cell));
+          return quan_.get_value(cell);
         }
 
-        ncell_quantity_interface<CellType> * clone() const { return new self_type(accessor); }
+        ncell_quantity_interface<CellType> * clone() const { return new self_type(quan_, is_gradient_); }
 
       private:
-        AccessorType accessor;
+        QuantityT const & quan_;
+        bool is_gradient_;
     };
 
 
@@ -104,15 +110,17 @@ namespace viennafvm
         }
 
         NumericT eval(CellType const & cell,
+                      CellType const * outer_cell,
                       numeric_type v) const
         {
-          return functor_->eval(cell, v);
+          return functor_->eval(cell, outer_cell, v);
         }
 
         NumericT eval(CellType const & cell,
+                      CellType const * outer_cell,
                       std::vector<numeric_type> const & v) const
         {
-          return functor_->eval(cell, v);
+          return functor_->eval(cell, outer_cell, v);
         }
 
         ncell_quantity_interface<CellType> * clone() const { return functor_->clone(); }
@@ -133,31 +141,36 @@ namespace viennafvm
   class ncell_quantity : public InterfaceType
   {
       typedef ncell_quantity<CellType, InterfaceType>     self_type;
-      typedef typename InterfaceType::numeric_type            numeric_type;
     public:
+      typedef typename InterfaceType::numeric_type            numeric_type;
 
-      explicit ncell_quantity(CellType const * cell, detail::ncell_quantity_wrapper<CellType, numeric_type> const & wrapper) : current_cell(cell), accessor(wrapper.clone()) {}
+      explicit ncell_quantity(CellType const * cell,
+                              detail::ncell_quantity_wrapper<CellType, numeric_type> const & wrapper) : current_cell(cell), outer_cell(NULL), is_gradient_(false), accessor(wrapper.clone()) {}
+      explicit ncell_quantity(CellType const * cell,
+                              CellType const * cell_outer,
+                              bool is_gradient,
+                              detail::ncell_quantity_wrapper<CellType, numeric_type> const & wrapper) : current_cell(cell), outer_cell(cell_outer), is_gradient_(is_gradient), accessor(wrapper.clone()) {}
 
       //template <typename T>
       //explicit cell_quan(T const & t) : current_cell(NULL), accessor( new quan_accessor<CellType, T, numeric_type>() ) {}
 
-      explicit ncell_quantity() : current_cell(NULL) {}
+      explicit ncell_quantity() : current_cell(NULL), outer_cell(NULL) {}
 
       //interface requirements:
-      InterfaceType * clone() const { return new self_type(current_cell, accessor); }
+      InterfaceType * clone() const { return new self_type(current_cell, outer_cell, is_gradient_, accessor); }
       numeric_type eval(std::vector<numeric_type> const & v) const
       {
-        return accessor.eval(*current_cell, v);
+        return accessor.eval(*current_cell, outer_cell, v);
       }
       numeric_type eval(numeric_type v) const
       {
-        return accessor.eval(*current_cell, v);
+        return accessor.eval(*current_cell, outer_cell, v);
       }
 
       std::string deep_str() const
       {
         std::stringstream ss;
-        ss << "cell_quan<" << CellType::tag::dim << ">(" << current_cell << ")";
+        ss << "cell_quan<" << CellType::tag::dim << ">(" << name_ << ")";
         return ss.str();
       }
       numeric_type unwrap() const { throw "Cannot evaluate unknown_func!"; }
@@ -181,7 +194,7 @@ namespace viennafvm
 
         //std::cout << "FALSE" << std::endl;
         return clone();
-      };
+      }
 
       bool deep_equal(const InterfaceType * other) const
       {
@@ -207,21 +220,31 @@ namespace viennafvm
         current_cell = &cell;
       }
 
-      template <typename StorageType, typename KeyType>
-      void wrap_constant(StorageType & storage, KeyType const & k)
+      void update(CellType const & cell, CellType const & cell_outer) const
       {
-        detail::ncell_quantity_wrapper<CellType, numeric_type> temp(
-          new detail::ncell_quantity_constant<CellType, typename viennadata::result_of::accessor<StorageType, KeyType, numeric_type, CellType>::type >(
-            viennadata::make_accessor<KeyType, numeric_type, CellType>(storage, k)
-          )
-        );
+        if (is_gradient_)
+        {
+          current_cell = &cell;
+          outer_cell   = &cell_outer;
+        }
+      }
+
+      template <typename QuantityT>
+      void wrap_constant(QuantityT const & quan, bool is_gradient)
+      {
+        detail::ncell_quantity_wrapper<CellType, numeric_type> temp(new detail::ncell_quantity_constant<CellType, QuantityT>(quan, is_gradient));
         accessor = temp;
+        is_gradient_ = is_gradient;
+        name_ = quan.get_name();
       }
 
       detail::ncell_quantity_wrapper<CellType, numeric_type> const & wrapper() const { return accessor; }
 
     private:
       mutable const CellType * current_cell;
+      mutable const CellType * outer_cell;
+      bool is_gradient_;
+      std::string name_;
       detail::ncell_quantity_wrapper<CellType, numeric_type> accessor;
   };
 

@@ -43,30 +43,30 @@ namespace viennafvm
                std::size_t num_values,
                value_type default_value = value_type())
         : name_(quan_name),
-          values_                  (num_values, default_value),
-          boundary_types_          (num_values, BOUNDARY_NONE),
-          boundary_values_         (num_values, default_value),
-          defined_but_unknown_mask_(num_values, false),
-          unknowns_indices_        (num_values, -1)
+          values_          (num_values, default_value),
+          boundary_types_  (num_values, BOUNDARY_NONE),
+          boundary_values_ (num_values, default_value),
+          unknown_mask_    (num_values, false),
+          unknowns_indices_(num_values, -1)
       {}
 
       std::string get_name() const { return name_; }
 
-      ValueT get_value(associated_type const & elem) const         { return values_.at(elem.id());         }
-      void   set_value(associated_type const & elem, ValueT value) {        values_.at(elem.id()) = value; }
+      ValueT get_value(associated_type const & elem) const         { return values_.at(id(elem));         }
+      void   set_value(associated_type const & elem, ValueT value) {        values_.at(id(elem)) = value; }
 
       // Dirichlet and Neumann
-      ValueT get_boundary_value(associated_type const & elem) const         { return boundary_values_.at(elem.id());         }
-      void   set_boundary_value(associated_type const & elem, ValueT value) {        boundary_values_.at(elem.id()) = value; }
+      ValueT get_boundary_value(associated_type const & elem) const         { return boundary_values_.at(id(elem));         }
+      void   set_boundary_value(associated_type const & elem, ValueT value) {        boundary_values_.at(id(elem)) = value; }
 
-      boundary_type_id get_boundary_type(associated_type const & elem) const                   { return boundary_types_.at(elem.id());         }
-      void             set_boundary_type(associated_type const & elem, boundary_type_id value) {        boundary_types_.at(elem.id()) = value; }
+      boundary_type_id get_boundary_type(associated_type const & elem) const                   { return boundary_types_.at(id(elem));         }
+      void             set_boundary_type(associated_type const & elem, boundary_type_id value) {        boundary_types_.at(id(elem)) = value; }
 
-      bool   get_unknown_mask(associated_type const & elem) const       { return defined_but_unknown_mask_.at(elem.id());         }
-      void   set_unknown_mask(associated_type const & elem, bool value) {        defined_but_unknown_mask_.at(elem.id()) = value; }
+      bool   get_unknown_mask(associated_type const & elem) const       { return unknown_mask_.at(id(elem));         }
+      void   set_unknown_mask(associated_type const & elem, bool value) {        unknown_mask_.at(id(elem)) = value; }
 
-      long   get_unknown_index(associated_type const & elem) const       { return unknowns_indices_.at(elem.id());         }
-      void   set_unknown_index(associated_type const & elem, long value) {        unknowns_indices_.at(elem.id()) = value; }
+      long   get_unknown_index(associated_type const & elem) const       { return unknowns_indices_.at(id(elem));         }
+      void   set_unknown_index(associated_type const & elem, long value) {        unknowns_indices_.at(id(elem)) = value; }
 
       std::size_t get_unknown_num() const
       {
@@ -83,11 +83,13 @@ namespace viennafvm
       std::vector<ValueT> const & values() const { return values_; }
 
     private:
+      std::size_t id(associated_type const elem) const { return elem.id().get(); }
+
       std::string                    name_;
       std::vector<ValueT>            values_;
       std::vector<boundary_type_id>  boundary_types_;
       std::vector<ValueT>            boundary_values_;
-      std::vector<bool>              defined_but_unknown_mask_;
+      std::vector<bool>              unknown_mask_;
       std::vector<long>              unknowns_indices_;
   };
 }

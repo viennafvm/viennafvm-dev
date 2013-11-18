@@ -63,14 +63,14 @@ namespace viennafvm
       /** @brief  Assembles the full PDE system into the same matrix */
       template <typename LinPdeSysT,
                 typename SegmentT,
-                typename StorageType,
+                typename QuantityContainer,
                 typename MatrixT,
                 typename VectorT>
-      void operator()(LinPdeSysT const & pde_system,
-                      SegmentT   const & segment,
-                      StorageType      & storage,
-                      MatrixT          & system_matrix,
-                      VectorT          & load_vector)
+      void operator()(LinPdeSysT const  & pde_system,
+                      SegmentT   const  & segment,
+                      QuantityContainer & quantities,
+                      MatrixT           & system_matrix,
+                      VectorT           & load_vector)
       {
         typedef viennamath::equation                          equ_type;
         typedef viennamath::expr                              expr_type;
@@ -79,7 +79,7 @@ namespace viennafvm
 
         typedef typename viennagrid::result_of::cell_tag<SegmentT>::type CellTag;
 
-        std::size_t map_index = viennafvm::create_mapping(pde_system, segment, storage);
+        std::size_t map_index = viennafvm::create_mapping(pde_system, segment, quantities);
 
         system_matrix.clear();
         system_matrix.resize(map_index, map_index, false);
@@ -96,7 +96,7 @@ namespace viennafvm
           std::cout << "//" << std::endl;
 #endif
           assemble(pde_system, pde_index,
-                   segment, storage,
+                   segment, quantities,
                    system_matrix, load_vector);
 
         } // for pde_index
@@ -106,15 +106,15 @@ namespace viennafvm
       /** @brief  Assembles one PDE out of the PDE system into the matrix */
       template <typename LinPdeSysT,
                 typename SegmentT,
-                typename StorageType,
+                typename QuantityContainer,
                 typename MatrixT,
                 typename VectorT>
-      void operator()(LinPdeSysT const & pde_system,
-                      std::size_t        pde_index,
-                      SegmentT   const & segment,
-                      StorageType      & storage,
-                      MatrixT          & system_matrix,
-                      VectorT          & load_vector)
+      void operator()(LinPdeSysT const  & pde_system,
+                      std::size_t         pde_index,
+                      SegmentT   const  & segment,
+                      QuantityContainer & quantities,
+                      MatrixT           & system_matrix,
+                      VectorT           & load_vector)
       {
         typedef typename SegmentT::config_type                config_type;
         typedef viennamath::equation                          equ_type;
@@ -124,7 +124,7 @@ namespace viennafvm
 
         typedef typename viennagrid::result_of::cell_tag<SegmentT>::type CellTag;
 
-        std::size_t map_index = viennafvm::create_mapping(pde_system, pde_index, segment, storage);
+        std::size_t map_index = viennafvm::create_mapping(pde_system, pde_index, segment, quantities);
 
         system_matrix.clear();
         system_matrix.resize(map_index, map_index, false);
@@ -139,7 +139,7 @@ namespace viennafvm
         std::cout << "//" << std::endl;
 #endif
         assemble(pde_system, pde_index,
-                 segment, storage,
+                 segment, quantities,
                  system_matrix, load_vector);
 
       } // functor
@@ -149,13 +149,13 @@ namespace viennafvm
 
       template <typename PDESystemType,
                 typename SegmentT,
-                typename StorageType,
+                typename QuantityContainer,
                 typename MatrixT,
                 typename VectorT>
       void assemble(PDESystemType const & pde_system,
                     std::size_t           pde_index,
                     SegmentT      const & segment,
-                    StorageType & storage,
+                    QuantityContainer   & quantities,
                     MatrixT             & system_matrix,
                     VectorT             & load_vector)
       {
@@ -169,20 +169,21 @@ namespace viennafvm
         typedef typename viennagrid::result_of::facet_tag<CellTag>::type FacetTag;
 
         typedef typename viennagrid::result_of::element<SegmentT, FacetTag>::type                FacetType;
-        typedef typename viennagrid::result_of::element<SegmentT, CellTag  >::type                CellType;
+        typedef typename viennagrid::result_of::element<SegmentT, CellTag  >::type               CellType;
 
-        typedef typename viennagrid::result_of::const_element_range<SegmentT, CellTag>::type    CellContainer;
-        typedef typename viennagrid::result_of::iterator<CellContainer>::type                      CellIterator;
+        typedef typename viennagrid::result_of::const_element_range<SegmentT, CellTag>::type     CellContainer;
+        typedef typename viennagrid::result_of::iterator<CellContainer>::type                    CellIterator;
 
-        typedef typename viennagrid::result_of::const_element_range<CellType, FacetTag>::type  FacetOnCellContainer;
-        typedef typename viennagrid::result_of::iterator<FacetOnCellContainer>::type               FacetOnCellIterator;
+        typedef typename viennagrid::result_of::const_element_range<CellType, FacetTag>::type    FacetOnCellContainer;
+        typedef typename viennagrid::result_of::iterator<FacetOnCellContainer>::type             FacetOnCellIterator;
+
+        typedef typename QuantityContainer::value_type     QuantityType;
 
         viennamath::equation          const & pde         = pde_system.pde(pde_index);
         viennamath::function_symbol   const & u           = pde_system.unknown(pde_index)[0];
         viennafvm::linear_pde_options const & pde_options = pde_system.option(pde_index);
 
-        viennafvm::mapping_key   map_key(u.id());
-        viennafvm::boundary_key  bnd_key(u.id());
+        QuantityType const & quan = quantities.at(u.id());
 
 
 #ifdef VIENNAFVM_DEBUG
@@ -200,10 +201,10 @@ namespace viennafvm
         //
 
         //Note: Assuming that LHS holds all matrix terms, while RHS holds all load vector terms
-        expr_type  partial_omega_integrand = extract_surface_integrand<FacetType>(storage, integral_form.lhs(), u);
-        expr_type   matrix_omega_integrand = extract_volume_integrand<CellType>(storage, integral_form.lhs(), u);
-        expr_type      rhs_omega_integrand = extract_volume_integrand<CellType>(storage, integral_form.rhs(), u);
-        expr_type  stabilization_integrand = prepare_for_evaluation<CellType>(storage, pde_options.damping_term(), u);
+        expr_type  partial_omega_integrand = extract_surface_integrand<CellType>(quantities, integral_form.lhs(), u);
+        expr_type   matrix_omega_integrand = extract_volume_integrand<CellType>(quantities, integral_form.lhs(), u);
+        expr_type      rhs_omega_integrand = extract_volume_integrand<CellType>(quantities, integral_form.rhs(), u);
+        expr_type  stabilization_integrand = prepare_for_evaluation<CellType>(quantities, pde_options.damping_term(), u);
 
 #ifdef VIENNAFVM_DEBUG
         std::cout << " - Surface integrand for matrix: " << partial_omega_integrand << std::endl;
@@ -212,29 +213,25 @@ namespace viennafvm
         std::cout << " - Volume integrand for rhs:     " <<     rhs_omega_integrand << std::endl;
 #endif
 
-        viennafvm::flux_handler<StorageType, CellType, FacetType, interface_type>  flux(storage, partial_omega_integrand, u);
+        viennafvm::flux_handler<QuantityContainer, CellType, FacetType, interface_type>  flux(quantities, partial_omega_integrand, u);
 
         expr_type substituted_matrix_omega_integrand  = viennamath::diff(matrix_omega_integrand, u);
 
         std::vector<double> p(3); //dummy vector for evaluation
+
+        typedef viennadata::storage<>   StorageType;
+        StorageType storage;
 
         //
         // Preprocess domain
         //
         setup(segment, storage);
 
-
-        typename viennadata::result_of::accessor<StorageType, viennafvm::mapping_key, long, CellType>::type cell_mapping_accessor =
-            viennadata::make_accessor(storage, map_key);
-
         typename viennadata::result_of::accessor<StorageType, viennafvm::facet_area_key, double, FacetType>::type facet_area_accessor =
             viennadata::make_accessor(storage, viennafvm::facet_area_key());
 
-        typename viennadata::result_of::accessor<StorageType, viennafvm::boundary_key, double, CellType>::type boundary_accessor =
-            viennadata::make_accessor(storage, bnd_key);
-
-        typename viennadata::result_of::accessor<StorageType, viennafvm::current_iterate_key, double, CellType>::type current_iterate_accessor =
-            viennadata::make_accessor(storage, viennafvm::current_iterate_key(u.id()));
+        typename viennadata::result_of::accessor<StorageType, facet_distance_key, double, FacetType>::type facet_distance_accessor =
+            viennadata::make_accessor(storage, facet_distance_key());
 
         //
         // Actual assembly:
@@ -242,22 +239,10 @@ namespace viennafvm
         CellContainer cells(segment);
         for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
         {
-          long row_index = cell_mapping_accessor(*cit);
+          long row_index = quan.get_unknown_index(*cit);
 
           if (row_index < 0)
             continue;
-
-          // update ncell quantities in expressions for current cell:
-          viennamath::rt_traversal_wrapper<interface_type> cell_updater( new detail::ncell_updater<CellType, interface_type>(*cit) );
-
-          substituted_matrix_omega_integrand.get()->recursive_traversal(cell_updater);
-          stabilization_integrand.get()->recursive_traversal(cell_updater);
-          rhs_omega_integrand.get()->recursive_traversal(cell_updater);
-
-
-
-          typename viennadata::result_of::accessor<StorageType, facet_distance_key, double, FacetType>::type facet_distance_accessor =
-              viennadata::make_accessor(storage, facet_distance_key());
 
           //
           // Boundary integral terms:
@@ -271,34 +256,30 @@ namespace viennafvm
 
             if (other_cell)
             {
-              long col_index = cell_mapping_accessor(*other_cell);
+              long col_index = quan.get_unknown_index(*other_cell);
+
               double effective_facet_area = facet_area_accessor(*focit);
+              double distance             = facet_distance_accessor(*focit);
 
-              for (std::size_t i=0; i<pde_system.size(); ++i)
-                compute_gradients_for_cell(*cit, *focit, *other_cell,
-                                           viennadata::make_accessor<current_iterate_key, double, CellType>(storage, current_iterate_key(pde_system.unknown(i)[0].id())),
-                                           viennadata::make_accessor<current_iterate_key, double, FacetType>(storage, current_iterate_key(pde_system.unknown(i)[0].id())),
-                                           facet_distance_accessor);
-
-              if (col_index == viennafvm::DIRICHLET_BOUNDARY)
+              if (quan.get_boundary_type(*other_cell) == viennafvm::BOUNDARY_DIRICHLET)
               {
-                double boundary_value = boundary_accessor(*other_cell);
-                double current_value  = current_iterate_accessor(*cit);
+                double boundary_value = quan.get_boundary_value(*other_cell);
+                double current_value  = quan.get_value(*cit);
 
                 // updates are homogeneous, hence no direct contribution to RHS here. Might change later when boundary values are slowly increased.
-                load_vector(row_index)              -= flux.out(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * (boundary_value - current_value);
-                system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area;
+                load_vector(row_index)              -= flux.out(*cit, *focit, *other_cell, distance) * effective_facet_area * (boundary_value - current_value);
+                system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell, distance) * effective_facet_area;
 
-                load_vector(row_index) -= flux.out(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * current_value;
-                load_vector(row_index) += flux.in(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * current_iterate_accessor(*cit);
+                load_vector(row_index) -= flux.out(*cit, *focit, *other_cell, distance) * effective_facet_area * current_value;
+                load_vector(row_index) += flux.in(*cit, *focit, *other_cell, distance) * effective_facet_area * quan.get_value(*cit);
               }
               else if (col_index >= 0)
               {
-                system_matrix(row_index, col_index) += flux.out(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area;
-                system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area;
+                system_matrix(row_index, col_index) += flux.out(*cit, *focit, *other_cell, distance) * effective_facet_area;
+                system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell, distance) * effective_facet_area;
 
-                load_vector(row_index) -= flux.out(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * current_iterate_accessor(*other_cell);
-                load_vector(row_index) += flux.in(*cit, *focit, *other_cell, facet_distance_accessor) * effective_facet_area * current_iterate_accessor(*cit);
+                load_vector(row_index) -= flux.out(*cit, *focit, *other_cell, distance) * effective_facet_area * quan.get_value(*other_cell);
+                load_vector(row_index) += flux.in(*cit, *focit, *other_cell, distance) * effective_facet_area * quan.get_value(*cit);
               }
               // else: nothing to do because other cell is not considered for this quantity
 
@@ -312,11 +293,14 @@ namespace viennafvm
 
           // Matrix (including residual contributions)
           system_matrix(row_index, row_index) += viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume;
-          load_vector(row_index) -= viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume * current_iterate_accessor(*cit);
+          load_vector(row_index) -= viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume * quan.get_value(*cit);
 
+          viennamath::rt_traversal_wrapper<interface_type> cell_updater(new detail::ncell_updater<CellType, interface_type>(*cit));
+          stabilization_integrand.get()->recursive_traversal(cell_updater);
           system_matrix(row_index, row_index) += viennamath::eval(stabilization_integrand, p) * cell_volume;
 
           // RHS
+          rhs_omega_integrand.get()->recursive_traversal(cell_updater);
           load_vector(row_index) += viennamath::eval(rhs_omega_integrand, p) * cell_volume;
           //std::cout << "Writing " << viennamath::eval(omega_integrand, p) << " * " << cell_volume << " to rhs at " << row_index << std::endl;
 

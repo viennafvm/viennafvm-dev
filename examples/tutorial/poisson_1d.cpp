@@ -40,13 +40,6 @@
 #include "viennamath/expression.hpp"
 
 
-struct permittivity_key
-{
-  // Operator< is required for compatibility with std::map
-  bool operator<(permittivity_key const & /*other*/) const { return false; }
-};
-
-
 int main()
 {
   typedef double   numeric_type;
@@ -87,24 +80,29 @@ int main()
   //
   viennafvm::pde_solver<MeshType> pde_solver(mesh);
 
+  // Initialize unknowns:
+  typedef viennafvm::pde_solver<MeshType>::quantity_type   QuantityType;
+  QuantityType quan("u", cells(mesh).size());
+  viennafvm::set_dirichlet_boundary(quan, segmentation(1), 0.0);
+  viennafvm::set_dirichlet_boundary(quan, segmentation(5), 1.0);
+
+  viennafvm::set_unknown(quan, segmentation(2));
+  viennafvm::set_unknown(quan, segmentation(3));
+  viennafvm::set_unknown(quan, segmentation(4));
+
+  pde_solver.add_quantity(quan);
+
+  QuantityType quan_permittivity("permittivity", cells(mesh).size(), 3);
+  viennafvm::set_initial_value(quan_permittivity, segmentation(3), 1.0);
+  viennafvm::set_initial_value(quan_permittivity, segmentation(4), 1.0);
+  viennafvm::set_initial_value(quan_permittivity, segmentation(5), 1.0);
+  pde_solver.add_quantity(quan_permittivity);
+
 
   // Specify Poisson equation:
-  viennafvm::ncell_quantity<CellType>  permittivity; permittivity.wrap_constant( pde_solver.storage(), permittivity_key() );
-  std::cout << "No. of segments: " << segmentation.size() << std::endl;
-  viennafvm::set_quantity_region( mesh, pde_solver.storage(), permittivity_key(), true);
-  viennafvm::set_quantity_value( mesh, pde_solver.storage(), permittivity_key(), 3);
-  viennafvm::set_quantity_value( segmentation(3), pde_solver.storage(), permittivity_key(), 1);
-  viennafvm::set_quantity_value( segmentation(4), pde_solver.storage(), permittivity_key(), 1);
-  viennafvm::set_quantity_value( segmentation(5), pde_solver.storage(), permittivity_key(), 1);
-
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
+  FunctionSymbol permittivity(1);
   Equation poisson_eq = viennamath::make_equation( viennamath::div(permittivity * viennamath::grad(u)), 0);  // \Delta u = 0
-
-  //
-  // Setting boundary information on mesh (this should come from device specification)
-  //
-  viennafvm::set_dirichlet_boundary(segmentation(1), pde_solver.storage(), u, 0.0);
-  viennafvm::set_dirichlet_boundary(segmentation(5), pde_solver.storage(), u, 1.0);
 
   //
   // Setup Linear Solver
@@ -120,7 +118,7 @@ int main()
   //
   // Writing solution back to mesh (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.result(), "poisson_1d", mesh, segmentation, pde_solver.storage(), 0);
+  viennafvm::io::write_solution_to_VTK_file(pde_solver.quantities(), "poisson_1d", mesh, segmentation);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;
