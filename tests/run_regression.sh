@@ -1,10 +1,25 @@
 #!/bin/bash
 
 INPUT=$1
-BUILDFOLDER=build
+BUILDFOLDER=../build
 
-# extract number of cores on the system
-CORES=`grep -c ^processor /proc/cpuinfo`
+# get the operating system string
+OS=`uname`
+
+# print detected operating system
+echo "operating system: '"$OS"'"
+
+# default value for building jobs
+CORES=1
+
+# OS specific available number of cores extraction
+if   [ "$OS" == "Darwin" ]; then
+   CORES=`sysctl -n hw.ncpu`
+elif [ "$OS" == "Linux" ]; then
+   CORES=`grep -c ^processor /proc/cpuinfo`
+else 
+   echo "no available CPU core extraction available"
+fi
 echo "building with " $CORES "cores " 
 
 ./clean.sh
@@ -21,11 +36,11 @@ if [ "$INPUT" != "" ]; then
       cd $BUILDFOLDER
       cmake ..
       # build and submit results to online cdash service
-      make Nightly -j$CORES
+      make Nightly ARGS=-j$CORES
       echo ""
       echo "regression result is available here:"
       echo "----------------------------------------------"
-      echo "http://my.cdash.org/index.php?project=ViennaFVM"
+      echo "http://my.cdash.org/index.php?project=ViennaData"
       echo "----------------------------------------------"
       echo ""
    else 
@@ -45,7 +60,7 @@ else
    cmake ..
    # plain build without submit
    make -j$CORES
-   make test
+   make test ARGS=-j$CORES
 fi
 
 

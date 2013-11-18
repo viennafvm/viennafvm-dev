@@ -1,0 +1,20 @@
+#- CMake configuration file for ViennaFVM
+# Sets the following variables if ViennaFVM was found:
+#  VIENNAFVM_FOUND         : TRUE if found
+#  VIENNAFVM_INCLUDE_DIRS  : Include-directories to be used
+#  VIENNAFVM_LIBRARIES     : Libraries to link against
+
+# Compute paths
+get_filename_component(VIENNAFVM_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+if(EXISTS "${VIENNAFVM_CMAKE_DIR}/CMakeCache.txt")
+   # in build tree
+   get_filename_component(VIENNAFVM_INSTALL_PREFIX "${VIENNAFVM_CMAKE_DIR}" PATH)
+   set(VIENNAFVM_INCLUDE_DIR "${_VIENNAFVM_PREFIX}")
+else()
+   set(VIENNAFVM_INSTALL_PREFIX "${VIENNAFVM_CMAKE_DIR}/@CONF_REL_INSTALL_PREFIX@")
+   set(VIENNAFVM_INCLUDE_DIR "${VIENNAFVM_CMAKE_DIR}/@CONF_REL_INCLUDE_DIR@")
+endif()
+
+# Set up variables
+set(VIENNAFVM_INCLUDE_DIRS ${VIENNAFVM_INCLUDE_DIR})
+set(VIENNAFVM_LIBRARIES "")
