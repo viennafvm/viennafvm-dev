@@ -124,7 +124,7 @@ void init_quantities(SegmentationType const & segmentation, ProblemDescriptionT 
   //
   // Init permittivity
   //
-  QuantityType & permittivity = problem_description.add_quantity(names::permittivity(), 11.7 * 8.854e-12);   // initialize with permittivity of silicon
+  problem_description.add_quantity(names::permittivity(), 11.7 * 8.854e-12);   // initialize with permittivity of silicon
 
   //
   // Initialize doping
