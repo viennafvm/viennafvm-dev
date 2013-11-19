@@ -42,11 +42,6 @@
 // ViennaMath includes:
 #include "viennamath/expression.hpp"
 
-#include <boost/numeric/ublas/io.hpp>
-#include <boost/numeric/ublas/matrix_sparse.hpp>
-#include <boost/numeric/ublas/operation.hpp>
-#include <boost/numeric/ublas/operation_sparse.hpp>
-
 
 namespace names
 {
@@ -126,9 +121,6 @@ int main()
     std::cerr << "File-Reader failed. Aborting program..." << std::endl;
     return EXIT_FAILURE;
   }
-
-//   for (int i = 0; i < 10; ++i)
-//     std::cout << "Segment " << i << " - " << segmentation.segment_present(i) << std::endl;
 
   viennagrid::scale(mesh, 1e-9); // scale to nanometer
 

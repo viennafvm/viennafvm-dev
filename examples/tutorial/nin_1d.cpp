@@ -42,11 +42,6 @@
 // ViennaMath includes:
 #include "viennamath/expression.hpp"
 
-#include <boost/numeric/ublas/io.hpp>
-#include <boost/numeric/ublas/matrix_sparse.hpp>
-#include <boost/numeric/ublas/operation.hpp>
-#include <boost/numeric/ublas/operation_sparse.hpp>
-
 namespace names
 {
   std::string permittivity()     { return "Permittivity"; }

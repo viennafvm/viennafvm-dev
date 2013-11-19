@@ -44,11 +44,6 @@
 // ViennaMath includes:
 #include "viennamath/expression.hpp"
 
-#include <boost/numeric/ublas/io.hpp>
-#include <boost/numeric/ublas/matrix_sparse.hpp>
-#include <boost/numeric/ublas/operation.hpp>
-#include <boost/numeric/ublas/operation_sparse.hpp>
-
 
 namespace names
 {
@@ -171,60 +166,6 @@ void init_quantities(SegmentationType const & segmentation, ProblemDescriptionT 
 
 }
 
-/*
-template<typename MeshT, typename SegmentationT, typename StorageT>
-void write_device_doping(MeshT& mesh, SegmentationT& segments, StorageT& storage)
-{
-  typedef typename viennagrid::result_of::cell_tag<MeshT>::type            CellTag;
-  typedef typename viennagrid::result_of::element<MeshT, CellTag>::type    CellType;
-
-  typedef typename viennadata::result_of::accessor<StorageT, donator_doping_key, double, CellType>::type  DonatorAccessor;
-  typedef typename viennadata::result_of::accessor<StorageT, acceptor_doping_key, double, CellType>::type AcceptorAccessor;
-
-  DonatorAccessor  donator_acc  = viennadata::make_accessor(storage, donator_doping_key());
-  AcceptorAccessor acceptor_acc = viennadata::make_accessor(storage, acceptor_doping_key());
-
-  viennagrid::io::vtk_writer<MeshT> my_vtk_writer;
-  my_vtk_writer.add_scalar_data_on_cells( donator_acc , "donators" );
-  my_vtk_writer.add_scalar_data_on_cells( acceptor_acc , "acceptors" );
-  my_vtk_writer(mesh, segments, "mosfet_doping");
-}
-
-template<typename MeshT, typename SegmentationT, typename StorageT>
-void write_device_initial_guesses(MeshT& mesh, SegmentationT& segments, StorageT& storage)
-{
-  typedef viennafvm::boundary_key                                                                         BoundaryKey;
-  typedef viennafvm::current_iterate_key                                                                  IterateKey;
-
-  typedef typename viennagrid::result_of::cell_tag<MeshT>::type                                         CellTag;
-  typedef typename viennagrid::result_of::element<MeshT, CellTag>::type                                 CellType;
-
-  typedef typename viennadata::result_of::accessor<StorageT, BoundaryKey, double, CellType>::type         BoundaryAccessor;
-  typedef typename viennadata::result_of::accessor<StorageT, IterateKey, double, CellType>::type          InitGuessAccessor;
-
-  BoundaryAccessor  bnd_pot_acc  = viennadata::make_accessor(storage, BoundaryKey(0));
-  InitGuessAccessor init_pot_acc = viennadata::make_accessor(storage, IterateKey(0));
-
-  BoundaryAccessor  bnd_n_acc  = viennadata::make_accessor(storage, BoundaryKey(1));
-  InitGuessAccessor init_n_acc = viennadata::make_accessor(storage, IterateKey(1));
-
-  BoundaryAccessor  bnd_p_acc  = viennadata::make_accessor(storage, BoundaryKey(2));
-  InitGuessAccessor init_p_acc = viennadata::make_accessor(storage, IterateKey(2));
-
-  viennagrid::io::vtk_writer<MeshT> bnd_vtk_writer;
-  bnd_vtk_writer.add_scalar_data_on_cells( bnd_pot_acc , "potential" );
-  bnd_vtk_writer.add_scalar_data_on_cells( bnd_n_acc ,   "electrons" );
-  bnd_vtk_writer.add_scalar_data_on_cells( bnd_p_acc ,   "holes" );
-  bnd_vtk_writer(mesh, segments, "mosfet_boundary_conditions");
-
-  viennagrid::io::vtk_writer<MeshT> init_vtk_writer;
-  init_vtk_writer.add_scalar_data_on_cells( init_pot_acc , "potential" );
-  init_vtk_writer.add_scalar_data_on_cells( init_n_acc ,   "electrons" );
-  init_vtk_writer.add_scalar_data_on_cells( init_p_acc ,   "holes" );
-  init_vtk_writer(mesh, segments, "mosfet_initial_conditions");
-}
-*/
-
 
 int main()
 {
@@ -279,11 +220,6 @@ int main()
   FunctionSymbol donator_doping(4);      // donator doping
   FunctionSymbol acceptor_doping(5); // acceptor doping
 
-  //
-  // Write Doping and initial guesses/boundary conditions to VTK output files for inspection
-  //
-  //write_device_doping(mesh, segmentation, pde_solver.storage());
-  //write_device_initial_guesses(mesh, segmentation, pde_solver.storage());
 
   //
   // Specify PDEs:

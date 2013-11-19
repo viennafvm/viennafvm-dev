@@ -39,11 +39,6 @@
 // ViennaMath includes:
 #include "viennamath/expression.hpp"
 
-#include <boost/numeric/ublas/io.hpp>
-#include <boost/numeric/ublas/matrix_sparse.hpp>
-#include <boost/numeric/ublas/operation.hpp>
-#include <boost/numeric/ublas/operation_sparse.hpp>
-
 
 int main()
 {
@@ -60,9 +55,6 @@ int main()
   typedef viennagrid::result_of::iterator<CellContainer>::type                CellIterator;
   typedef viennagrid::result_of::vertex_range<CellType>::type                 VertexOnCellContainer;
   typedef viennagrid::result_of::iterator<VertexOnCellContainer>::type        VertexOnCellIterator;
-
-  typedef boost::numeric::ublas::compressed_matrix<numeric_type>  MatrixType;
-  typedef boost::numeric::ublas::vector<numeric_type>             VectorType;
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
