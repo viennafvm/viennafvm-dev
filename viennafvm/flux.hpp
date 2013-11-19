@@ -604,7 +604,7 @@ namespace viennafvm
 
       }
 
-      double in(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell, double distance) const
+      double in(CellType const & inner_cell, FacetType const & /*facet*/, CellType const & outer_cell, double distance) const
       {
         std::vector<double> p(3); //dummy point
 
@@ -642,7 +642,7 @@ namespace viennafvm
         return viennamath::eval(in_integrand_, p) / distance * 2.0 * eps_inner * eps_outer / (eps_inner + eps_outer);
       }
 
-      double out(CellType const & inner_cell, FacetType const & facet, CellType const & outer_cell, double distance) const
+      double out(CellType const & inner_cell, FacetType const & /*facet*/, CellType const & outer_cell, double distance) const
       {
         std::vector<double> p(3); //dummy point
 
