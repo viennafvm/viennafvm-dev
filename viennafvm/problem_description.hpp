@@ -16,6 +16,7 @@
 ======================================================================= */
 
 #include <stdexcept>
+#include <deque>
 
 #include "viennagrid/mesh/mesh.hpp"
 
@@ -49,7 +50,7 @@ namespace viennafvm
       typedef quantity<CellType, numeric_type>   QuantityType;
       typedef QuantityType                       quantity_type;
 
-      typedef std::vector<quantity_type>   quantity_container_type;
+      typedef std::deque<quantity_type>   quantity_container_type;
       typedef quantity_container_type      QuantityContainerType;
 
       typedef MeshT        MeshType;
