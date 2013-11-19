@@ -19,31 +19,11 @@
 
 #include <vector>
 #include "viennafvm/forwards.h"
-#include "viennafvm/common.hpp"
 
 #include "viennagrid/forwards.hpp"
 
 namespace viennafvm
 {
-
-/** @brief If EntityType is a ViennaGrid segment, returns the domain. If EntityType is already the domain, no changes.
-*/
-template <typename EntityType>
-struct extract_domain
-{
-   typedef EntityType  type;
-   static EntityType       & apply(EntityType       & mesh) { return mesh; }
-   static EntityType const & apply(EntityType const & mesh) { return mesh; }
-};
-
-template <typename ConfigType>
-struct extract_domain<viennagrid::segmentation<ConfigType> >
-{
-   typedef typename viennagrid::result_of::mesh<ConfigType>::type    type;
-   static type       & apply(viennagrid::segment_handle<ConfigType>       & seg) { return seg.mesh(); }
-   static type const & apply(viennagrid::segment_handle<ConfigType> const & seg) { return seg.mesh(); }
-};
-
 
 
 /** @brief Distributes mapping indices over domain or segment

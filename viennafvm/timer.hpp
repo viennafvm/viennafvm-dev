@@ -17,17 +17,6 @@
 
 #include <iostream>
 
-namespace viennafvm
-{
-
-inline void printOps(double num_ops, double exec_time)
-{
-  std::cout << "GFLOPs: " << num_ops / (1000000 * exec_time * 1000) << std::endl;
-}
-
-} // viennafvm
-
-
 #ifdef _WIN32
 
 #define WINDOWS_LEAN_AND_MEAN

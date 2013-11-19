@@ -19,7 +19,6 @@
 #include <assert.h>
 
 #include "viennafvm/forwards.h"
-#include "viennafvm/common.hpp"
 #include "viennafvm/util.hpp"
 #include "viennafvm/boundary.hpp"
 
@@ -64,60 +63,6 @@ namespace viennafvm
         return result;
       }
   };
-
-  template <typename DomainSegmentType, typename QuantityDisabledAccessorType, typename SourceAccessorType, typename DestinationAccessorType>
-  void set_initial_guess(DomainSegmentType const & domain,
-                         QuantityDisabledAccessorType const quantity_disabled_accessor,
-                         SourceAccessorType const source_accessor,
-                         DestinationAccessorType destination_accessor)
-  {
-    typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type     CellTag;
-
-
-    typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag>::type               CellType;
-    typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type   CellContainer;
-    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
-
-    CellContainer cells(domain);
-    for (CellIterator cit  = cells.begin();
-                      cit != cells.end();
-                    ++cit)
-    {
-      if (!quantity_disabled_accessor(*cit))
-        destination_accessor(*cit) = source_accessor(*cit);
-    }
-  }
-
-
-  template <typename DomainSegmentType, typename StorageType, typename QuantityDisabledKeyType, typename SourceKeyType, typename DestinationKeyType>
-  void set_initial_guess(DomainSegmentType const & domain,
-                         StorageType & storage,
-                         QuantityDisabledKeyType const & quantity_disabled_key,
-                         SourceKeyType const & source_key,
-                         DestinationKeyType const & destination_key)
-  {
-    typedef typename viennagrid::result_of::cell<DomainSegmentType>::type     CellType;
-
-    set_initial_guess(domain,
-                      viennadata::make_accessor<QuantityDisabledKeyType, bool, CellType>(storage, quantity_disabled_key),
-                      viennadata::make_accessor<SourceKeyType, numeric_type, CellType>(storage, source_key),
-                      viennadata::make_accessor<DestinationKeyType, numeric_type, CellType>(storage, destination_key));
-  }
-
-
-  template <typename DomainSegmentType, typename StorageType, typename InterfaceType, typename SourceKeyType>
-  void set_initial_guess(DomainSegmentType const & domain,
-                         StorageType & storage,
-                         viennamath::rt_function_symbol<InterfaceType> const & func_symbol,
-                         SourceKeyType const & source_key)
-  {
-    set_initial_guess(domain, storage,
-                      viennafvm::disable_quantity_key(func_symbol.id()),
-                      source_key,
-                      viennafvm::current_iterate_key(func_symbol.id()));
-  }
-
-
 
 
   template <typename DomainSegmentType, typename QuantityType, typename SmootherType>
