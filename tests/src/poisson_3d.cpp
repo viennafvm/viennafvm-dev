@@ -24,6 +24,7 @@
 #include "viennafvm/ncell_quantity.hpp"
 #include "viennafvm/pde_solver.hpp"
 #include "viennafvm/linear_solvers/viennacl.hpp"
+#include "viennafvm/problem_description.hpp"
 
 // ViennaGrid includes:
 #include "viennagrid/mesh/mesh.hpp"
@@ -85,11 +86,11 @@ int main()
   //
   // Create PDE solver instance:
   //
-  viennafvm::pde_solver<MeshType> pde_solver(mesh);
+  viennafvm::problem_description<MeshType> problem_desc(mesh);
 
   // Initialize unknowns:
-  typedef viennafvm::pde_solver<MeshType>::quantity_type   QuantityType;
-  QuantityType quan("u", cells(mesh).size());
+  typedef viennafvm::problem_description<MeshType>::quantity_type   QuantityType;
+  QuantityType & quan = problem_desc.add_quantity("u");
 
   //
   // Setting boundary information on mesh (this should come from device specification)
@@ -126,10 +127,8 @@ int main()
       quan.set_unknown_mask(*cit, true);
   }
 
-  pde_solver.add_quantity(quan);
 
-  QuantityType quan_permittivity("permittivity", cells.size(), 1.0);
-  pde_solver.add_quantity(quan_permittivity);
+  problem_desc.add_quantity("permittivity");
 
   // Specify Poisson equation:
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification
@@ -144,13 +143,15 @@ int main()
   //
   // Pass system to solver:
   //
-  pde_solver(viennafvm::make_linear_pde_system(poisson_eq, u),  // PDE with associated unknown
+  viennafvm::pde_solver my_solver;
+  my_solver(problem_desc,
+            viennafvm::make_linear_pde_system(poisson_eq, u),  // PDE with associated unknown
              linear_solver);
 
   //
   // Writing solution back to mesh (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.quantities(), "poisson_3d", mesh, segmentation);
+  viennafvm::io::write_solution_to_VTK_file(problem_desc.quantities(), "poisson_3d", mesh, segmentation);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;

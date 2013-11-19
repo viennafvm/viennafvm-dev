@@ -23,6 +23,7 @@
 #include "viennafvm/boundary.hpp"
 #include "viennafvm/pde_solver.hpp"
 #include "viennafvm/linear_solvers/viennacl.hpp"
+#include "viennafvm/problem_description.hpp"
 
 
 // ViennaGrid includes:
@@ -86,12 +87,12 @@ int main()
   //
   // Create PDE solver instance:
   //
-  viennafvm::pde_solver<MeshType> pde_solver(mesh);
+  viennafvm::problem_description<MeshType> problem_desc(mesh);
 
   // Initialize unknowns:
-  typedef viennafvm::pde_solver<MeshType>::quantity_type   QuantityType;
-  QuantityType quan_u("u", cells(mesh).size());
-  QuantityType quan_v("v", cells(mesh).size());
+  typedef viennafvm::problem_description<MeshType>::quantity_type   QuantityType;
+  QuantityType & quan_u = problem_desc.add_quantity("u");
+  QuantityType & quan_v = problem_desc.add_quantity("v");
 
   //
   // Setting boundary information on mesh (this should come from device specification)
@@ -136,9 +137,6 @@ int main()
     }
   }
 
-  pde_solver.add_quantity(quan_u);
-  pde_solver.add_quantity(quan_v);
-
 
   //
   // Specify two PDEs:
@@ -156,17 +154,20 @@ int main()
   //
   // Pass system to solver:
   //
-  pde_solver(viennafvm::make_linear_pde_system(poisson_equ_1, u),  // PDE with associated unknown
-             linear_solver);
+  viennafvm::pde_solver my_solver;
+  my_solver(problem_desc,
+            viennafvm::make_linear_pde_system(poisson_equ_1, u),  // PDE with associated unknown
+            linear_solver);
 
-  pde_solver(viennafvm::make_linear_pde_system(poisson_equ_2, v, viennafvm::make_linear_pde_options(1, 1)),  // PDE with associated unknown
+  my_solver(problem_desc,
+            viennafvm::make_linear_pde_system(poisson_equ_2, v, viennafvm::make_linear_pde_options(1, 1)),  // PDE with associated unknown
              linear_solver);
 
 
   //
   // Writing solution back to mesh
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.quantities(), "poisson_2d", mesh, segmentation);
+  viennafvm::io::write_solution_to_VTK_file(problem_desc.quantities(), "poisson_2d", mesh, segmentation);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;

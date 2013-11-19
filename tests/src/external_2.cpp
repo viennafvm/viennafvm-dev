@@ -40,6 +40,7 @@
 #include "viennafvm/pde_solver.hpp"
 #include "viennafvm/initial_guess.hpp"
 #include "viennafvm/linear_solvers/viennacl.hpp"
+#include "viennafvm/problem_description.hpp"
 
 
 void other_func()
@@ -48,6 +49,6 @@ void other_func()
 
   MeshType mesh;
 
-  viennafvm::pde_solver<MeshType> pde_solver(mesh);
-  std::cout << "other_func(): Number of quantities in pde_solver per default: " << pde_solver.quantities().size() << std::endl;
+  viennafvm::problem_description<MeshType> problem_desc(mesh);
+  std::cout << "other_func(): Number of quantities in pde_solver per default: " << problem_desc.quantities().size() << std::endl;
 }

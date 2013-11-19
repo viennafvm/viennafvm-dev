@@ -25,6 +25,7 @@
 #include "viennafvm/pde_solver.hpp"
 #include "viennafvm/boundary.hpp"
 #include "viennafvm/linear_solvers/viennacl.hpp"
+#include "viennafvm/problem_description.hpp"
 
 // ViennaGrid includes:
 #include "viennagrid/mesh/mesh.hpp"
@@ -76,13 +77,13 @@ int main()
   }
 
   //
-  // Create PDE solver instance
+  // Create problem description
   //
-  viennafvm::pde_solver<MeshType> pde_solver(mesh);
+  viennafvm::problem_description<MeshType> problem_desc(mesh);
 
   // Initialize unknowns:
-  typedef viennafvm::pde_solver<MeshType>::quantity_type   QuantityType;
-  QuantityType quan("u", cells(mesh).size());
+  typedef viennafvm::problem_description<MeshType>::quantity_type   QuantityType;
+  QuantityType & quan = problem_desc.add_quantity("u");
   viennafvm::set_dirichlet_boundary(quan, segmentation(1), 0.0);
   viennafvm::set_dirichlet_boundary(quan, segmentation(5), 1.0);
 
@@ -90,13 +91,10 @@ int main()
   viennafvm::set_unknown(quan, segmentation(3));
   viennafvm::set_unknown(quan, segmentation(4));
 
-  pde_solver.add_quantity(quan);
-
-  QuantityType quan_permittivity("permittivity", cells(mesh).size(), 3);
+  QuantityType & quan_permittivity = problem_desc.add_quantity("permittivity", 3);
   viennafvm::set_initial_value(quan_permittivity, segmentation(3), 1.0);
   viennafvm::set_initial_value(quan_permittivity, segmentation(4), 1.0);
   viennafvm::set_initial_value(quan_permittivity, segmentation(5), 1.0);
-  pde_solver.add_quantity(quan_permittivity);
 
 
   // Specify Poisson equation:
@@ -112,13 +110,15 @@ int main()
   //
   // Pass system to solver:
   //
-  pde_solver(viennafvm::make_linear_pde_system(poisson_eq, u),  // PDE with associated unknown
-             linear_solver);
+  viennafvm::pde_solver my_solver;
+  my_solver(problem_desc,
+            viennafvm::make_linear_pde_system(poisson_eq, u),  // PDE with associated unknown
+            linear_solver);
 
   //
   // Writing solution back to mesh (discussion about proper way of returning a solution required...)
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.quantities(), "poisson_1d", mesh, segmentation);
+  viennafvm::io::write_solution_to_VTK_file(problem_desc.quantities(), "poisson_1d", mesh, segmentation);
 
   std::cout << "*****************************************" << std::endl;
   std::cout << "* Poisson solver finished successfully! *" << std::endl;

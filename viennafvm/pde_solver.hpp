@@ -110,38 +110,26 @@ namespace viennafvm
   }
 
 
-  template<typename MeshT>
   class pde_solver
   {
       typedef boost::numeric::ublas::compressed_matrix<viennafvm::numeric_type>    MatrixType;
       typedef boost::numeric::ublas::vector<viennafvm::numeric_type>               VectorType;
 
-      typedef typename viennagrid::result_of::cell_tag<MeshT>::type                CellTag;
-
-      typedef typename viennagrid::result_of::element<MeshT, CellTag>::type        CellType;
-
     public:
       typedef viennafvm::numeric_type numeric_type;
 
-      typedef quantity<CellType, numeric_type>   QuantityType;
-      typedef QuantityType                       quantity_type;
-
-      typedef std::vector<quantity_type>   quantity_container_type;
-      typedef quantity_container_type      QuantityContainerType;
-
-      typedef MeshT        MeshType;
-      typedef MeshType     mesh_type;
-
-
-      pde_solver(MeshT const & mesh) : mesh_(mesh)
+      pde_solver()
       {
         nonlinear_iterations  = 100;
         nonlinear_breaktol    = 1.0e-3;
         damping               = 1.0;
       }
 
-      template<typename PDESystemT, typename LinearSolverT>
-      void operator()(PDESystemT const & pde_system, LinearSolverT& linear_solver, std::size_t break_pde = 0)
+      template<typename ProblemDescriptionT, typename PDESystemT, typename LinearSolverT>
+      void operator()(ProblemDescriptionT & problem_description,
+                      PDESystemT const & pde_system,
+                      LinearSolverT& linear_solver,
+                      std::size_t break_pde = 0)
       {
       #ifdef VIENNAFVM_VERBOSE
         std::streamsize cout_precision = std::cout.precision();
@@ -168,7 +156,7 @@ namespace viennafvm
             subtimer.start();
           #endif
             viennafvm::linear_assembler fvm_assembler;
-            fvm_assembler(pde_system, pde_index, mesh_, quantities_, system_matrix, load_vector);
+            fvm_assembler(pde_system, pde_index, problem_description.mesh(), problem_description.quantities(), system_matrix, load_vector);
           #ifdef VIENNAFVM_VERBOSE
             std::cout.precision(3);
             subtimer.get();
@@ -184,9 +172,9 @@ namespace viennafvm
 
           #ifdef VIENNAFVM_VERBOSE
             subtimer.start();
-            numeric_type update_norm = apply_update(pde_system, pde_index, mesh_, quantities_, update, damping);
+            numeric_type update_norm = apply_update(pde_system, pde_index, problem_description.mesh(), problem_description.quantities(), update, damping);
           #else
-            apply_update(pde_system, pde_index, mesh_, quantities_, update, 1.0);  //this is linear, so there's no need for any damping
+            apply_update(pde_system, pde_index, problem_description.mesh(), problem_description.quantities(), update, 1.0);  //this is linear, so there's no need for any damping
           #endif
 
           #ifdef VIENNAFVM_VERBOSE
@@ -251,7 +239,7 @@ namespace viennafvm
               #endif
                 // assemble linearized systems
                 viennafvm::linear_assembler fvm_assembler;
-                fvm_assembler(pde_system, pde_index, mesh_, quantities_, system_matrix, load_vector);
+                fvm_assembler(pde_system, pde_index, problem_description.mesh(), problem_description.quantities(), system_matrix, load_vector);
               #ifdef VIENNAFVM_VERBOSE
                 std::cout.precision(3);
                 subtimer.get();
@@ -268,7 +256,7 @@ namespace viennafvm
               #ifdef VIENNAFVM_VERBOSE
                 subtimer.start();
               #endif
-                numeric_type update_norm = apply_update(pde_system, pde_index, mesh_, quantities_, update, damping);
+                numeric_type update_norm = apply_update(pde_system, pde_index, problem_description.mesh(), problem_description.quantities(), update, damping);
               #ifdef VIENNAFVM_VERBOSE
                 subtimer.get();
                 std::cout << "   Update time   : " << std::fixed << subtimer.get() << " s" << std::endl;
@@ -366,14 +354,7 @@ namespace viennafvm
       numeric_type get_damping() { return damping; }
       void set_damping(numeric_type value) { damping = value; }
 
-      quantity_container_type const & quantities() const { return quantities_; }
-      quantity_container_type       & quantities()       { return quantities_; }
-
-      void add_quantity(quantity_type const & quan) { quantities_.push_back(quan); }
-
     private:
-      MeshType const &         mesh_;
-      quantity_container_type  quantities_;
 
       bool picard_iteration_;
       std::size_t     nonlinear_iterations;

@@ -44,6 +44,7 @@
 #include "viennafvm/pde_solver.hpp"
 #include "viennafvm/initial_guess.hpp"
 #include "viennafvm/linear_solvers/viennacl.hpp"
+#include "viennafvm/problem_description.hpp"
 
 
 //defined in external_2.cpp
@@ -62,10 +63,10 @@ int main()
 
   MeshType mesh;
 
-  viennafvm::pde_solver<MeshType> pde_solver(mesh);
+  viennafvm::problem_description<MeshType> problem_desc(mesh);
 
 
-  std::cout << "main(): Number of quantities in pde_solver per default: " << pde_solver.quantities().size() << std::endl;
+  std::cout << "main(): Number of quantities in pde_solver per default: " << problem_desc.quantities().size() << std::endl;
 
   //this is the external linkage check:
   other_func();

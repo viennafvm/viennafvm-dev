@@ -28,6 +28,7 @@
 #include "viennafvm/pde_solver.hpp"
 #include "viennafvm/initial_guess.hpp"
 #include "viennafvm/linear_solvers/viennacl.hpp"
+#include "viennafvm/problem_description.hpp"
 
 // ViennaGrid includes:
 #include "viennagrid/config/default_configs.hpp"
@@ -76,12 +77,10 @@ void init_quantities( SegmentationType const & segmentation, ProblemDescriptionT
 {
   typedef typename ProblemDescriptionT::quantity_type    QuantityType;
 
-  std::size_t cell_num = viennagrid::cells(segmentation.mesh()).size();
-
   //
   // Electrostatic potential
   //
-  QuantityType potential(names::potential(), cell_num);
+  QuantityType & potential = problem_description.add_quantity(names::potential());
 
   viennafvm::set_dirichlet_boundary(potential, segmentation(1), 0.0); // Left contact
   viennafvm::set_dirichlet_boundary(potential, segmentation(5), 0.2); // Right contact
@@ -90,13 +89,10 @@ void init_quantities( SegmentationType const & segmentation, ProblemDescriptionT
   viennafvm::set_unknown(potential, segmentation(3));
   viennafvm::set_unknown(potential, segmentation(4));
 
-  problem_description.add_quantity(potential);
-
   //
   // Init permittivity
   //
-  QuantityType permittivity(names::permittivity(), cell_num, 11.7 * 8.854e-12);   // initialize with permittivity of silicon
-  problem_description.add_quantity(permittivity);
+  QuantityType & permittivity = problem_description.add_quantity(names::permittivity(), 11.7 * 8.854e-12);   // initialize with permittivity of silicon
 }
 
 
@@ -139,12 +135,12 @@ int main()
   //
   // Create PDE solver instance:
   //
-  viennafvm::pde_solver<MeshType> pde_solver(mesh);
+  viennafvm::problem_description<MeshType> problem_desc(mesh);
 
   //
   // Assign doping and set initial values
   //
-  init_quantities(segmentation, pde_solver);
+  init_quantities(segmentation, problem_desc);
 
   //
   // Setting boundary information on mesh (see mosfet.in2d for segment indices)
@@ -172,14 +168,14 @@ int main()
   //
   // Run the solver:
   //
-
-  pde_solver(pde_system, linear_solver);   // weird math happening in here ;-)
+  viennafvm::pde_solver my_solver;
+  my_solver(problem_desc, pde_system, linear_solver);   // weird math happening in here ;-)
 
 
   //
   // Writing all solution variables back to mesh
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.quantities(), "nin_2d_laplace", mesh, segmentation);
+  viennafvm::io::write_solution_to_VTK_file(problem_desc.quantities(), "nin_2d_laplace", mesh, segmentation);
 
   std::cout << "*************************************" << std::endl;
   std::cout << "* Simulation finished successfully! *" << std::endl;

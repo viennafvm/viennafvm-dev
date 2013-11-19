@@ -27,6 +27,7 @@
 #include "viennafvm/pde_solver.hpp"
 #include "viennafvm/initial_guess.hpp"
 #include "viennafvm/linear_solvers/viennacl.hpp"
+#include "viennafvm/problem_description.hpp"
 
 // ViennaGrid includes:
 #include "viennagrid/mesh/mesh.hpp"
@@ -75,12 +76,10 @@ void init_quantities(SegmentationType const & segmentation, ProblemDescriptionT 
 {
   typedef typename ProblemDescriptionT::quantity_type    QuantityType;
 
-  std::size_t cell_num = viennagrid::cells(segmentation.mesh()).size();
-
   //
   // Electrostatic potential
   //
-  QuantityType potential(names::potential(), cell_num);
+  QuantityType & potential = problem_description.add_quantity(names::potential());
   viennafvm::set_initial_value(potential, segmentation(1), built_in_potential(300, n_plus, 1e32/n_plus)); // Left contact
   viennafvm::set_initial_value(potential, segmentation(2), built_in_potential(300, n_plus, 1e32/n_plus)); // n^+
   viennafvm::set_initial_value(potential, segmentation(3), built_in_potential(300, 1e32/n_plus, n_plus)); // Intrinsic
@@ -94,13 +93,11 @@ void init_quantities(SegmentationType const & segmentation, ProblemDescriptionT 
   viennafvm::set_unknown(potential, segmentation(3));
   viennafvm::set_unknown(potential, segmentation(4));
 
-  problem_description.add_quantity(potential);
-
 
   //
   // Electron Density
   //
-  QuantityType electron_density(names::electron_density(), cell_num, n_plus);   // initialize with intrinsic concentration
+  QuantityType & electron_density = problem_description.add_quantity(names::electron_density(), n_plus);   // initialize with intrinsic concentration
   viennafvm::set_initial_value(electron_density, segmentation(3), 1e32/p_plus);      // source
 
   viennafvm::set_dirichlet_boundary(electron_density, segmentation(1), n_plus);      // Source contact
@@ -110,13 +107,11 @@ void init_quantities(SegmentationType const & segmentation, ProblemDescriptionT 
   viennafvm::set_unknown(electron_density, segmentation(3));
   viennafvm::set_unknown(electron_density, segmentation(4));
 
-  problem_description.add_quantity(electron_density);
-
 
   //
   // Hole Density
   //
-  QuantityType hole_density(names::hole_density(), cell_num, 1e32/n_plus);   // initialize with intrinsic concentration
+  QuantityType & hole_density = problem_description.add_quantity(names::hole_density(), 1e32/n_plus);   // initialize with intrinsic concentration
   viennafvm::set_initial_value(hole_density, segmentation(3), p_plus); // source
 
   viennafvm::set_dirichlet_boundary(hole_density, segmentation(1), p_plus); // Left contact
@@ -126,27 +121,22 @@ void init_quantities(SegmentationType const & segmentation, ProblemDescriptionT 
   viennafvm::set_unknown(hole_density, segmentation(3));
   viennafvm::set_unknown(hole_density, segmentation(4));
 
-  problem_description.add_quantity(hole_density);
-
   //
   // Init permittivity
   //
-  QuantityType permittivity(names::permittivity(), cell_num, 11.7 * 8.854e-12);   // initialize with permittivity of silicon
-  problem_description.add_quantity(permittivity);
+  QuantityType & permittivity = problem_description.add_quantity(names::permittivity(), 11.7 * 8.854e-12);   // initialize with permittivity of silicon
 
   //
   // Initialize doping
   //
 
   // donator doping
-  QuantityType donator_doping(names::donator_doping(), cell_num, n_plus);   // initialize with intrinsic concentration
+  QuantityType & donator_doping = problem_description.add_quantity(names::donator_doping(), n_plus);   // initialize with intrinsic concentration
   viennafvm::set_initial_value(donator_doping, segmentation(3), 1e32/p_plus);
-  problem_description.add_quantity(donator_doping);
 
   // acceptor doping
-  QuantityType acceptor_doping(names::acceptor_doping(), cell_num, 1e32/n_plus);   // initialize with intrinsic concentration
+  QuantityType & acceptor_doping = problem_description.add_quantity(names::acceptor_doping(), 1e32/n_plus);   // initialize with intrinsic concentration
   viennafvm::set_initial_value(acceptor_doping, segmentation(3), p_plus);      // body
-  problem_description.add_quantity(acceptor_doping);
 
 }
 
@@ -187,7 +177,7 @@ int main()
   //
   // Create PDE solver instance:
   //
-  viennafvm::pde_solver<MeshType> pde_solver(mesh);
+  viennafvm::problem_description<MeshType> problem_desc(mesh);
 
   //
   // Set initial values
@@ -195,7 +185,7 @@ int main()
   double n_plus = 1e24;
   double p_plus = 1e10;
 
-  init_quantities(segmentation, pde_solver, n_plus, p_plus);
+  init_quantities(segmentation, problem_desc, n_plus, p_plus);
 
   //
   // Setting boundary information on mesh (see mosfet.in2d for segment indices)
@@ -245,13 +235,14 @@ int main()
   //
   // Run the solver:
   //
-  pde_solver(pde_system, linear_solver);   // weird math happening in here ;-)
+  viennafvm::pde_solver my_solver;
+  my_solver(problem_desc, pde_system, linear_solver);   // weird math happening in here ;-)
 
 
   //
   // Writing all solution variables back to mesh
   //
-  viennafvm::io::write_solution_to_VTK_file(pde_solver.quantities(), "nin_1d", mesh, segmentation);
+  viennafvm::io::write_solution_to_VTK_file(problem_desc.quantities(), "nin_1d", mesh, segmentation);
 
   std::cout << "********************************************" << std::endl;
   std::cout << "* MOSFET simulation finished successfully! *" << std::endl;
