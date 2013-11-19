@@ -65,7 +65,7 @@ namespace viennafvm
 
       QuantityType & add_quantity(std::string name, numeric_type default_value = numeric_type())
       {
-        quantities_.push_back(QuantityType(name, viennagrid::cells(*mesh_).size(), default_value));
+        quantities_.push_back(QuantityType(quantities_.size(), name, viennagrid::cells(*mesh_).size(), default_value));
         return quantities_.back();
       }
 
