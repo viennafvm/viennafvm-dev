@@ -38,9 +38,6 @@ long create_mapping(LinPdeSysT & pde_system,
 {
   typedef typename viennagrid::result_of::cell<DomainType>::type CellTag;
 
-  typedef typename viennagrid::result_of::point<DomainType>::type               PointType;
-  typedef typename viennagrid::result_of::element<DomainType, CellTag>::type    CellType;
-
   typedef typename viennagrid::result_of::const_element_range<DomainType, CellTag>::type   CellContainer;
   typedef typename viennagrid::result_of::iterator<CellContainer>::type                    CellIterator;
 
@@ -76,17 +73,6 @@ long create_mapping(LinPdeSysT & pde_system,
                     DomainType const & domain,
                     QuantityContainerT & quantities)
 {
-  typedef typename viennagrid::result_of::cell<DomainType>::type CellTag;
-
-  typedef typename viennagrid::result_of::point<DomainType>::type                  PointType;
-  typedef typename viennagrid::result_of::element<DomainType, CellTag>::type    CellType;
-
-  typedef typename viennagrid::result_of::const_element_range<DomainType, CellTag>::type   CellContainer;
-  typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
-
-  typedef typename LinPdeSysT::mapping_key_type   MappingKeyType;
-  typedef typename LinPdeSysT::boundary_key_type  BoundaryKeyType;
-
   long next_index = 0;
 
   for (std::size_t pde_index = 0; pde_index < pde_system.size(); ++pde_index)

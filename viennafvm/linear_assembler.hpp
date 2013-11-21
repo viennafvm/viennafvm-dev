@@ -72,13 +72,6 @@ namespace viennafvm
                       MatrixT           & system_matrix,
                       VectorT           & load_vector)
       {
-        typedef viennamath::equation                          equ_type;
-        typedef viennamath::expr                              expr_type;
-        typedef typename expr_type::interface_type            interface_type;
-        typedef typename expr_type::numeric_type              numeric_type;
-
-        typedef typename viennagrid::result_of::cell_tag<SegmentT>::type CellTag;
-
         std::size_t map_index = viennafvm::create_mapping(pde_system, segment, quantities);
 
         system_matrix.clear();
@@ -116,14 +109,6 @@ namespace viennafvm
                       MatrixT           & system_matrix,
                       VectorT           & load_vector)
       {
-        typedef typename SegmentT::config_type                config_type;
-        typedef viennamath::equation                          equ_type;
-        typedef viennamath::expr                              expr_type;
-        typedef typename expr_type::interface_type            interface_type;
-        typedef typename expr_type::numeric_type              numeric_type;
-
-        typedef typename viennagrid::result_of::cell_tag<SegmentT>::type CellTag;
-
         std::size_t map_index = viennafvm::create_mapping(pde_system, pde_index, segment, quantities);
 
         system_matrix.clear();
@@ -159,11 +144,9 @@ namespace viennafvm
                     MatrixT             & system_matrix,
                     VectorT             & load_vector)
       {
-        typedef typename SegmentT::config_type                config_type;
         typedef viennamath::equation                          equ_type;
         typedef viennamath::expr                              expr_type;
         typedef typename expr_type::interface_type            interface_type;
-        typedef typename expr_type::numeric_type              numeric_type;
 
         typedef typename viennagrid::result_of::cell_tag<SegmentT>::type CellTag;
         typedef typename viennagrid::result_of::facet_tag<CellTag>::type FacetTag;
@@ -311,17 +294,11 @@ namespace viennafvm
       template <typename SegmentT, typename StorageType>
       void setup(SegmentT const & segment, StorageType & storage)
       {
-        typedef typename SegmentT::config_type                config_type;
-        typedef viennamath::equation                          equ_type;
-        typedef viennamath::expr                              expr_type;
-        typedef typename expr_type::numeric_type              numeric_type;
-
         typedef typename viennagrid::result_of::cell_tag<SegmentT>::type CellTag;
         typedef typename viennagrid::result_of::facet_tag<CellTag>::type FacetTag;
 
         typedef typename viennagrid::result_of::point<SegmentT>::type                  PointType;
         typedef typename viennagrid::result_of::element<SegmentT, FacetTag>::type  FacetType;
-        typedef typename viennagrid::result_of::element<SegmentT, CellTag  >::type  CellType;
 
         typedef typename viennagrid::result_of::const_element_range<SegmentT, FacetTag>::type  FacetContainer;
         typedef typename viennagrid::result_of::iterator<FacetContainer>::type                     FacetIterator;

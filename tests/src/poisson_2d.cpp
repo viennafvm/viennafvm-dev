@@ -42,8 +42,6 @@
 
 int main()
 {
-  typedef double   numeric_type;
-
   typedef viennagrid::triangular_2d_mesh                        MeshType;
   typedef viennagrid::result_of::segmentation<MeshType>::type   SegmentationType;
 

@@ -53,8 +53,6 @@ namespace viennafvm
 
         void operator()(viennamath::rt_function_symbol<InterfaceType> const & fs) const
         {
-          typedef typename InterfaceType::numeric_type   NumericType;
-
           if (fs.deep_equal(&u_)) //this is the same function symbol
             has_func_symbol_ = true;
         }

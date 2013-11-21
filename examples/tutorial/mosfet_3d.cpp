@@ -195,13 +195,8 @@ int main(int argc, char* argv[])
       return -1;
   }
 
-  typedef double   numeric_type;
-
   typedef viennagrid::tetrahedral_3d_mesh                       MeshType;
   typedef viennagrid::result_of::segmentation<MeshType>::type   SegmentationType;
-
-  typedef viennagrid::result_of::cell_tag<MeshType>::type            CellTag;
-  typedef viennagrid::result_of::element<MeshType, CellTag>::type    CellType;
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
