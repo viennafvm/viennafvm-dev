@@ -42,8 +42,6 @@
 
 int main()
 {
-  typedef double   numeric_type;
-
   typedef viennagrid::tetrahedral_3d_mesh   MeshType;
   typedef viennagrid::result_of::segmentation<MeshType>::type SegmentationType;
 
@@ -58,8 +56,6 @@ int main()
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;
-
-  typedef viennafvm::boundary_key      BoundaryKey;
 
   //
   // Create a mesh from file

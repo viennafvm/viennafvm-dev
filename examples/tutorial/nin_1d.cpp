@@ -138,14 +138,8 @@ void init_quantities(SegmentationType const & segmentation, ProblemDescriptionT 
 
 int main()
 {
-  typedef double   numeric_type;
-
   typedef viennagrid::line_1d_mesh   MeshType;
   typedef viennagrid::result_of::segmentation<MeshType>::type SegmentationType;
-
-  typedef viennagrid::result_of::cell_tag<MeshType>::type CellTag;
-
-  typedef viennagrid::result_of::element<MeshType, CellTag>::type        CellType;
 
   typedef viennamath::function_symbol   FunctionSymbol;
   typedef viennamath::equation          Equation;

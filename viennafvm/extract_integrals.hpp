@@ -121,8 +121,6 @@ namespace viennafvm {
 
         void operator()(viennamath::rt_function_symbol<InterfaceType> const & func_symb) const
         {
-          typedef typename InterfaceType::numeric_type   NumericType;
-
           if (func_symb.id() != u_.id())
           {
             viennafvm::ncell_quantity<CellType, InterfaceType> current_iterate;

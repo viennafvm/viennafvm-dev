@@ -39,9 +39,6 @@ namespace viennafvm
   {
     typedef typename viennagrid::result_of::cell_tag<DomainType>::type CellTag;
 
-    typedef typename viennagrid::result_of::point<DomainType>::type                  PointType;
-    typedef typename viennagrid::result_of::element<DomainType, CellTag>::type    CellType;
-
     typedef typename viennagrid::result_of::const_element_range<DomainType, CellTag>::type   CellContainer;
     typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 

@@ -70,12 +70,9 @@ namespace viennafvm
                             QuantityType & quan,
                             SmootherType const & smoother)
   {
-    typedef viennafvm::current_iterate_key              IterateKey;
-
     typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type     CellTag;
     typedef typename viennagrid::result_of::facet_tag<CellTag>::type     FacetTag;
 
-    typedef typename viennagrid::result_of::element<DomainSegmentType, FacetTag>::type                FacetType;
     typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag >::type                CellType;
 
     typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type  CellContainer;

@@ -39,7 +39,6 @@ namespace viennafvm
   {
     typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
 
-    typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag>::type               CellType;
     typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type  CellContainer;
     typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
@@ -61,7 +60,6 @@ namespace viennafvm
   {
     typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
 
-    typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag>::type               CellType;
     typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type  CellContainer;
     typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
@@ -81,7 +79,6 @@ namespace viennafvm
   {
     typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
 
-    typedef typename viennagrid::result_of::element<DomainSegmentType, CellTag>::type               CellType;
     typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type  CellContainer;
     typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
 
