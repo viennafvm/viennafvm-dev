@@ -186,7 +186,7 @@ namespace viennafvm
         //Note: Assuming that LHS holds all matrix terms, while RHS holds all load vector terms
         expr_type  partial_omega_integrand = extract_surface_integrand<CellType>(quantities, integral_form.lhs(), u);
         expr_type   matrix_omega_integrand = extract_volume_integrand<CellType>(quantities, integral_form.lhs(), u);
-        expr_type      rhs_omega_integrand = extract_volume_integrand<CellType>(quantities, integral_form.rhs(), u);
+        expr_type      rhs_omega_integrand = extract_volume_integrand<CellType>(quantities, integral_form.rhs(), viennamath::function_symbol(1337)); //workaround for substituting *all* function symbols
         expr_type  stabilization_integrand = prepare_for_evaluation<CellType>(quantities, pde_options.damping_term(), u);
 
 #ifdef VIENNAFVM_DEBUG
@@ -285,7 +285,7 @@ namespace viennafvm
           // RHS
           rhs_omega_integrand.get()->recursive_traversal(cell_updater);
           load_vector(row_index) += viennamath::eval(rhs_omega_integrand, p) * cell_volume;
-          //std::cout << "Writing " << viennamath::eval(omega_integrand, p) << " * " << cell_volume << " to rhs at " << row_index << std::endl;
+          //std::cout << "Writing " << viennamath::eval(rhs_omega_integrand, p) << " * " << cell_volume << " to rhs at " << row_index << std::endl;
 
         } // for cells
 
