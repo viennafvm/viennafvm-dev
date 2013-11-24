@@ -169,7 +169,7 @@ namespace viennafvm
             }
             else
             {
-              throw "cannot derive weak form!";
+              integrated_expr = viennamath::integral(viennamath::symbolic_interval(viennafvm::cell_volume), bin);
             }
           }
           else //TODO: Add checks!

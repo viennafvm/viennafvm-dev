@@ -209,8 +209,7 @@ namespace viennafvm
 
       InterfaceType * diff(const InterfaceType * /*diff_var*/) const
       {
-        throw "Cannot differentiate cell_quan!";
-        return NULL;
+        return new viennamath::rt_constant<double, InterfaceType>(0);
       }
 
 

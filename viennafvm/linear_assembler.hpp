@@ -189,16 +189,22 @@ namespace viennafvm
         expr_type      rhs_omega_integrand = extract_volume_integrand<CellType>(quantities, integral_form.rhs(), viennamath::function_symbol(1337)); //workaround for substituting *all* function symbols
         expr_type  stabilization_integrand = prepare_for_evaluation<CellType>(quantities, pde_options.damping_term(), u);
 
+        expr_type substituted_matrix_omega_integrand_no_diff  = viennamath::diff(matrix_omega_integrand, u);
+        viennamath::rt_manipulation_wrapper<interface_type> wrapped_function_symbol_replacer( new detail::function_symbol_replacer<QuantityContainer, CellType, interface_type>(quantities, viennamath::function_symbol(1337)) );
+        viennamath::rt_expr<interface_type> replaced_integrand(substituted_matrix_omega_integrand_no_diff.get()->recursive_manipulation( wrapped_function_symbol_replacer ));
+
+        expr_type substituted_matrix_omega_integrand = viennamath::simplify(replaced_integrand);
+
 #ifdef VIENNAFVM_DEBUG
         std::cout << " - Surface integrand for matrix: " << partial_omega_integrand << std::endl;
         std::cout << " - Volume integrand for matrix:  " <<  matrix_omega_integrand << std::endl;
         std::cout << " - Stabilization for matrix:     " << stabilization_integrand << std::endl;
         std::cout << " - Volume integrand for rhs:     " <<     rhs_omega_integrand << std::endl;
+        std::cout << " - Substituted volume integrand for matrix: " << substituted_matrix_omega_integrand << std::endl;
 #endif
 
         viennafvm::flux_handler<QuantityContainer, CellType, FacetType, interface_type>  flux(quantities, partial_omega_integrand, u);
 
-        expr_type substituted_matrix_omega_integrand  = viennamath::diff(matrix_omega_integrand, u);
 
         std::vector<double> p(3); //dummy vector for evaluation
 
@@ -275,10 +281,11 @@ namespace viennafvm
           double cell_volume      = viennagrid::volume(*cit);
 
           // Matrix (including residual contributions)
+          viennamath::rt_traversal_wrapper<interface_type> cell_updater(new detail::ncell_updater<CellType, interface_type>(*cit));
+          substituted_matrix_omega_integrand.get()->recursive_traversal(cell_updater);
           system_matrix(row_index, row_index) += viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume;
           load_vector(row_index) -= viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume * quan.get_value(*cit);
 
-          viennamath::rt_traversal_wrapper<interface_type> cell_updater(new detail::ncell_updater<CellType, interface_type>(*cit));
           stabilization_integrand.get()->recursive_traversal(cell_updater);
           system_matrix(row_index, row_index) += viennamath::eval(stabilization_integrand, p) * cell_volume;
 
