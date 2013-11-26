@@ -123,7 +123,7 @@ namespace viennafvm
       }
 
       template<typename ProblemDescriptionT, typename PDESystemT, typename LinearSolverT>
-      void operator()(ProblemDescriptionT & problem_description,
+      bool operator()(ProblemDescriptionT & problem_description,
                       PDESystemT const & pde_system,
                       LinearSolverT& linear_solver,
                       std::size_t break_pde = 0)
@@ -317,29 +317,34 @@ namespace viennafvm
 
           } // nonlinear for-loop
 
-        #ifdef VIENNAFVM_VERBOSE
           if(converged)
           {
+          #ifdef VIENNAFVM_VERBOSE
               std::cout << std::endl;
               std::cout << "--------" << std::endl;
               std::cout << "Success: Simulation converged successfully!" << std::endl;
               std::cout << "  Update norm of observed variable reached the break-tolerance of " << nonlinear_breaktol
                         << " in " << required_nonlinear_iterations << " iterations" << std::endl;
               std::cout << "--------" << std::endl;
+          #endif
+              return true;
           }
           else
           {
+          #ifdef VIENNAFVM_VERBOSE
               std::cout << std::endl;
               std::cout << "--------" << std::endl;
               std::cout << "Warning: Simulation did not converge!" << std::endl;
               std::cout << "  Update norm of observed variable did not reach the break-tolerance of " << nonlinear_breaktol
                         << " in " << nonlinear_iterations << " iterations" << std::endl;
               std::cout << "--------" << std::endl;
+          #endif
+              return false;
           }
-        #endif
+
 
         }
-
+        return true;
       }
 
       std::size_t get_nonlinear_iterations() { return nonlinear_iterations; }
