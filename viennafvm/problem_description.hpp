@@ -50,6 +50,7 @@ namespace viennafvm
       typedef typename viennagrid::result_of::element<MeshT, CellTag>::type        CellType;
 
     public:
+
       typedef viennafvm::numeric_type numeric_type;
 
       typedef quantity<CellType, numeric_type>   QuantityType;
@@ -74,6 +75,13 @@ namespace viennafvm
       {
         if(!mesh_) throw mesh_not_found_exception();
         quantities_.push_back(QuantityType(quantities_.size(), name, viennagrid::cells(*mesh_).size(), default_value));
+        return quantities_.back();
+      }
+
+      QuantityType & add_quantity(QuantityType& quan)
+      {
+        if(!mesh_) throw mesh_not_found_exception();
+        quantities_.push_back(quan);
         return quantities_.back();
       }
 
