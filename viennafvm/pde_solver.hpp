@@ -197,6 +197,10 @@ namespace viennafvm
 
             std::cout << std::endl;
           #endif
+
+            if(linear_solver.last_iterations() == linear_solver.max_iterations())
+              return false;
+            else return true;
           }
         }
         else // nonlinear
@@ -341,10 +345,8 @@ namespace viennafvm
           #endif
               return false;
           }
-
-
         }
-        return true;
+        return true; // should be never the case: TODO Design flow, restructure if/else conditions appropriatly
       }
 
       std::size_t get_nonlinear_iterations() { return nonlinear_iterations; }
