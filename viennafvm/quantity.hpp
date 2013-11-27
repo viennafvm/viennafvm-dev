@@ -94,7 +94,8 @@ namespace viennafvm
       // possible design flaws:
       std::vector<ValueT> const & values() const { return values_; }
 
-      std::size_t const& id() const { return id_; }
+      std::size_t const& id    ()              const { return id_; }
+      void               set_id(std::size_t id)      { id_ = id;   }
 
     private:
 //      std::size_t id(associated_type const elem) const { return elem.id().get(); }

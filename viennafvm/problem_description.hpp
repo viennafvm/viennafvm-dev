@@ -82,6 +82,13 @@ namespace viennafvm
       {
         if(!mesh_) throw mesh_not_found_exception();
         quantities_.push_back(quan);
+
+        // make sure, that the copied quantity gets the appropriate ID relative
+        // to 'this problem_description' instance ..
+        // otherwise, the ID from the 'foreign' problem description is used
+        // in this instance, leading to ID mix-ups and thus errors.
+        //
+        quantities_.back().set_id(quantities_.size()-1);
         return quantities_.back();
       }
 
