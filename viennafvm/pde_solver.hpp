@@ -88,9 +88,9 @@ namespace viennafvm
 
       if (pde_system.option(pde_index).geometric_update())
       {
-        if (update_value < 0)
-          new_value = current_value + alpha * ( update_value / (1.0 - A_n * ( update_value / current_value ) ));
-        else
+        //if (update_value < 0)
+        //  new_value = current_value + alpha * ( update_value / (1.0 - A_n * ( update_value / current_value ) ));
+        //else
           new_value = std::pow(current_value, 1.0 - alpha) * std::pow( current_value + update_value, alpha);
       }
       else
@@ -119,7 +119,7 @@ namespace viennafvm
       {
         nonlinear_iterations  = 100;
         nonlinear_breaktol    = 1.0e-3;
-        damping               = 1.0;
+        damping               = 0.5;
       }
 
       template<typename ProblemDescriptionT, typename PDESystemT, typename LinearSolverT>
