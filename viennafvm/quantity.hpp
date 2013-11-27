@@ -14,6 +14,8 @@
    license:    To be discussed, see file LICENSE in the ViennaFVM base directory
 ======================================================================= */
 
+#include <numeric>
+
 #include "viennafvm/forwards.h"
 
 #include "viennamath/forwards.h"
@@ -89,6 +91,17 @@ namespace viennafvm
             ++num;
         }
         return num;
+      }
+
+      bool are_entries_zero()
+      {
+        if( std::fabs(this->get_sum()) < 1.0E-20 ) return true;
+        else return false;
+      }
+
+      value_type get_sum()
+      {
+        return std::accumulate(values_.begin(), values_.end(), 0.0);
       }
 
       // possible design flaws:
