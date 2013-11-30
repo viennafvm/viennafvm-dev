@@ -69,6 +69,9 @@ namespace viennafvm
       ValueT get_value(associated_type const & elem) const         { return values_.at(viennafvm::traits::id(elem));         }
       void   set_value(associated_type const & elem, ValueT value) {        values_.at(viennafvm::traits::id(elem)) = value; }
 
+      ValueT operator()(associated_type const & elem) const                  { return this->get_value(elem); }
+      void   operator()(associated_type const & elem, ValueT const & value)  { this->set_value(elem, value); }
+
       // Dirichlet and Neumann
       ValueT get_boundary_value(associated_type const & elem) const         { return boundary_values_.at(viennafvm::traits::id(elem));         }
       void   set_boundary_value(associated_type const & elem, ValueT value) {        boundary_values_.at(viennafvm::traits::id(elem)) = value; }
