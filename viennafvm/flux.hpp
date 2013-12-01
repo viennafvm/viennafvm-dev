@@ -32,6 +32,11 @@
 #include "viennamath/manipulation/diff.hpp"
 #include "viennamath/manipulation/eval.hpp"
 
+#include "viennafvm/util.hpp"
+
+#include "viennagrid/algorithm/interface.hpp"
+#include "viennagrid/algorithm/centroid.hpp"
+
 namespace viennafvm
 {
 
@@ -694,6 +699,164 @@ namespace viennafvm
       viennamath::rt_expr<InterfaceType> B_;
   };
 
+
+
+  //
+  // Accessor for fluxes:
+  //
+  template <typename ProblemDescriptionT>
+  class flux_accessor
+  {
+    typedef typename ProblemDescriptionT::mesh_type     MeshType;
+
+    typedef typename viennagrid::result_of::facet<MeshType>::type       FacetType;
+    typedef typename viennagrid::result_of::cell<MeshType>::type        CellType;
+
+    typedef typename ProblemDescriptionT::quantity_container_type       QuantityContainerType;
+    typedef viennamath::rt_expr<>::interface_type                       InterfaceType;
+
+  public:
+
+    template <typename PDESystemT>
+    flux_accessor(ProblemDescriptionT const & problem_description, PDESystemT const & pde_system, viennamath::rt_function_symbol<> const & unknown)
+      : problem_description_(problem_description),
+        flux_(problem_description_.quantities(),
+              extract_surface_integrand<CellType>(problem_description_.quantities(), viennafvm::make_integral_form(pde_system.pde(unknown.id())).lhs(), unknown),
+              unknown),
+        unknown_index_(unknown.id()) {}
+
+    /** @brief Evaluates the global flux vector on a cell
+      *
+      * Since FVM uses a cell-centered approach, only the projections of the flux onto the facet normals are easily computable.
+      * This function computes the global flux vector out of these projections.
+      */
+    std::vector<double> operator()(CellType const & cell) const
+    {
+      //
+      // Algorithm: Iterate over first k facets (k ... spatial dimension), extract unit normals n_i,
+      //            setup linear system of equations for the project, then solve it.
+      //
+
+      std::vector<double> flux(viennagrid::result_of::topologic_cell_dimension<MeshType>::value);
+
+      if (flux.size() == 1) // 1d is trivial: Just take the flux from the facet in positive orientation
+      {
+        FacetType const & facet1 = viennagrid::facets(cell)[0];
+        FacetType const & facet2 = viennagrid::facets(cell)[1];
+
+        if (viennagrid::default_point_accessor(problem_description_.mesh())(facet1)[0] < viennagrid::default_point_accessor(problem_description_.mesh())(facet2)[0])
+        {
+          flux[0] = operator()(cell, facet2);
+          return flux;
+        }
+
+        flux[0] = operator()(cell, facet1);
+      }
+      else // solve projection equations:
+      {
+        throw "To be implemented!";
+      }
+
+      return flux;
+
+    }
+
+    /** @brief Evaluates the normal projection of the flux density onto the facet out of the provided cell.
+      *
+      * For example:
+      *    --------
+      *   |        |
+      *   |  Cell  | -->
+      *   |        | Flux out of cell w.r.t. the facet on the right
+      *    --------
+      *
+      *  @return The flux density projection. Multiply by facet volume if you want to have the total flux (rather than the density) through that facet.
+      */
+    double operator()(CellType const & cell, FacetType const & facet) const
+    {
+      typedef typename viennagrid::result_of::point<MeshType>::type     PointType;
+      typedef typename ProblemDescriptionT::quantity_type               QuantityType;
+
+      QuantityType const & quan = problem_description_.quantities()[unknown_index_];
+
+      CellType const * outer_cell = util::other_cell_of_facet(facet, cell, problem_description_.mesh());
+
+      if (outer_cell == NULL) // this is the mesh boundary, so no outflux here:
+        return 0;
+
+      long index_inner_cell = quan.get_unknown_index(cell);
+      long index_outer_cell = quan.get_unknown_index(*outer_cell);
+
+      if (index_inner_cell < 0 && index_outer_cell < 0) // We don't have any unknowns here, hence no flux
+        return 0;
+
+      // compute distance:
+      PointType centroid_1         = viennagrid::centroid(cell);
+      PointType centroid_2         = viennagrid::centroid(*outer_cell);
+      PointType center_connection  = centroid_2 - centroid_1;
+      double distance              = viennagrid::norm(center_connection);
+
+      // compute flux (same way as in matrix assembly in order to obtain consistent results)
+      double quan_outer = quan.get_value(*outer_cell);
+      double quan_inner = quan.get_value(cell);
+
+      return   flux_.out(cell, facet, *outer_cell, distance) * quan_outer
+             - flux_.in (cell, facet, *outer_cell, distance) * quan_inner;
+    }
+
+
+  private:
+    ProblemDescriptionT const & problem_description_;
+    viennafvm::flux_handler<QuantityContainerType, CellType, FacetType, InterfaceType> flux_;
+    long unknown_index_;
+  };
+
+
+
+  template <typename SegmentationT, typename FluxEvaluatorT>
+  double flux_between_segments(SegmentationT const & seg_src, SegmentationT const & seg_dest, FluxEvaluatorT const & flux_evaluator)
+  {
+    typedef typename viennagrid::result_of::point<SegmentationT>::type                 PointType;
+
+    typedef typename viennagrid::result_of::cell_tag<SegmentationT>::type                       CellTag;
+    typedef typename viennagrid::result_of::const_element_range<SegmentationT, CellTag>::type   CellContainer;
+    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
+
+    typedef typename viennagrid::result_of::cell<SegmentationT>::type                       CellType;
+    typedef typename viennagrid::result_of::facet_tag<SegmentationT>::type                  FacetTag;
+    typedef typename viennagrid::result_of::const_element_range<CellType, FacetTag>::type   FacetOnCellContainer;
+    typedef typename viennagrid::result_of::iterator<FacetOnCellContainer>::type            FacetOnCellIterator;
+
+    double total_flux = 0.0;
+
+    CellContainer cells(seg_src);
+    for (CellIterator cit = cells.begin(); cit != cells.end(); ++cit)
+    {
+      FacetOnCellContainer facets_on_cell(*cit);
+      for (FacetOnCellIterator focit = facets_on_cell.begin(); focit != facets_on_cell.end(); ++focit)
+      {
+        if (viennagrid::is_interface(seg_src, seg_dest, *focit))
+        {
+          CellType const * other_cell = util::other_cell_of_facet(*focit, *cit, seg_src.parent().mesh());
+
+          assert(other_cell != NULL && bool("Logic error: Interface facet only attached to one cell!"));
+
+          PointType centroid_1         = viennagrid::centroid(*cit);
+          PointType centroid_2         = viennagrid::centroid(*other_cell);
+          PointType center_connection  = centroid_1 - centroid_2;
+          PointType outer_normal       = util::unit_outer_normal(*focit, *cit, viennagrid::default_point_accessor(seg_src)); //note: consistent orientation of center_connection and outer_normal is important here!
+
+          double center_connection_len = viennagrid::norm(center_connection);
+          double effective_facet_ratio = viennagrid::inner_prod(center_connection, outer_normal) / center_connection_len;  // inner product of unit vectors
+          double effective_facet_area  = viennagrid::volume(*focit) * effective_facet_ratio;
+
+          total_flux += flux_evaluator(*cit, *focit) * effective_facet_area;
+        }
+      }
+    }
+
+    return total_flux;
+  }
 
 
 } // end namespace viennafvm
