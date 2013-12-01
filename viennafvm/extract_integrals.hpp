@@ -69,7 +69,7 @@ namespace viennafvm {
               integrated_expr = viennamath::rt_constant<NumericType, InterfaceType>(0);
           }
           else
-            throw "Cannot derive weak form!";
+            throw "Cannot extract integrand!";
         }
 
         void operator()(viennamath::rt_binary_expr<InterfaceType> const & bin) const
