@@ -33,6 +33,7 @@
 #include "viennamath/manipulation/eval.hpp"
 
 #include "viennafvm/util.hpp"
+#include "viennafvm/linalg.hpp"
 
 #include "viennagrid/algorithm/interface.hpp"
 #include "viennagrid/algorithm/centroid.hpp"
@@ -709,6 +710,8 @@ namespace viennafvm
   {
     typedef typename ProblemDescriptionT::mesh_type     MeshType;
 
+    typedef typename viennagrid::result_of::point<MeshType>::type       PointType;
+
     typedef typename viennagrid::result_of::facet<MeshType>::type       FacetType;
     typedef typename viennagrid::result_of::cell<MeshType>::type        CellType;
 
@@ -732,32 +735,42 @@ namespace viennafvm
     std::vector<double> operator()(CellType const & cell) const
     {
       //
-      // Algorithm: Iterate over first k facets (k ... spatial dimension), extract unit normals n_i,
-      //            setup linear system of equations for the project, then solve it.
+      // Algorithm: Iterate over first dim facets (dim ... spatial dimension), extract direction vectors,
+      //            setup linear system of equations for the projection, then solve it.
       //
 
-      std::vector<double> flux(viennagrid::result_of::topologic_cell_dimension<MeshType>::value);
+      std::size_t dim = viennagrid::result_of::topologic_cell_dimension<MeshType>::value;
 
-      if (flux.size() == 1) // 1d is trivial: Just take the flux from the facet in positive orientation
+      dense_matrix<double> A(dim, dim);
+      std::vector<double>  b(dim);
+
+      PointType cell_centroid         = viennagrid::centroid(cell);
+
+      for (std::size_t i=0; i<dim; ++i)
       {
-        FacetType const & facet1 = viennagrid::facets(cell)[0];
-        FacetType const & facet2 = viennagrid::facets(cell)[1];
-
-        if (viennagrid::default_point_accessor(problem_description_.mesh())(facet1)[0] < viennagrid::default_point_accessor(problem_description_.mesh())(facet2)[0])
+        for (std::size_t k=i; k<viennagrid::facets(cell).size()-1; ++k) //sum all facet contributions, but drop one to preserve linear independence
         {
-          flux[0] = operator()(cell, facet2);
-          return flux;
+          FacetType const & facet = viennagrid::facets(cell)[i];
+          b[i] += operator()(cell, facet);
+
+          PointType direction_vector;
+          CellType const * outer_cell = util::other_cell_of_facet(facet, cell, problem_description_.mesh());
+          if (!outer_cell)
+          {
+            direction_vector = util::unit_outer_normal(facet, cell, viennagrid::default_point_accessor(problem_description_.mesh()));
+          }
+          else
+          {
+            PointType center_connection  = viennagrid::centroid(*outer_cell) - cell_centroid;
+            direction_vector = center_connection / viennagrid::norm(center_connection);
+          }
+
+          for (std::size_t j=0; i<direction_vector.size(); ++j)
+            A(i,j) += direction_vector[j];
         }
-
-        flux[0] = operator()(cell, facet1);
-      }
-      else // solve projection equations:
-      {
-        throw "To be implemented!";
       }
 
-      return flux;
-
+      return solve(A, b);
     }
 
     /** @brief Evaluates the normal projection of the flux density onto the facet out of the provided cell.
