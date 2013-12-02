@@ -717,11 +717,10 @@ namespace viennafvm
 
   public:
 
-    template <typename PDESystemT>
-    flux_accessor(ProblemDescriptionT const & problem_description, PDESystemT const & pde_system, viennamath::rt_function_symbol<> const & unknown)
+    flux_accessor(ProblemDescriptionT const & problem_description, viennamath::rt_expr<> const & flux_term, viennamath::rt_function_symbol<> const & unknown)
       : problem_description_(problem_description),
         flux_(problem_description_.quantities(),
-              extract_surface_integrand<CellType>(problem_description_.quantities(), viennafvm::make_integral_form(pde_system.pde(unknown.id())).lhs(), unknown),
+              prepare_for_evaluation<CellType>(problem_description_.quantities(), flux_term, unknown),
               unknown),
         unknown_index_(unknown.id()) {}
 

@@ -234,8 +234,8 @@ int main()
   //
   // Compute fluxes:
   //
-  viennafvm::flux_accessor<viennafvm::problem_description<MeshType> > electron_current_density(problem_desc, pde_system, n);
-  viennafvm::flux_accessor<viennafvm::problem_description<MeshType> >     hole_current_density(problem_desc, pde_system, p);
+  viennafvm::flux_accessor<viennafvm::problem_description<MeshType> > electron_current_density(problem_desc, D * viennamath::grad(n) - mu * viennamath::grad(psi) * n, n);
+  viennafvm::flux_accessor<viennafvm::problem_description<MeshType> >     hole_current_density(problem_desc, D * viennamath::grad(p) + mu * viennamath::grad(psi) * p, p);
 
   std::cout << "Electron current out of left contact: " << 1.602e-19 * viennafvm::flux_between_segments(segmentation(1), segmentation(2), electron_current_density) << " A/m^2" << std::endl;
   std::cout << "Electron current into right contact:  " << 1.602e-19 * viennafvm::flux_between_segments(segmentation(4), segmentation(5), electron_current_density) << " A/m^2" << std::endl;
