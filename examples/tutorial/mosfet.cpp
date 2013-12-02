@@ -251,6 +251,14 @@ int main()
   viennafvm::pde_solver my_solver;
   my_solver(problem_desc, pde_system, linear_solver);   // weird math happening in here ;-)
 
+  viennafvm::flux_accessor<viennafvm::problem_description<MeshType> > electron_current_density(problem_desc, D * viennamath::grad(n) - mu * viennamath::grad(psi) * n, n);
+  viennafvm::flux_accessor<viennafvm::problem_description<MeshType> >     hole_current_density(problem_desc, D * viennamath::grad(p) + mu * viennamath::grad(psi) * p, p);
+
+  std::cout << "Electron current out of left contact: " << 1.602e-19 * viennafvm::flux_between_segments(segmentation(2), segmentation(5), electron_current_density) << " A/m^2" << std::endl;
+  std::cout << "Electron current into right contact:  " << 1.602e-19 * viennafvm::flux_between_segments(segmentation(6), segmentation(4), electron_current_density) << " A/m^2" << std::endl;
+
+  std::cout << "Hole current out of left contact: " << 1.602e-19 * viennafvm::flux_between_segments(segmentation(2), segmentation(5), hole_current_density) << " A/m^2" << std::endl;
+  std::cout << "Hole current into right contact:  " << 1.602e-19 * viennafvm::flux_between_segments(segmentation(6), segmentation(4), hole_current_density) << " A/m^2" << std::endl;
 
   //
   // Writing all solution variables back to mesh
