@@ -65,6 +65,7 @@ namespace viennafvm
       {}
 
       std::string get_name() const { return name_; }
+      void set_name(std::string name) { name_ = name; }
 
       ValueT get_value(associated_type const & elem) const         { return values_.at(viennafvm::traits::id(elem));         }
       void   set_value(associated_type const & elem, ValueT value) {        values_.at(viennafvm::traits::id(elem)) = value; }
@@ -84,6 +85,14 @@ namespace viennafvm
 
       long   get_unknown_index(associated_type const & elem) const       { return unknowns_indices_.at(viennafvm::traits::id(elem));         }
       void   set_unknown_index(associated_type const & elem, long value) {        unknowns_indices_.at(viennafvm::traits::id(elem)) = value; }
+
+      void scale_values(ValueT factor)
+      {
+        std::transform(values_.begin(), values_.end(), values_.begin(),
+                       std::bind2nd(std::multiplies<ValueT>(), factor));
+        std::transform(boundary_values_.begin(), boundary_values_.end(), boundary_values_.begin(),
+                       std::bind2nd(std::multiplies<ValueT>(), factor));
+      }
 
       std::size_t get_unknown_num() const
       {
