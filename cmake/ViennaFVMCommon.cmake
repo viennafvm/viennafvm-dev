@@ -54,7 +54,9 @@ configure_file(cmake/ViennaFVMConfig.cmake.in
 configure_file(cmake/ViennaFVMConfigVersion.cmake.in
    ${PROJECT_BINARY_DIR}/ViennaFVMConfigVersion.cmake @ONLY)
 
-export(PACKAGE ViennaCL)
+if (CMAKE_MINOR_VERSION GREATER 6)  # export(PACKAGE ...) introduced with CMake 2.8.0
+  export(PACKAGE ViennaFVM)
+endif()
 
 # Install
 #########
