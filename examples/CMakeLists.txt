@@ -11,7 +11,7 @@ set(EXAMPLES_TESTDATA
    data/square128.mesh
    data/square8.mesh
    )
-foreach(f IN LISTS EXAMPLES_TESTDATA)
+foreach(f ${EXAMPLES_TESTDATA})
    configure_file(${f} "${CMAKE_CURRENT_BINARY_DIR}/${f}" COPYONLY)
 endforeach()
 
