@@ -25,6 +25,8 @@
 #include "viennagrid/forwards.hpp"
 #include "viennagrid/mesh/segmentation.hpp"
 
+#include <map>
+
 /** @file  boundary.hpp
     @brief Provide convenience routines for setting boundary conditions
 */
@@ -54,11 +56,11 @@ namespace viennafvm
   }
 
   /** @brief Assigns values to the quantity of all cells of the segment or mesh. 
-             The access index of the values container must correspond to the cell IDs. */
+             The keys of the 'values' container must correspond to the cell IDs. */
   template <typename QuantityType, typename DomainSegmentType>
-  void set_dirichlet_boundary(QuantityType                & quan,
-                              DomainSegmentType     const & seg,
-                              std::vector<double>   const & values)
+  void set_dirichlet_boundary(QuantityType                          & quan,
+                              DomainSegmentType               const & seg,
+                              std::map<std::size_t, double>   const & values)
   {
     typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
 
@@ -70,7 +72,7 @@ namespace viennafvm
                       cit != cells.end();
                     ++cit)
     {
-      quan.set_boundary_value(*cit, values[cit->id().get()]);
+      quan.set_boundary_value(*cit, values.at(cit->id().get()));
       quan.set_boundary_type(*cit, viennafvm::BOUNDARY_DIRICHLET);
     }
   }
@@ -129,11 +131,11 @@ namespace viennafvm
   }
 
   /** @brief Set the values of a quantity on all cells according to an externally provided values container. 
-             The access index of the values container must correspond to the cell IDs.*/
+             The keys of the 'values' container must correspond to the cell IDs. */
   template <typename QuantityType, typename DomainSegmentType>
-  void set_initial_value(QuantityType               & quan,
-                         DomainSegmentType    const & seg,
-                         std::vector<double>  const & values)
+  void set_initial_value(QuantityType                         & quan,
+                         DomainSegmentType              const & seg,
+                         std::map<std::size_t, double>  const & values)
   {
     typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
 
@@ -145,7 +147,7 @@ namespace viennafvm
                       cit != cells.end();
                     ++cit)
     {
-      quan.set_value(*cit, values[cit->id().get()]);
+      quan.set_value(*cit, values.at(cit->id().get()));
     }
   }
 
