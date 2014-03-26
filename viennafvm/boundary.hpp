@@ -171,7 +171,7 @@ namespace viennafvm
     }
   }
 
-  /** @brief Assign the quantity based on an unary functor returning cell-based values */
+  /** @brief Assign the quantity based on an unary functor taking the cell id as input and returning the corresponding cell-based values */
   template <typename QuantityType, typename DomainSegmentType, typename FunctorT>
   void set_initial_value(QuantityType & quan,
                          DomainSegmentType const & seg,
@@ -187,7 +187,27 @@ namespace viennafvm
                       cit != cells.end();
                     ++cit)
     {
-      quan.set_value(*cit, functor(*cit));
+      quan.set_value(*cit, functor(cit->id().get()));
+    }
+  }
+
+  /** @brief Assign the quantity based on a pointer to a unary functor taking the cell id as input and returning the corresponding cell-based values */
+  template <typename QuantityType, typename DomainSegmentType, typename FunctorT>
+  void set_initial_value(QuantityType            & quan,
+                         DomainSegmentType const & seg,
+                         FunctorT                * functor)
+  {
+    typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
+
+    typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type  CellContainer;
+    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
+
+    CellContainer cells(seg);
+    for (CellIterator cit  = cells.begin();
+                      cit != cells.end();
+                    ++cit)
+    {
+      quan.set_value(*cit, (*functor)(cit->id().get()));
     }
   }
 

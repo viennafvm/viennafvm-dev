@@ -67,11 +67,17 @@ namespace viennafvm
       std::string get_name() const { return name_; }
       void set_name(std::string name) { name_ = name; }
 
-      ValueT get_value(associated_type const & elem) const         { return values_.at(viennafvm::traits::id(elem));         }
-      void   set_value(associated_type const & elem, ValueT value) {        values_.at(viennafvm::traits::id(elem)) = value; }
+      ValueT get_value(std::size_t     const & elem_id)    const         { return values_.at(elem_id);         }
+      ValueT get_value(associated_type const & elem)       const         { return values_.at(viennafvm::traits::id(elem));         }
+      
+      void   set_value(std::size_t     const & elem_id, ValueT value)       { values_.at(elem_id) = value; }
+      void   set_value(associated_type const & elem,    ValueT value)       { values_.at(viennafvm::traits::id(elem)) = value; }
 
-      ValueT operator()(associated_type const & elem) const                  { return this->get_value(elem); }
-      void   operator()(associated_type const & elem, ValueT const & value)  { this->set_value(elem, value); }
+      ValueT operator()(std::size_t     const & elem_id) const                  { return this->get_value(elem_id); }
+      ValueT operator()(associated_type const & elem)    const                  { return this->get_value(elem); }
+
+      void   operator()(std::size_t     const & elem_id, ValueT const & value)  { this->set_value(elem_id, value); }
+      void   operator()(associated_type const & elem,    ValueT const & value)  { this->set_value(elem,    value); }
 
       // Dirichlet and Neumann
       ValueT get_boundary_value(associated_type const & elem) const         { return boundary_values_.at(viennafvm::traits::id(elem));         }
