@@ -55,28 +55,6 @@ namespace viennafvm
     }
   }
 
-  /** @brief Assigns values to the quantity of all cells of the segment or mesh. 
-             The keys of the 'values' container must correspond to the cell IDs. */
-  template <typename QuantityType, typename DomainSegmentType>
-  void set_dirichlet_boundary(QuantityType                          & quan,
-                              DomainSegmentType               const & seg,
-                              std::map<std::size_t, double>   const & values)
-  {
-    typedef typename viennagrid::result_of::cell_tag<DomainSegmentType>::type CellTag;
-
-    typedef typename viennagrid::result_of::const_element_range<DomainSegmentType, CellTag>::type  CellContainer;
-    typedef typename viennagrid::result_of::iterator<CellContainer>::type                       CellIterator;
-
-    CellContainer cells(seg);
-    for (CellIterator cit  = cells.begin();
-                      cit != cells.end();
-                    ++cit)
-    {
-      quan.set_boundary_value(*cit, values.at(cit->id().get()));
-      quan.set_boundary_type(*cit, viennafvm::BOUNDARY_DIRICHLET);
-    }
-  }
-
   /** @brief Adds a value to an already assigned quantity value on all cells of the segment or mesh */
   template <typename QuantityType, typename DomainSegmentType>
   void addto_dirichlet_boundary(QuantityType & quan,
