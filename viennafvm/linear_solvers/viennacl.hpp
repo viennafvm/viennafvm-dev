@@ -76,7 +76,6 @@ struct viennacl
 
   std::size_t   last_iterations()   { return last_iterations_; }
   double        last_error()        { return last_error_;      }
-  float         last_pc_time()      { return last_pc_time_;    }
   float         last_solver_time()  { return last_solver_time_;}
 
   template <typename MatrixT, typename VectorT>
@@ -124,7 +123,6 @@ private:
     if(pc_id_ == viennafvm::linsolv::viennacl::preconditioner_ids::none)
     {
 //      std::cout << "using pc: none .. " << std::endl;
-      last_pc_time_ = 0.0;
       timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver);
       last_solver_time_ = timer.get();
@@ -133,14 +131,10 @@ private:
     if(pc_id_ == viennafvm::linsolv::viennacl::preconditioner_ids::ilu0)
     {
 //      std::cout << "using pc: ilu0 .. " << std::endl;
+      timer.start();
       ::viennacl::linalg::ilu0_tag pc_config;
       pc_config.use_level_scheduling(false);
-
-      timer.start();
       ::viennacl::linalg::ilu0_precond<MatrixT>    preconditioner(A, pc_config);
-      last_pc_time_ = timer.get();
-
-      timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver, preconditioner);
       last_solver_time_ = timer.get();
     }
@@ -148,16 +142,12 @@ private:
     if(pc_id_ == viennafvm::linsolv::viennacl::preconditioner_ids::ilut)
     {
 //      std::cout << "using pc: ilut .. " << std::endl;
+      timer.start();
       ::viennacl::linalg::ilut_tag pc_config;
       pc_config.set_drop_tolerance(1.0e-4);
       pc_config.set_entries_per_row(40);
       pc_config.use_level_scheduling(false);
-
-      timer.start();
       ::viennacl::linalg::ilut_precond<MatrixT>    preconditioner(A, pc_config);
-      last_pc_time_ = timer.get();
-
-      timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver, preconditioner);
       last_solver_time_ = timer.get();
     }
@@ -165,14 +155,10 @@ private:
     if(pc_id_ == viennafvm::linsolv::viennacl::preconditioner_ids::block_ilu)
     {
 //      std::cout << "using pc: block ilu .. " << std::endl;
+      timer.start();
       ::viennacl::linalg::ilu0_tag pc_config;
       pc_config.use_level_scheduling(false);
-
-      timer.start();
       ::viennacl::linalg::block_ilu_precond<MatrixT, ::viennacl::linalg::ilu0_tag>    preconditioner(A, pc_config);
-      last_pc_time_ = timer.get();
-
-      timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver, preconditioner);
       last_solver_time_ = timer.get();
     }
@@ -182,9 +168,6 @@ private:
 //      std::cout << "using pc: jacobi .. " << std::endl;
       timer.start();
       ::viennacl::linalg::jacobi_precond<MatrixT>    preconditioner(A, ::viennacl::linalg::jacobi_tag());
-      last_pc_time_ = timer.get();
-
-      timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver, preconditioner);
       last_solver_time_ = timer.get();
     }
@@ -194,9 +177,6 @@ private:
 //      std::cout << "using pc: row_scaling .. " << std::endl;
       timer.start();
       ::viennacl::linalg::row_scaling<MatrixT>    preconditioner(A, ::viennacl::linalg::row_scaling_tag());
-      last_pc_time_ = timer.get();
-
-      timer.start();
       x = ::viennacl::linalg::solve(A, b, linear_solver, preconditioner);
       last_solver_time_ = timer.get();
     }
@@ -254,7 +234,6 @@ private:
 
   std::size_t last_iterations_;
   double      last_error_;
-  float       last_pc_time_;
   float       last_solver_time_;
 
 };

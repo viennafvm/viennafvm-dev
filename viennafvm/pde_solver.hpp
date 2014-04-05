@@ -163,7 +163,6 @@ namespace viennafvm
             VectorType update;
             linear_solver(system_matrix, load_vector, update);
           #ifdef VIENNAFVM_VERBOSE
-            std::cout << "   Precond time  : " << std::fixed << linear_solver.last_pc_time() << " s" << std::endl;
             std::cout << "   Solver time   : " << std::fixed << linear_solver.last_solver_time() << " s" << std::endl;
           #endif
 
@@ -250,7 +249,6 @@ namespace viennafvm
                 VectorType update;
                 linear_solver(system_matrix, load_vector, update);
               #ifdef VIENNAFVM_VERBOSE
-                std::cout << "   Precond time  : " << std::fixed << linear_solver.last_pc_time() << " s" << std::endl;
                 std::cout << "   Solver time   : " << std::fixed << linear_solver.last_solver_time() << " s" << std::endl;
               #endif
 
