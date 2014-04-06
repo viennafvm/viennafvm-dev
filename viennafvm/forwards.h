@@ -20,6 +20,12 @@
 
 #define NUM_PI 3.1415926535897932384626433832795
 
+
+#include <boost/numeric/ublas/io.hpp>
+#include <boost/numeric/ublas/matrix_sparse.hpp>
+#include <boost/numeric/ublas/operation.hpp>
+#include <boost/numeric/ublas/operation_sparse.hpp>
+
 namespace viennafvm
 {
 
@@ -28,7 +34,16 @@ namespace viennafvm
    *  Feel free to change this typedef to a high-precision type if required.
    *  Keep in mind that only float and double types can be used for GPU acceleration.
    */
-  typedef double             numeric_type;
+  typedef double                                                  numeric_type;
+
+  /** @brief The default matrix type primarily used to hold the system matrix
+   */
+  typedef boost::numeric::ublas::compressed_matrix<viennafvm::numeric_type>    matrix_type;
+
+  /** @brief The default vector type primarily used to hold the RHS and the solution vector
+   */
+  typedef boost::numeric::ublas::vector<viennafvm::numeric_type>               vector_type;
+
 
   enum
   {

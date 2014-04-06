@@ -15,11 +15,6 @@
    license:    see file LICENSE in the ViennaFVM base directory
 ======================================================================= */
 
-#include <boost/numeric/ublas/io.hpp>
-#include <boost/numeric/ublas/matrix_sparse.hpp>
-#include <boost/numeric/ublas/operation.hpp>
-#include <boost/numeric/ublas/operation_sparse.hpp>
-
 #ifdef VIENNAFVM_VERBOSE
 #include "viennafvm/timer.hpp"
 #endif
@@ -109,11 +104,9 @@ namespace viennafvm
 
   class pde_solver
   {
-      typedef boost::numeric::ublas::compressed_matrix<viennafvm::numeric_type>    MatrixType;
-      typedef boost::numeric::ublas::vector<viennafvm::numeric_type>               VectorType;
-
     public:
       typedef viennafvm::numeric_type numeric_type;
+
 
       pde_solver()
       {
@@ -145,8 +138,8 @@ namespace viennafvm
             std::cout << " ------------------------------------------" << std::endl;
           #endif
 
-            MatrixType system_matrix;
-            VectorType load_vector;
+            viennafvm::matrix_type   system_matrix;
+            viennafvm::vector_type   load_vector;
 
           #ifdef VIENNAFVM_VERBOSE
             viennafvm::Timer subtimer;
@@ -160,7 +153,7 @@ namespace viennafvm
             std::cout << "   Assembly time : " << std::fixed << subtimer.get() << " s" << std::endl;
           #endif
 
-            VectorType update;
+            viennafvm::vector_type  update;
             linear_solver(system_matrix, load_vector, update);
           #ifdef VIENNAFVM_VERBOSE
             std::cout << "   Solver time   : " << std::fixed << linear_solver.last_solver_time() << " s" << std::endl;
@@ -230,8 +223,8 @@ namespace viennafvm
               #endif
 
 
-                MatrixType system_matrix;
-                VectorType load_vector;
+                viennafvm::matrix_type system_matrix;
+                viennafvm::vector_type load_vector;
 
               #ifdef VIENNAFVM_VERBOSE
                 viennafvm::Timer subtimer;
@@ -246,7 +239,7 @@ namespace viennafvm
                 std::cout << "   Assembly time : " << std::fixed << subtimer.get() << " s" << std::endl;
               #endif
 
-                VectorType update;
+                viennafvm::vector_type update;
                 linear_solver(system_matrix, load_vector, update);
               #ifdef VIENNAFVM_VERBOSE
                 std::cout << "   Solver time   : " << std::fixed << linear_solver.last_solver_time() << " s" << std::endl;
