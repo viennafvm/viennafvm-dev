@@ -34,7 +34,7 @@
 #include "viennagrid/config/default_configs.hpp"
 #include "viennagrid/io/netgen_reader.hpp"
 #include "viennagrid/io/vtk_writer.hpp"
-#include "viennagrid/algorithm/scale.hpp"
+#include "viennagrid/algorithm/geometric_transform.hpp"
 
 // ViennaData includes:
 #include "viennadata/api.hpp"
