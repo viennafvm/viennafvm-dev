@@ -92,7 +92,7 @@ namespace viennafvm
         return quantities_.back();
       }
 
-      QuantityType & get_quantity(std::string name)
+      QuantityType & get_quantity(std::string const & name)
       {
         for (std::size_t i=0; i<quantities_.size(); ++i)
           if (quantities_[i].get_name() == name)
@@ -101,7 +101,7 @@ namespace viennafvm
         throw quantity_not_found_exception(name);
       }
 
-      QuantityType const & get_quantity(std::string name) const
+      QuantityType const & get_quantity(std::string const & name) const
       {
         for (std::size_t i=0; i<quantities_.size(); ++i)
           if (quantities_[i].get_name() == name)
@@ -110,32 +110,17 @@ namespace viennafvm
         throw quantity_not_found_exception(name);
       }
 
-      bool has_quantity(std::string name)
+      bool has_quantity(std::string const & name) const
       {
         for (std::size_t i=0; i<quantities_.size(); ++i)
           if (quantities_[i].get_name() == name)
             return true;
         return false;
-      }
-
-      bool has_quantity(std::string name) const
-      {
-        for (std::size_t i=0; i<quantities_.size(); ++i)
-          if (quantities_[i].get_name() == name)
-            return true;
-        return false;
-      }
-
-      bool has_mesh()
-      {
-        if(mesh_) return true;
-        else      return false;
       }
 
       bool has_mesh() const
       {
-        if(mesh_) return true;
-        else      return false;
+        return static_cast<bool>(mesh_);
       }
 
       MeshType const & mesh() const { return *mesh_; }
