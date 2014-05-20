@@ -168,7 +168,7 @@ namespace viennafvm
 
           #ifdef VIENNAFVM_VERBOSE
             subtimer.start();
-            numeric_type update_norm = apply_update(pde_system, pde_index, problem_description.mesh(), problem_description.quantities(), update, damping);
+            numeric_type update_norm = apply_update(pde_system, pde_index, problem_description.mesh(), problem_description.quantities(), update, 1.0);
           #else
             apply_update(pde_system, pde_index, problem_description.mesh(), problem_description.quantities(), update, 1.0);  //this is linear, so there's no need for any damping
           #endif
@@ -198,8 +198,12 @@ namespace viennafvm
           #endif
 
             if(linear_solver.last_iterations() == linear_solver.max_iterations())
-              return false;
-            else return true;
+	    {
+	      #ifdef VIENNAFVM_VERBOSE
+		std::cout << "   Linear Solver for pde: " << pde_index << "failed to converge" << std::endl;
+	      #endif
+	      return false; // TODO: should we stop solving here?
+	    }
           }
         }
         else // nonlinear
@@ -319,19 +323,7 @@ namespace viennafvm
 
           } // nonlinear for-loop
 
-          if(converged)
-          {
-          #ifdef VIENNAFVM_VERBOSE
-              std::cout << std::endl;
-              std::cout << "--------" << std::endl;
-              std::cout << "Success: Simulation converged successfully!" << std::endl;
-              std::cout << "  Update norm of observed variable reached the break-tolerance of " << nonlinear_breaktol
-                        << " in " << required_nonlinear_iterations << " iterations" << std::endl;
-              std::cout << "--------" << std::endl;
-          #endif
-              return true;
-          }
-          else
+          if(!converged)
           {
           #ifdef VIENNAFVM_VERBOSE
               std::cout << std::endl;
@@ -341,10 +333,19 @@ namespace viennafvm
                         << " in " << nonlinear_iterations << " iterations" << std::endl;
               std::cout << "--------" << std::endl;
           #endif
-              return false;
+	      return false;
           }
+
+          #ifdef VIENNAFVM_VERBOSE
+	  std::cout << std::endl;
+	  std::cout << "--------" << std::endl;
+	  std::cout << "Success: Simulation converged successfully!" << std::endl;
+	  std::cout << "  Update norm of observed variable reached the break-tolerance of " << nonlinear_breaktol
+		    << " in " << required_nonlinear_iterations << " iterations" << std::endl;
+	  std::cout << "--------" << std::endl;
+          #endif
         }
-        return true; // should be never the case: TODO Design flow, restructure if/else conditions appropriatly
+        return true;
       }
 
       std::size_t get_nonlinear_iterations() { return nonlinear_iterations; }
