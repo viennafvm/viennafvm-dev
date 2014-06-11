@@ -119,7 +119,7 @@ int main()
   }
 
 
-  problem_desc.add_quantity("permittivity");
+  problem_desc.add_quantity("permittivity", 1.0);
 
   // Specify Poisson equation:
   FunctionSymbol u(0, viennamath::unknown_tag<>());   //an unknown function used for PDE specification

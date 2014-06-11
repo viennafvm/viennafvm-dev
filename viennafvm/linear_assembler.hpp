@@ -256,19 +256,19 @@ namespace viennafvm
                 double current_value  = quan.get_value(*cit);
 
                 // updates are homogeneous, hence no direct contribution to RHS here. Might change later when boundary values are slowly increased.
-                load_vector(row_index)              -= flux.out(*cit, *focit, *other_cell, distance) * effective_facet_area * (boundary_value - current_value);
+                load_vector[row_index]              -= flux.out(*cit, *focit, *other_cell, distance) * effective_facet_area * (boundary_value - current_value);
                 system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell, distance) * effective_facet_area;
 
-                load_vector(row_index) -= flux.out(*cit, *focit, *other_cell, distance) * effective_facet_area * current_value;
-                load_vector(row_index) += flux.in(*cit, *focit, *other_cell, distance) * effective_facet_area * quan.get_value(*cit);
+                load_vector[row_index] -= flux.out(*cit, *focit, *other_cell, distance) * effective_facet_area * current_value;
+                load_vector[row_index] += flux.in(*cit, *focit, *other_cell, distance) * effective_facet_area * quan.get_value(*cit);
               }
               else if (col_index >= 0)
               {
                 system_matrix(row_index, col_index) += flux.out(*cit, *focit, *other_cell, distance) * effective_facet_area;
                 system_matrix(row_index, row_index) -= flux.in(*cit, *focit, *other_cell, distance) * effective_facet_area;
 
-                load_vector(row_index) -= flux.out(*cit, *focit, *other_cell, distance) * effective_facet_area * quan.get_value(*other_cell);
-                load_vector(row_index) += flux.in(*cit, *focit, *other_cell, distance) * effective_facet_area * quan.get_value(*cit);
+                load_vector[row_index] -= flux.out(*cit, *focit, *other_cell, distance) * effective_facet_area * quan.get_value(*other_cell);
+                load_vector[row_index] += flux.in(*cit, *focit, *other_cell, distance) * effective_facet_area * quan.get_value(*cit);
               }
               // else: nothing to do because other cell is not considered for this quantity
 
@@ -284,14 +284,14 @@ namespace viennafvm
           viennamath::rt_traversal_wrapper<interface_type> cell_updater(new detail::ncell_updater<CellType, interface_type>(*cit));
           substituted_matrix_omega_integrand.get()->recursive_traversal(cell_updater);
           system_matrix(row_index, row_index) += viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume;
-          load_vector(row_index) -= viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume * quan.get_value(*cit);
+          load_vector[row_index] -= viennamath::eval(substituted_matrix_omega_integrand, p) * cell_volume * quan.get_value(*cit);
 
           stabilization_integrand.get()->recursive_traversal(cell_updater);
           system_matrix(row_index, row_index) += viennamath::eval(stabilization_integrand, p) * cell_volume;
 
           // RHS
           rhs_omega_integrand.get()->recursive_traversal(cell_updater);
-          load_vector(row_index) += viennamath::eval(rhs_omega_integrand, p) * cell_volume;
+          load_vector[row_index] += viennamath::eval(rhs_omega_integrand, p) * cell_volume;
           //std::cout << "Writing " << viennamath::eval(rhs_omega_integrand, p) << " * " << cell_volume << " to rhs at " << row_index << std::endl;
 
         } // for cells

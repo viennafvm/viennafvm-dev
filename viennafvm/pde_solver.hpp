@@ -15,11 +15,6 @@
    license:    see file LICENSE in the ViennaFVM base directory
 ======================================================================= */
 
-#include <boost/numeric/ublas/io.hpp>
-#include <boost/numeric/ublas/matrix_sparse.hpp>
-#include <boost/numeric/ublas/operation.hpp>
-#include <boost/numeric/ublas/operation_sparse.hpp>
-
 #ifdef VIENNAFVM_VERBOSE
 #include "viennafvm/timer.hpp"
 #endif
@@ -27,6 +22,7 @@
 #include "viennafvm/quantity.hpp"
 #include "viennafvm/linear_assembler.hpp"
 #include "viennafvm/linear_solvers/viennacl.hpp"
+#include "viennafvm/linalg.hpp"
 
 namespace viennafvm
 {
@@ -63,7 +59,7 @@ namespace viennafvm
         double update_value  = quan.get_value(*cit);
 
         if (quan.get_unknown_index(*cit) >= 0)
-          update_value = update(quan.get_unknown_index(*cit));
+          update_value = update[quan.get_unknown_index(*cit)];
         else
           update_value = quan.get_boundary_value(*cit) - current_value;
 
@@ -80,7 +76,7 @@ namespace viennafvm
       double update_value  = quan.get_value(*cit);
 
       if (quan.get_unknown_index(*cit) >= 0)
-        update_value = update(quan.get_unknown_index(*cit));
+        update_value = update[quan.get_unknown_index(*cit)];
       else
         update_value = quan.get_boundary_value(*cit) - current_value;
 
@@ -109,8 +105,8 @@ namespace viennafvm
 
   class pde_solver
   {
-      typedef boost::numeric::ublas::compressed_matrix<viennafvm::numeric_type>    MatrixType;
-      typedef boost::numeric::ublas::vector<viennafvm::numeric_type>               VectorType;
+      typedef viennafvm::sparse_matrix<viennafvm::numeric_type>    MatrixType;
+      typedef std::vector<viennafvm::numeric_type>                 VectorType;
 
     public:
       typedef viennafvm::numeric_type numeric_type;
@@ -198,12 +194,12 @@ namespace viennafvm
           #endif
 
             if(linear_solver.last_iterations() == linear_solver.max_iterations())
-	    {
-	      #ifdef VIENNAFVM_VERBOSE
-		std::cout << "   Linear Solver for pde: " << pde_index << "failed to converge" << std::endl;
-	      #endif
-	      return false; // TODO: should we stop solving here?
-	    }
+      {
+        #ifdef VIENNAFVM_VERBOSE
+    std::cout << "   Linear Solver for pde: " << pde_index << "failed to converge" << std::endl;
+        #endif
+        return false; // TODO: should we stop solving here?
+      }
           }
         }
         else // nonlinear
@@ -333,16 +329,16 @@ namespace viennafvm
                         << " in " << nonlinear_iterations << " iterations" << std::endl;
               std::cout << "--------" << std::endl;
           #endif
-	      return false;
+        return false;
           }
 
           #ifdef VIENNAFVM_VERBOSE
-	  std::cout << std::endl;
-	  std::cout << "--------" << std::endl;
-	  std::cout << "Success: Simulation converged successfully!" << std::endl;
-	  std::cout << "  Update norm of observed variable reached the break-tolerance of " << nonlinear_breaktol
-		    << " in " << required_nonlinear_iterations << " iterations" << std::endl;
-	  std::cout << "--------" << std::endl;
+    std::cout << std::endl;
+    std::cout << "--------" << std::endl;
+    std::cout << "Success: Simulation converged successfully!" << std::endl;
+    std::cout << "  Update norm of observed variable reached the break-tolerance of " << nonlinear_breaktol
+        << " in " << required_nonlinear_iterations << " iterations" << std::endl;
+    std::cout << "--------" << std::endl;
           #endif
         }
         return true;
