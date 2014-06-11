@@ -85,12 +85,7 @@ struct viennacl
     MatrixT A2(A);
     VectorT b2(b);
 
-    std::cout << "A2: " << A2 << std::endl;
     viennafvm::row_normalize_system(A2, b2);
-
-    std::cout << "b: ";
-    std::copy(b.begin(), b.end(), std::ostream_iterator<ScalarType>(std::cout, " "));
-    std::cout << std::endl;
 
     ::viennacl::compressed_matrix<ScalarType> vcl_A;
     ::viennacl::vector<ScalarType> vcl_b(b.size());
@@ -127,9 +122,6 @@ struct viennacl
     {
       std::cerr << "[ERROR] ViennaFVM::LinearSolver: solver not supported .. " << std::endl;
     }
-
-    std::cout << "vcl_b: " << vcl_b << std::endl;
-    std::cout << "vcl_x: " << vcl_x << std::endl;
 
     x.resize(vcl_x.size());
     ::viennacl::copy(vcl_x, x);
