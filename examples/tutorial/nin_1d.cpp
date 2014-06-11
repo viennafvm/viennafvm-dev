@@ -13,9 +13,6 @@
 
 //#define VIENNAFVM_DEBUG
 
-// Define NDEBUG to get any reasonable performance with ublas:
-//#define NDEBUG
-
 // include necessary system headers
 #include <iostream>
 

@@ -18,10 +18,8 @@
 #include <map>
 #include <vector>
 
-#ifndef VIENNACL_HAVE_UBLAS
- #define VIENNACL_HAVE_UBLAS
-#endif
-
+#include "viennacl/vector.hpp"
+#include "viennacl/compressed_matrix.hpp"
 #include "viennacl/linalg/cg.hpp"
 #include "viennacl/linalg/bicgstab.hpp"
 #include "viennacl/linalg/gmres.hpp"
@@ -31,6 +29,7 @@
 #include "viennacl/linalg/jacobi_precond.hpp"
 #include "viennacl/linalg/row_scaling.hpp"
 #include "viennafvm/timer.hpp"
+#include "viennafvm/linalg.hpp"
 
 namespace viennafvm {
 
@@ -41,29 +40,29 @@ struct viennacl
 
   struct preconditioner_ids
   {
-    enum 
-    { 
+    enum
+    {
       none,
-      ilu0, 
-      ilut, 
+      ilu0,
+      ilut,
       block_ilu,
-      jacobi, 
+      jacobi,
       row_scaling
     };
   };
 
   struct solver_ids
   {
-    enum 
-    { 
+    enum
+    {
       cg,
-      bicgstab, 
-      gmres 
+      bicgstab,
+      gmres
     };
   };
 
-  viennacl() : pc_id_(viennafvm::linsolv::viennacl::preconditioner_ids::ilu0), 
-               solver_id_(viennafvm::linsolv::viennacl::solver_ids::bicgstab), 
+  viennacl() : pc_id_(viennafvm::linsolv::viennacl::preconditioner_ids::ilu0),
+               solver_id_(viennafvm::linsolv::viennacl::solver_ids::bicgstab),
                break_tolerance_(1.0e-14),
                max_iterations_(1000)
   {
@@ -79,9 +78,26 @@ struct viennacl
   float         last_solver_time()  { return last_solver_time_;}
 
   template <typename MatrixT, typename VectorT>
-  void operator()(MatrixT& A, VectorT& b, VectorT& x)
+  void operator()(MatrixT const & A, VectorT const & b, VectorT& x)
   {
-    row_normalize_system(A, b); 
+    typedef typename VectorT::value_type   ScalarType;
+
+    MatrixT A2(A);
+    VectorT b2(b);
+
+    std::cout << "A2: " << A2 << std::endl;
+    viennafvm::row_normalize_system(A2, b2);
+
+    std::cout << "b: ";
+    std::copy(b.begin(), b.end(), std::ostream_iterator<ScalarType>(std::cout, " "));
+    std::cout << std::endl;
+
+    ::viennacl::compressed_matrix<ScalarType> vcl_A;
+    ::viennacl::vector<ScalarType> vcl_b(b.size());
+    ::viennacl::vector<ScalarType> vcl_x(b.size());
+
+    ::viennacl::copy(A2.get(), vcl_A);
+    ::viennacl::copy(b2, vcl_b);
 
     //
     // Determine the linear solver kernel and forward to an internal solve method
@@ -91,26 +107,32 @@ struct viennacl
     {
 //      std::cout << "using solver: bicgstab .. " << std::endl;
       ::viennacl::linalg::bicgstab_tag  solver_tag(break_tolerance_, max_iterations_);
-      solve_intern(A, b, x, solver_tag);
+      solve_intern(vcl_A, vcl_b, vcl_x, solver_tag);
     }
     else
     if(solver_id_ == viennafvm::linsolv::viennacl::solver_ids::gmres)
     {
 //      std::cout << "using solver: gmres .. " << std::endl;
       ::viennacl::linalg::gmres_tag     solver_tag(break_tolerance_, max_iterations_);
-      solve_intern(A, b, x, solver_tag);
+      solve_intern(vcl_A, vcl_b, vcl_x, solver_tag);
     }
     else
     if(solver_id_ == viennafvm::linsolv::viennacl::solver_ids::cg)
     {
 //      std::cout << "using solver: cg .. " << std::endl;
       ::viennacl::linalg::cg_tag        solver_tag(break_tolerance_, max_iterations_);
-      solve_intern(A, b, x, solver_tag);
+      solve_intern(vcl_A, vcl_b, vcl_x, solver_tag);
     }
     else
     {
       std::cerr << "[ERROR] ViennaFVM::LinearSolver: solver not supported .. " << std::endl;
     }
+
+    std::cout << "vcl_b: " << vcl_b << std::endl;
+    std::cout << "vcl_x: " << vcl_x << std::endl;
+
+    x.resize(vcl_x.size());
+    ::viennacl::copy(vcl_x, x);
   }
 
 private:
@@ -187,43 +209,6 @@ private:
     }
     last_iterations_ = linear_solver.iters();
     last_error_      = linear_solver.error();
-  }
-
-
-
-  template <typename NumericT>
-  void row_normalize_system(boost::numeric::ublas::compressed_matrix<NumericT> & A, 
-                            boost::numeric::ublas::vector<NumericT>            & b)
-  {
-      typedef typename boost::numeric::ublas::compressed_matrix<NumericT>::iterator1    Iterator1;
-      typedef typename boost::numeric::ublas::compressed_matrix<NumericT>::iterator2    Iterator2;
-
-      //preprocessing: scale rows such that ||a_i|| = 1
-      for (Iterator1 iter1  = A.begin1();
-          iter1 != A.end1();
-        ++iter1)
-      {
-        double row_norm = 0.0;
-        for (Iterator2 iter2  = iter1.begin();
-          iter2 != iter1.end();
-        ++iter2)
-        {
-          row_norm += *iter2 * *iter2;
-        }
-
-        row_norm = sqrt(row_norm);
-
-        if (A(iter1.index1(), iter1.index1()) < 0.0)
-          row_norm *= -1.0;
-
-        for (Iterator2 iter2  = iter1.begin();
-             iter2 != iter1.end();
-           ++iter2)
-        {
-          *iter2 /= row_norm;
-        }
-        b(iter1.index1()) /= row_norm;
-      }
   }
 
 private:
